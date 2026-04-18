@@ -1,0 +1,81 @@
+---
+name: better-test
+description: "测试知识管理：为项目构建持久化的测试组定义、变更影响映射、已知问题库和测试认知约束，支持变更驱动的策略推荐、跨 session 反馈循环和断点续传。Better-Work 系列子技能。触发场景：发布新版本前回归、修了 bug 想验证、变更后想知道跑哪些测试、录入开发者反馈避免重复提报。独立命令 /better-test，或作为子技能 /better-work test。"
+license: MIT
+---
+
+# Better Test
+
+为有持续测试需求的项目（库、daemon、API、CLI）构建和维护测试知识系统。让 agent 在变更后能 ≤2 步内知道该跑哪些测试、哪些是已知 fail、上次跑到哪里。
+
+## Stance
+
+像一个资深测试工程师在做交接——只讲能防止"白跑测试"和"重复提报已知问题"的关键信息。pass 必须基于返回值字段验证而非状态码；skip 必须醒目；feedback 提炼成规则而非沉没在历史里。
+
+## Commands
+
+- `/better-test init` — 探索测试结构，生成 `.better-work/test/` 知识文件
+- `/better-test update` — 信号驱动的增量更新（新测试、新 bug、新组）
+- `/better-test strategy` — 基于变更分析推荐测试策略（smoke / targeted / bug-retest / full）
+- `/better-test feedback <id> <verdict> [note]` — 录入反馈，提炼为 known-issues 规则
+- `/better-test checkpoint` — 保存当前测试任务进度
+- `/better-test resume` — 从上次断点恢复
+
+## Output Structure
+
+```
+.better-work/                              ← 与 better-code 共享
+├── shared/                                ← 读：项目概览、模块地图
+│   └── index.md
+├── code/                                  ← 读：高风险区域 → 触发更全面测试
+│   └── danger-zones.md
+└── test/                                  ← 写：测试专用
+    ├── protocol.md                        ← 测试认知约束（≤15 行），每对话注入
+    ├── test-groups.md                     ← 测试组定义 + 运行条件
+    ├── impact-map.md                      ← 变更关键词 → 测试组映射
+    ├── known-issues.md                    ← 已知 fail / 预期行为 / 经验
+    ├── status.md                          ← 自动汇总：当前版本 / 活跃 fail / suppress
+    ├── progress.md                        ← 当前测试任务进度（断点续传）
+    └── history/                           ← 测试运行历史（git-tracked）
+        ├── _meta.json
+        ├── feedback-rules.json            ← 自动维护，勿手编
+        └── <version>/run-NNN-<ts>/        ← results.json + summary.md
+```
+
+**注入**（Claude Code 示例）：项目 CLAUDE.md 中追加 `@.better-work/test/protocol.md`。其他文件按需 Read。
+
+## Red Lines
+
+1. `protocol.md` 超过 15 行 → 必须精简，不可突破
+2. pass 判定只依赖退出码或"输出非空"（不验证返回值字段） → 违反测试铁律，必须改用具体字段断言
+3. skip 没有醒目标注（视觉上等同 pass） → 违规，必须明确 `~` 或 `[skip]` 标记并附原因
+4. `test-groups.md` 中条目缺少"运行条件"（环境、依赖、是否需要真账户）或"如何运行" → 不完整
+5. `impact-map.md` 中关键词→测试组的映射没有验证依据（人类知识或历史 fail 共现） → 必须标注 `[未验证]`
+6. `known-issues.md` 写入时未附 test_id + 判定来源（developer / human / inferred） → 违规
+7. `feedback-rules.json` 被人手编辑（应通过 `/better-test feedback` 提炼） → 违规，破坏自动化
+8. `progress.md` 中记录无法被下一个 session 理解的模糊状态（如"差不多跑完了"） → 违规，必须精确到测试 ID 和组
+9. `init` 时跑全部测试以"摸清当前状态" → 违规，init 只读知识不执行测试
+
+## Acceptance Criteria
+
+1. 新对话加载 `protocol.md` + Read `status.md` 后，agent 能准确说出"当前版本是什么 / 哪些 ID 在挂 / 哪些已 suppress"，无需重跑
+2. 代码变更后，agent 通过 `/better-test strategy` 在 ≤2 步内确定要跑的组（基于 impact-map.md + 变更信号），并显示推荐理由
+3. 同一个 bug 用 `/better-test feedback <id> wontfix` 录入后，下次 strategy 推荐时该项自动从 active failures 排除，不再重复提报
+4. `checkpoint` + `resume` 后，agent 能准确复述上次跑到哪个组的哪个 ID
+5. 同一套 `.better-work/test/` 文件通过不同 adapter 注入后，在 Claude Code、Cursor、Gemini CLI 上 agent 都能正确读取
+
+## References
+
+| File | Load When | Content |
+|------|-----------|---------|
+| `references/init-workflow.md` | `/better-test init` | 测试结构探索 + 生成 5 个核心文件 |
+| `references/update-workflow.md` | `/better-test update` | 5 类信号检测 + 增量更新 |
+| `references/strategy-workflow.md` | `/better-test strategy` | 变更检测 + 影响分析 + 决策树 |
+| `references/feedback-workflow.md` | `/better-test feedback` | 反馈录入 + 规则提炼 + suppress 机制 |
+| `references/progress-workflow.md` | `/better-test checkpoint` 或 `resume` | 断点续传 |
+| `references/templates.md` | 生成输出文件时 | 4 个核心文件的模板 + 质量标准 |
+| `references/adapters.md` | 多平台注入 | Claude / Cursor / Gemini / Codex 适配 |
+
+## Interface Contract（与 better-work 集成）
+
+作为 `/better-work test <cmd>` 的子技能时，better-work 把命令名透传：`/better-work test init` → `/better-test init`。本 skill 不感知是否被路由，独立可用。共享目录 `.better-work/shared/` 可读写，但优先只读；如需写共享内容，commit message 标注 `[better-test]` 来源。
