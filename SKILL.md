@@ -17,7 +17,7 @@ license: MIT
 - `/better-test init` — 探索测试结构，生成 `.better-work/test/` 知识文件
 - `/better-test update` — 信号驱动的增量更新（新测试、新 bug、新组）
 - `/better-test strategy` — 基于变更分析推荐测试策略（smoke / targeted / bug-retest / full）
-- `/better-test feedback <id> <verdict> [note]` — 录入反馈，提炼为 known-issues 规则
+- `/better-test feedback <id> <verdict> [--note "..."]` — 录入反馈，提炼为 known-issues 规则。verdict ∈ `not-a-bug` / `fixed` / `fixed-differently` / `wontfix` / `deferred` / `revoke`
 - `/better-test checkpoint` — 保存当前测试任务进度
 - `/better-test resume` — 从上次断点恢复
 
@@ -25,22 +25,26 @@ license: MIT
 
 ```
 .better-work/                              ← 与 better-code 共享
-├── shared/                                ← 读：项目概览、模块地图
-│   └── index.md
-├── code/                                  ← 读：高风险区域 → 触发更全面测试
+├── shared/                                ← 读/写：所有 skill 可读写（架构 8.1）
+│   └── index.md                           ← 优先只读；如写则 commit 标 [better-test]
+├── code/                                  ← 只读：高风险区域 → 触发更全面测试
 │   └── danger-zones.md
 └── test/                                  ← 写：测试专用
     ├── protocol.md                        ← 测试认知约束（≤15 行），每对话注入
-    ├── test-groups.md                     ← 测试组定义 + 运行条件
-    ├── impact-map.md                      ← 变更关键词 → 测试组映射
-    ├── known-issues.md                    ← 已知 fail / 预期行为 / 经验
-    ├── status.md                          ← 自动汇总：当前版本 / 活跃 fail / suppress
-    ├── progress.md                        ← 当前测试任务进度（断点续传）
-    └── history/                           ← 测试运行历史（git-tracked）
+    ├── test-groups.md                     ← 架构 4.2 定义：测试组定义 + 运行条件
+    ├── impact-map.md                      ← 架构 4.2 定义：变更关键词 → 测试组映射
+    ├── known-issues.md                    ← 架构 4.2 定义：已知 fail / 预期行为 / 经验
+    ├── status.md                          ← [扩展架构] 自动汇总：当前版本 / 活跃 fail / suppress
+    ├── progress.md                        ← [扩展架构] 当前测试任务进度（断点续传）
+    └── history/                           ← [扩展架构] 测试运行历史（git-tracked）
         ├── _meta.json
         ├── feedback-rules.json            ← 自动维护，勿手编
-        └── <version>/run-NNN-<ts>/        ← results.json + summary.md
+        └── <version>/
+            ├── run-NNN-<ts>/              ← results.json + summary.md
+            └── feedback/<test_id>_<verdict>.md
 ```
+
+**架构扩展说明**：架构文档 v1.0 的 4.2 节只列了 `protocol.md` / `test-groups.md` / `impact-map.md` / `known-issues.md` 4 个文件。`status.md` / `progress.md` / `history/` 是 Phase 1 实现时为承接 futu-tester 的 `lib/{context,history}.sh` 能力而扩展的。后续架构 v1.1 应正式收录。
 
 **注入**（Claude Code 示例）：项目 CLAUDE.md 中追加 `@.better-work/test/protocol.md`。其他文件按需 Read。
 
@@ -55,6 +59,7 @@ license: MIT
 7. `feedback-rules.json` 被人手编辑（应通过 `/better-test feedback` 提炼） → 违规，破坏自动化
 8. `progress.md` 中记录无法被下一个 session 理解的模糊状态（如"差不多跑完了"） → 违规，必须精确到测试 ID 和组
 9. `init` 时跑全部测试以"摸清当前状态" → 违规，init 只读知识不执行测试
+10. flaky 测试连续 2+ 次表现不一致时，未在 `known-issues.md` 的 Flaky 段标注或未发起 `/better-test feedback ... deferred` → 违规，flaky 不能默默吞掉
 
 ## Acceptance Criteria
 
@@ -62,7 +67,7 @@ license: MIT
 2. 代码变更后，agent 通过 `/better-test strategy` 在 ≤2 步内确定要跑的组（基于 impact-map.md + 变更信号），并显示推荐理由
 3. 同一个 bug 用 `/better-test feedback <id> wontfix` 录入后，下次 strategy 推荐时该项自动从 active failures 排除，不再重复提报
 4. `checkpoint` + `resume` 后，agent 能准确复述上次跑到哪个组的哪个 ID
-5. 同一套 `.better-work/test/` 文件通过不同 adapter 注入后，在 Claude Code、Cursor、Gemini CLI 上 agent 都能正确读取
+5. `references/adapters.md` 为每个支持平台（Claude/Cursor/Gemini/Codex/OpenCode/OpenClaw）都给出**可粘贴执行**的注入语法（@ 引用 vs 内容嵌入），无 placeholder 占位
 
 ## References
 

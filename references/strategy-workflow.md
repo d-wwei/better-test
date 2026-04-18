@@ -66,7 +66,7 @@ git log <prev_version_tag>..HEAD --grep="fix|feature|breaking" → 提取关键 
 
 如果 impact-map.md 中某条目标 `[未验证]`，仍然参与匹配但在 present 时提示 "基于未验证映射"。
 
-如果命中的 affected_groups 覆盖了 >50% 的测试组 → 升级为 full（覆盖太广，不如全跑）。
+> **不内置 ">50% 升级 full" 规则**。futu-tester 源材料无此阈值，本 skill 也不擅自加。如果项目需要这种升级策略，应该在 `impact-map.md` 的"全量触发条件"段（见 templates.md）显式列出，不靠隐式阈值。
 
 ## Step 3: 读历史（read_history）
 
@@ -106,8 +106,11 @@ ELIF active_failures 非空:
   reason: "上次有 N 项活跃 fail（已排除 suppress），推荐复测"
 
 ELSE:
-  → pass (确认是否还要再跑)
+  → pass (必须显式问 y/N，默认 N)
   reason: "该版本已测 N 次，全部通过（或仅剩 suppress 项）"
+  agent 行为: 显示"该版本已全部通过，确定再跑吗？[y/N]: "，等待用户回复
+              y → 降级为 smoke 跑一次最低成本验证
+              N（默认）→ 跳过测试，输出"已建议跳过"
 ```
 
 注意：

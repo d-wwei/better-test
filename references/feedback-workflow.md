@@ -16,12 +16,13 @@
 ```
 /better-test feedback <test_id> <verdict> [--note "<text>"]
 
-verdict 取值:
+verdict 取值（共 6 种）:
   not-a-bug          预期行为，不是 bug
   fixed              已在某 commit 修复，等下次回归验证
   fixed-differently  改动不在 fix 本身，而在 EXPECT_PATTERN/测试逻辑
   wontfix            开发者明确不修
   deferred           推迟到未来某版本修
+  revoke             撤销之前对该 test_id 的任何 feedback（详见"撤销 feedback"段）
 ```
 
 如果用户口头报告但没指定 verdict，agent 应**主动反问**："开发者怎么说？是 not-a-bug、fixed、wontfix 还是 deferred？" 不要自行猜测。

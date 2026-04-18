@@ -145,16 +145,19 @@ alwaysApply: true
 
 ---
 
-## inject 命令逻辑（如实现统一入口）
+## 注入逻辑（init 内置，无独立 inject 命令）
 
-`/better-test inject <platform>` 执行流程（可选实现，当前作为内部能力）：
+注入是 `/better-test init` 的内置最后一步，不暴露为独立命令（保持 SKILL.md commands 表干净）。如需重新注入（如换平台、CLAUDE.md 被清空、新增了平台配置）：
+
+- **首选**：重跑 `/better-test init`（幂等：已存在的 protocol.md 不会被覆盖，已存在的 CLAUDE.md 引用不会被重复添加）
+- **手动**：直接编辑 CLAUDE.md / GEMINI.md / AGENTS.md，按本文档的注入步骤添加引用或嵌入内容
+
+init 的注入步骤（agent 内部执行）：
 
 1. 验证 `.better-work/test/protocol.md` 存在
-2. 根据 platform 参数选适配策略
-3. 执行注入（追加，不覆盖）
-4. 报告注入位置
-5. 如 platform = "all"，遍历所有检测到的平台配置文件
+2. 检测当前平台（项目根有 CLAUDE.md → claude；有 .cursor/ → cursor；等）
+3. 选对应适配策略（本文档前面各小节）
+4. 执行注入（追加，不覆盖）
+5. 报告注入位置
 
-支持 platform 值：`claude` / `cursor` / `gemini` / `codex` / `opencode` / `openclaw` / `all`
-
-实际中通常不需要单独 `/better-test inject`——init 时已根据当前平台注入；后续 update 不改 protocol 就不用重注。
+支持平台：`claude` / `cursor` / `gemini` / `codex` / `opencode` / `openclaw`。多平台同时存在则全部注入。
