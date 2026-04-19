@@ -14,6 +14,7 @@
 | API / Web 服务 | routes + middleware | endpoint 矩阵、auth 链、错误响应、rate limit |
 | 数据 pipeline | DAG + transformers + schema | fixture 数据、schema 演进、幂等性、回滚 |
 | Frontend SPA | components + 状态管理 | 组件单测、e2e、跨浏览器 |
+| 测试工具 / 测试基础设施 | 自身是 tester + `lib/groups/` 或类似子目录暴露测试套件给用户 + 无主产品被测（tester 就是产品） | 暴露的测试组作为 `test-groups`；自己的单元测试少；关注 integration 模式、用户配置矩阵、fixture 场景 |
 | 混合 | 以上都有 | 按主导组件分类，其他组归为辅助 |
 
 ## Step 2: 信号驱动探索
@@ -72,6 +73,57 @@
 7. **`history/`** — 创建目录 + 两个 JSON 文件（均含 `schema_version: 1` 字段便于将来迁移）：
    - `_meta.json` — schema: `{schema_version: 1, project: "<project-name>", test_target: "<被测对象描述>", created_at: "<ISO 时间戳>"}`
    - `feedback-rules.json` — schema: `{schema_version: 1, suppress: [], known_behaviors: [], lessons: []}`
+
+## Step 3.5: 同步知识 repo 的 .gitignore 标准模板
+
+同步 `~/.better-work/<project>/.gitignore` 的标准内容。
+
+**canonical 源**：`~/.claude/skills/better-work/references/gitignore-template.md`（若 better-work 已装）。若未装，使用内联 fallback：
+
+```gitignore
+# Progress & session state
+progress.md
+
+# Platform adapter outputs (regenerated from source)
+adapters/
+
+# Sensitive files (NEVER commit)
+*.pem
+*.key
+credentials*
+*.env
+.env.*
+
+# OS/IDE noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+```
+
+注：此 fallback 与 better-work 的 canonical `gitignore-template.md` 保持一致（v1.3.1+）。若未来 canonical 增项，此处需同步（maintainer 责任）。
+
+策略：文件不存在则创建；已存在则验证每行 template 项，缺则 append（不覆盖用户自定义行）。
+
+## Step 3.7: 同步全局 registry
+
+若 better-work 已装：registry 条目由 `better-work init` 主动维护，按 schema（见 `~/.claude/skills/better-work/references/registry-schema.md`）更新 `last_subskill_init` 字段。
+
+若 better-work 未装（standalone 模式）：在 `~/.better-work/registry.yml` 中创建/更新最小 v1 条目：
+
+```yaml
+schema_version: 1
+projects:
+  <project-name>:
+    path: <project-root 绝对路径>
+    initialized_by: better-test
+    created_at: <ISO 时间戳>
+    subskills:
+      - better-test
+```
+
+若 `registry.yml` 已存在但无 `schema_version` 字段，prepend `schema_version: 1` 后再更新条目。
 
 ## Step 4: 注入到当前平台
 
