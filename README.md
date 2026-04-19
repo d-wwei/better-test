@@ -12,7 +12,7 @@ It's not an attitude problem. The agent doesn't know which tests cover which cha
 
 This knowledge lives in Slack threads, in the release engineer's head, in postmortems nobody re-reads. It evaporates between sessions.
 
-`better-test` captures it — the testing half of a [Full Context + Lite Control](https://github.com/d-wwei/better-work-skill) framework. A persistent test playbook plus a developer-feedback loop that stops you from re-filing the same closed bug three times.
+`better-test` captures it — the testing half of a [Full Context + Lite Control](https://github.com/d-wwei/better-work) framework. A persistent test playbook plus a developer-feedback loop that stops you from re-filing the same closed bug three times.
 
 ## What this repo knows that your agent doesn't
 
@@ -161,7 +161,7 @@ Test knowledge lives under `.better-work/test/` (a symlink to `~/.better-work/<p
 
 ## The Better-Work series
 
-- **[better-work-skill](https://github.com/d-wwei/better-work-skill)** — Lite Control + series entry point. Start there for the full design story.
+- **[better-work](https://github.com/d-wwei/better-work)** — Lite Control + series entry point. Start there for the full design story.
 - **[better-code](https://github.com/d-wwei/better-code)** — Full Context for coding
 - **better-test** (this repo) — Full Context for testing
 
@@ -182,6 +182,6 @@ MIT.
 
 ---
 
-Companion write-up: the full [Full Context, Lite Control](https://github.com/d-wwei/better-work-skill) story lives in the series entry-point README.
+Companion write-up: the full [Full Context, Lite Control](https://github.com/d-wwei/better-work) story lives in the series entry-point README.
 
 Questions, issues, discussion: [GitHub issues](https://github.com/d-wwei/better-test/issues).
