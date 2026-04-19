@@ -63,24 +63,30 @@
 
 按以下顺序生成（参考 `references/templates.md` 的质量标准）：
 
-1. **`protocol.md`** — 测试认知约束（≤15 行）。从模板中选择适合项目风险等级的版本（严格/标准/宽松），询问用户
+1. **`protocol.md`** — 测试认知约束（≤15 行）。从模板中选择适合项目风险等级的版本（严格/标准/宽松），询问用户。**无人值守 fallback**（fork 会话 / CI / 无交互通道）：默认选 **标准版**，在 Step 5 报告中明示选择原因让用户可事后切换
 2. **`test-groups.md`** — 从信号源 A + B 提取，每组包含：名称、覆盖范围、运行命令、运行条件（环境变量、依赖、是否需要真账户）
 3. **`impact-map.md`** — 从信号源 A 的目录划分 + 信号源 B 的 CI 矩阵推断初始版本。若无依据则只列已知关键词，标 `[未验证]` 待 update 累积
 4. **`known-issues.md`** — 初始化为空模板（待 feedback 累积）。如果信号源 E 有强信号可写"待验证条目"
 5. **`status.md`** — 自动生成的初始版本（仅项目概况 + 测试组列表，未跑过测试时无运行记录）
 6. **`progress.md`** — 初始化为空模板
-7. **`history/`** — 创建目录 + `_meta.json` + 空 `feedback-rules.json`（schema: `{suppress:[], known_behaviors:[], lessons:[]}`）
+7. **`history/`** — 创建目录 + 两个 JSON 文件（均含 `schema_version: 1` 字段便于将来迁移）：
+   - `_meta.json` — schema: `{schema_version: 1, project: "<project-name>", test_target: "<被测对象描述>", created_at: "<ISO 时间戳>"}`
+   - `feedback-rules.json` — schema: `{schema_version: 1, suppress: [], known_behaviors: [], lessons: []}`
 
 ## Step 4: 注入到当前平台
 
-参考 `references/adapters.md`。Claude Code 示例：项目 CLAUDE.md 追加：
+参考 `references/adapters.md`。Claude Code 示例：项目 `CLAUDE.md`（若不存在则创建新文件）追加：
 
 ```
 @.better-work/shared/index.md         # better-code 创建的项目知识（如已存在）
 @.better-work/test/protocol.md        # 测试认知约束
 ```
 
-如果 `.better-work/shared/` 不存在（用户未装 better-code），仅注入 `test/protocol.md`，不要替 better-code 创建 shared/。
+注入策略按 `.better-work/shared/` 存在性分三种情况：
+
+1. `shared/` **不存在**（用户未装 better-code）→ 仅追加 `@.better-work/test/protocol.md`；**不要替 better-code 创建 shared/**
+2. `shared/` 存在且 CLAUDE.md **已有** `@.better-work/shared/index.md` → **不重复注入** shared 引用；仅追加 `@.better-work/test/protocol.md`
+3. `shared/` 存在但 CLAUDE.md **尚无** shared 引用（罕见：better-code init 后手动删了 CLAUDE.md 条目）→ 两行都追加
 
 ## Step 5: 报告
 
