@@ -112,6 +112,50 @@ grep daemon/service log 查 error code
 
 不允许 guess 级别出现在任何输出中。
 
+### 每个接口的测试深度（happy path 只是起点）
+
+happy path 通过后，对每个接口主动尝试 break——silent failure 最难抓，必须主动找。
+
+**三种用户姿态测试**：
+
+```
+对每个 API / 接口 / 命令：
+
+1. 熟悉者姿态（你的默认方式）：完整参数、正确类型、合法值
+   → 这是 happy path，过了只是基线
+
+2. 新手姿态：只传 schema 标 required 的字段，省略所有 optional
+   → 暴露 daemon/server 是否正确处理缺省值（最常见的 silent failure 来源）
+
+3. LLM agent 姿态：只传核心字段，名称可能略有变体
+   → 暴露参数名容错性和 validation 健壮性
+```
+
+**字段三态枚举**（每个可选字段至少测 3 种状态）：
+
+```
+对 API 的每个可选字段：
+  状态 1：key 缺失（不传这个字段）
+  状态 2：key 存在但值为空（null / "" / {} / []）
+  状态 3：key 存在且值合法（正常值）
+
+只测了状态 3 = 只测了 happy path。
+状态 1 和 2 是暴露 default-filling 和 validation 缺失的关键。
+```
+
+**其他负向场景**（按适用性选择）：
+
+```
+- 错误字段类型：string 传 int、int 传 string、array 传 object
+- 字段冲突：传了互斥的参数组合
+- 边界值：最大值 / 最小值 / 0 / 负数 / 超长字符串
+- 特殊字符：中文 / emoji / SQL 注入 pattern / HTML 标签
+```
+
+**对照组也要变参**：
+
+对照组不能只用完整参数。如果 happy path 对照和 happy path 测试都传完整参数，对照失去了揭示 default-filling 差异的价值。对照时也用新手姿态 / 缺字段版本，才能发现"一个实现填了默认值另一个没填"的差异。
+
 ### 终态规则
 
 ```

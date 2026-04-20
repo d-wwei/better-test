@@ -151,3 +151,32 @@ DORA 2024 连续两年发现 AI 工具提升个人生产力但损害交付表现
 - 影响评估 — 让决策者判断优先级
 
 yaml 元数据块（status / evidence_level / bug_type）供 agent 机器读取，用于 strategy 的回归推荐。
+
+---
+
+## 七、"验证者思维 vs 测试者思维"教训
+
+来源：2026-04-20 真实项目测试反思（history-order-fills API 测试中 7 小时未发现、同事 10 分钟锁定的 bug）。
+
+### 核心教训
+
+测试者（agent）在写 curl / 请求 body 时下意识写"自己觉得合理的参数"——完整字段、正确类型、合法值。这是**验证者思维**（验证接口能不能工作），不是**测试者思维**（找到接口在什么条件下会坏）。
+
+具体表现：
+1. 只跑 happy path，从没试过"不传 filterConditions"或"只传一半"
+2. 没有系统枚举字段的 presence × absence（缺失/空/合法三态）
+3. 对照组比较时也只传完整参数，失去了揭示 default-filling 差异的价值
+4. 同事（或同事让 LLM 跑的）省略了 optional 字段立刻撞上 bug——因为 schema 没标 required
+
+### 为什么加入三种用户姿态
+
+测试请求应模拟三种写法：
+- **熟悉者**：完整参数（你的默认，最不可能触发 bug）
+- **新手**：只传 required，省略所有 optional（最常暴露 default-filling / validation 缺失）
+- **LLM agent**：只传核心字段、名称可能有变体（暴露参数容错性）
+
+后两种是最能暴露 daemon/server 客户端侧 default fill / validation 缺失的姿态。这条来自"自测 7 小时没发现、同事 10 分钟锁定"的直接教训。
+
+### 字段三态枚举的依据
+
+API 契约里每个可选字段应至少测 3 种状态：key 缺失 / key 存在但值为空 / key 存在且合法。只测第 3 种 = 只测 happy path。boundary testing 完全缺席是 agent 最常见的盲区。
