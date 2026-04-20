@@ -434,11 +434,12 @@ history/
 │
 └── <version>/                              ← 按版本分目录（如 v1.4.27/）
     ├── run-NNN-<ts>/                       ← 每次测试运行的完整归档
-    │   ├── results.json                    ← 测试结果
-    │   ├── summary.md                      ← 运行摘要（人类可读）
-    │   ├── execution-log.md                ← 执行日志（从 test/ 归档）
-    │   ├── l2-findings.md                  ← L2 独立验证结果（从 test/ 归档）
-    │   └── audit-report.md                 ← L3 审计面板（从 test/ 归档）
+    │   ├── results.json                    ← 测试结果（结构化数据）
+    │   ├── process-log.md                  ← 过程日志（流水账，记录试了什么/发现什么/推翻了什么）
+    │   ├── summary.md                      ← 2 分钟速览（大白话核心结论）
+    │   ├── execution-log.md                ← 执行日志（Hook 自动生成）
+    │   ├── l2-findings.md                  ← L2 独立验证结果
+    │   └── audit-report.md                 ← L3 审计面板
     │
     ├── feedback/                           ← test-level 反馈（per test item）
     │   ├── B-05_not-a-bug.md
@@ -449,11 +450,100 @@ history/
         └── BUG-002-auth-timeout.md
 ```
 
+### 三份核心输出文件
+
+每次测试运行产出三份面向不同受众的文件：
+
+| 文件 | 受众 | 目的 | 生成时机 |
+|------|------|------|---------|
+| `process-log.md` | 测试者（复盘） | 试了什么/发现什么/卡在哪/推翻了什么 | 测试过程中增量追加 |
+| `bugs/BUG-NNN.md` | 开发者（修 bug） | 每个 bug 的完整技术细节，结构化 | 发现 bug 时写入 |
+| `summary.md` | 所有人（2 分钟了解） | 核心结论 + 关键证据，大白话 | 测试完成后生成 |
+
+### process-log.md（过程日志）
+
+测试过程的流水账，增量追加，保留所有犹豫、转折和推翻。
+
+```markdown
+# 测试过程日志 — v<X.Y.Z> <mode>
+# 开始时间: <ISO>
+
+## [HH:MM] <做了什么>
+<具体细节>
+
+## [HH:MM] <发现了什么>
+<证据>
+
+## [HH:MM] ⟲ 推翻 [HH:MM] 的判断
+原来以为: <旧结论>
+实际是: <新结论>
+原因: <为什么变了>
+```
+
+规则：
+- 只追加不删改（即使后面结论变了，前面的记录保留原样）
+- 推翻标记用 `⟲` 符号 + 引用被推翻记录的时间
+- 记录"试了但没用"的路径（排除路径和成功路径一样有复盘价值）
+- 不美化——这不是给开发者看的报告，是给复盘的原始记录
+
+### summary.md（2 分钟速览）
+
+测试完成后生成。面向"只有 2 分钟"的人——讲最重要的、用最少的字。
+
+```markdown
+# 测试速览 — v<X.Y.Z> <mode>
+# <日期> | <N> 项测试 | 耗时 <M> 分钟
+
+## 一句话结论
+<如："基本正常，发现 2 个 bug 需要修。auth 重构没有引入回归。">
+
+## 发现了什么
+
+🔴 BUG-<NNN>: <大白话一句话>
+   实锤: <最关键一条证据>
+   影响: <谁受影响>
+
+🔴 BUG-<NNN>: <同上>
+   实锤: <...>
+   影响: <...>
+
+## 需要关注但不确定的
+<🟡 或可疑项，一句话说不确定什么>
+
+## 数字
+覆盖率: T/R = NN%
+✅ N | 🔴 N | ⏭️ N（跳过: <原因>）
+回归: BUG-<NNN> VERIFIED / 仍失败
+
+## 详细信息
+- 完整过程: process-log.md
+- Bug 详情: bugs/BUG-<NNN>.md
+- 原始数据: results.json
+```
+
+写作原则：
+- **大白话**："daemon 把错误码包了一层，用户看到的不是真正的错误"比术语好
+- **只讲结论不讲过程**（过程在 process-log）
+- **证据只放最关键一条**（不是"我做了 5 步调查"，是"log 里看到 code=-1001"）
+- **影响用"谁受影响"表达**（"量化策略用户"比"option_chain API consumers"好）
+- **2 分钟能读完**——超过就砍
+
+### 质量标准（三份文件）
+
+| 项目 | process-log | bugs/BUG-NNN | summary |
+|------|------------|--------------|---------|
+| 长度 | 不限 | 不限（但精炼） | 不超过 30 行 |
+| 证据级别 | 包含所有级别（含推测） | 只含 direct+ | 只含 confirmed |
+| 推翻记录 | 保留（⟲ 标记） | 不含（只有最终结论） | 不含 |
+| 技术深度 | 完整 | 完整（可复现级） | 只放核心证据 |
+| 语言 | 技术语言 OK | 结构化技术语言 | 大白话 |
+
 ### 归档流程
 
 测试完成后，把 `test/` 下的临时文件归档到对应的 run 目录：
 
 ```
+test/process-log.md    → 复制到 history/<ver>/run-NNN/process-log.md
 test/execution-log.md  → 复制到 history/<ver>/run-NNN/execution-log.md
 test/l2-findings.md    → 复制到 history/<ver>/run-NNN/l2-findings.md
 test/audit-report.md   → 复制到 history/<ver>/run-NNN/audit-report.md
