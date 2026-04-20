@@ -2,6 +2,93 @@
 
 All notable changes to **better-test** (Better-Work series testing subskill) are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project uses [Semantic Versioning](https://semver.org/).
 
+## [2.0.0] - 2026-04-20
+
+Major redesign: constraint framework, three-tier methodology architecture, test execution framework, experience extraction, and differential testing.
+
+### Added
+
+**Constraint Framework (L0-L3)**
+- L0 goal calibration: role reframe ("测试审计员") + training bias correction in `protocol.md`
+- L1 Hook design: 5 hooks (credential scan, feedback-rules protection, empty result prompt, result consistency, execution logging)
+- L2 independent verification: 3 checks (execution audit, coverage reconciliation, evidence audit) via sub-agent
+- L3 human audit panel: 20-25 line decision-oriented `audit-report.md` assembled from structured data
+- Full constraint framework design document: `code/constraint-framework.md`
+
+**New Workflows**
+- `test-execution-workflow.md`: framework + template for per-project execution plans, combining universal discipline (four-color marking, evidence grading, error diagnosis, terminal state rules, safety) with project-specific knowledge (`[PROJECT]` injection points)
+- `reflect-workflow.md`: 6-type historical analysis (impact-map precision, stability trends, bug hotspots, lesson synthesis, timing calibration, pattern extraction). Incremental reflect runs automatically after each test; full reflect via `/better-test reflect [scope]`
+- `protocol-update-workflow.md`: upgrade test cognitive constraints from user input or session summary, with changelog tracking
+
+**New Procedures (Tier 2)**
+- `procedures/bdd-scenarios.md`: Given-When-Then scenario generation from PRD
+- `procedures/tdd-flow.md`: Red-Green-Refactor for new feature development
+- `procedures/contract-testing.md`: consumer-driven contract testing for microservices
+- `procedures/exploratory-charter.md`: structured exploratory testing with time-boxed charters
+- `procedures/hypothesis-investigation.md`: 3-hypothesis rule + investigation ladder + 5-level evidence grading + bug classification
+- `procedures/mutation-testing.md`: incremental mutation testing for changed code
+- `procedures/flakiness-scoring.md`: probabilistic stability scoring from test history
+- `procedures/bug-report.md`: 7-section standard format + yaml metadata
+
+**New Commands**
+- `/better-test protocol-update [text]`: upgrade cognitive constraints with changelog
+- `/better-test reflect [scope]`: extract experience from historical data
+- `compare` mode in strategy: differential testing between implementations/versions
+
+**Testing Methodology**
+- `methodologies/design-rationale.md`: consolidated Tier 3 design document with all research citations (ICSE 2014, Google mutation testing, Meta flakiness, DORA 2024, F-Secure exploratory testing, Microsoft TDD, systematic-debugging)
+
+**History & Bug Management**
+- `bugs/` directory per version for structured bug reports with lifecycle (OPEN → CONFIRMED → FIXED → VERIFIED → CLOSED)
+- `bugs-index.md`: cross-version bug index, drives strategy bug-retest recommendations
+- `results.json` schema: formal definition with coverage stats, per-item evidence level, stability score, bug associations
+- `execution-log.md` format: L1 Hook auto-generated execution record
+- Per-run archiving: execution-log + l2-findings + audit-report archived to `history/<version>/run-NNN/`
+
+### Changed
+
+**Protocol Redesign**
+- Structure: old "通用原则 + 触发器" → new "L0 目标校准 + 思维纪律 + 安全纪律"
+- Execution steps (four-color marking, error three-questions, etc.) moved to `test-execution-workflow.md` Tier 1
+- Protocol now only contains mindset rules (evidence strength, diagnosis before retry, four-state thinking), not procedural steps
+- Removed fixed ≤15 line limit; replaced with "shorter = better attention" principle
+
+**Three-Tier Loading Architecture**
+- Tier 1 (always loaded): core procedures embedded directly in workflow files
+- Tier 2 (condition-triggered): 8 standalone procedure files in `procedures/`, each with explicit trigger condition
+- Tier 3 (human reference): 5 methodology files consolidated into 1 `design-rationale.md`, agent does not load
+
+**Init Workflow Enhancements**
+- Classification table: added Mobile App, Desktop App, Browser Extension (11 types total)
+- Any skill can create `shared/` (not just better-code): minimal version with project identity + Testing section
+- Code reading strategy: two-pass (signature scan → user choice: extract/full/skip), streaming extraction for large codebases
+- Material collection: Signal Source F with 3 core questions at init + staged collection across workflow phases
+- New test 4-question check embedded in init and update
+
+**Strategy Workflow**
+- Decision tree: bug-retest now includes FIXED-but-unverified bugs from `bugs-index.md`
+- Step 5.5 conditional checks: batch size warning, combined strategy suggestion, release strategy advice
+- Compare mode: differential testing between two targets with structured diff report
+
+**Update Workflow**
+- Signal 6: accept new materials at any time (API specs, error code tables, PRD, SLA, etc.)
+- Three-way distinction table: update vs feedback vs reflect
+
+**Feedback Workflow**
+- Regression canary prompt: auto-suggest adding to canary on verdict=fixed/fixed-differently
+
+**Templates**
+- `test-groups.md`: added test type field (unit/integration/e2e), per-item ID table with stability scores, smoke selection criteria
+- `impact-map.md`: evidence grade correspondence table for source field values
+- `known-issues.md`: flakiness stability score column in Flaky section
+- `status.md`: test pyramid structure check, reachable coverage format, flaky item list, link to audit-report
+- `protocol-changelog.md`: updated section names to match new protocol structure, added consistency check field
+
+**Knowledge Evolution**
+- File dependency graph + consistency check checklist for cross-file updates
+- Authority priority: protocol.md > test-execution-workflow.md > procedures/ > templates.md
+- Changelog mechanism for both protocol.md and test-execution-workflow.md
+
 ## [1.3.1] - 2026-04-19
 
 ### Added
@@ -37,6 +124,7 @@ All notable changes to **better-test** (Better-Work series testing subskill) are
 
 ---
 
+[2.0.0]: https://github.com/d-wwei/better-test/compare/v1.3.1...v2.0.0
 [1.3.1]: https://github.com/d-wwei/better-test/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/d-wwei/better-test/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/d-wwei/better-test/releases/tag/v1.2.0

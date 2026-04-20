@@ -1,7 +1,10 @@
 ---
 name: better-test
-description: "测试知识管理：为项目构建持久化的测试组定义、变更影响映射、已知问题库和测试认知约束，支持变更驱动的策略推荐、跨 session 反馈循环和断点续传。Better-Work 系列子技能。触发场景：发布新版本前回归、修了 bug 想验证、变更后想知道跑哪些测试、录入开发者反馈避免重复提报。独立命令 /better-test，或作为子技能 /better-work test。"
-license: MIT
+description: |
+  测试知识管理：为项目构建持久化的测试组定义、变更影响映射、已知问题库和测试认知约束，支持变更驱动的策略推荐、跨 session 反馈循环和断点续传。Better-Work 系列子技能。
+  触发场景：发布新版本前回归、修了 bug 想验证、变更后想知道跑哪些测试、录入开发者反馈避免重复提报。独立命令 /better-test，或作为子技能 /better-work test。
+  Subcommands: init, update, strategy, feedback, protocol-update, reflect, checkpoint, resume
+argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-update [text] | reflect [scope] | checkpoint | resume"
 ---
 
 # Better Test
@@ -18,6 +21,8 @@ license: MIT
 - `/better-test update` — 信号驱动的增量更新（新测试、新 bug、新组）
 - `/better-test strategy` — 基于变更分析推荐测试策略（smoke / targeted / bug-retest / full）
 - `/better-test feedback <id> <verdict> [--note "..."]` — 录入反馈，提炼为 known-issues 规则。verdict ∈ `not-a-bug` / `fixed` / `fixed-differently` / `wontfix` / `deferred` / `revoke`
+- `/better-test protocol-update [text]` — 升级测试认知约束：用户输入新原则或自动总结会话经验，确认后写入 protocol.md + changelog
+- `/better-test reflect [scope]` — 从历史数据提取经验：impact-map 验证、稳定性趋势、bug 热点、经验综合、耗时校准、模式提炼。增量版在每次测试后自动执行
 - `/better-test checkpoint` — 保存当前测试任务进度
 - `/better-test resume` — 从上次断点恢复
 
@@ -31,6 +36,7 @@ license: MIT
 │   └── danger-zones.md
 └── test/                                  ← 写：测试专用
     ├── protocol.md                        ← 测试认知约束（≤15 行），每对话注入
+    ├── protocol-changelog.md              ← protocol.md 的变更日志（仅 protocol-update 时读写）
     ├── test-groups.md                     ← 架构 4.2 定义：测试组定义 + 运行条件
     ├── impact-map.md                      ← 架构 4.2 定义：变更关键词 → 测试组映射
     ├── known-issues.md                    ← 架构 4.2 定义：已知 fail / 预期行为 / 经验
@@ -71,15 +77,41 @@ license: MIT
 
 ## References
 
+三层加载架构：Tier 1 核心流程嵌入 workflow（每次执行自动加载）、Tier 2 扩展流程按条件加载、Tier 3 方法论参考供人类阅读（agent 不加载）。
+
+### Tier 1: Workflow 文件（含嵌入的核心流程）
+
 | File | Load When | Content |
 |------|-----------|---------|
-| `references/init-workflow.md` | `/better-test init` | 测试结构探索 + 生成 5 个核心文件 |
-| `references/update-workflow.md` | `/better-test update` | 5 类信号检测 + 增量更新 |
-| `references/strategy-workflow.md` | `/better-test strategy` | 变更检测 + 影响分析 + 决策树 |
-| `references/feedback-workflow.md` | `/better-test feedback` | 反馈录入 + 规则提炼 + suppress 机制 |
+| `references/init-workflow.md` | `/better-test init` | 测试结构探索 + 材料收集 + 代码读取 + 生成知识文件。内嵌：新测试 4 问 |
+| `references/update-workflow.md` | `/better-test update` | 5 类信号检测 + 增量更新。内嵌：新测试 4 问 |
+| `references/strategy-workflow.md` | `/better-test strategy` | 变更检测 + 影响分析 + 决策树 + 条件检查（批量/组合策略/发布建议） |
+| `references/test-execution-workflow.md` | 测试执行阶段 | **框架 + 模板**：结合通用纪律 + 项目知识生成专属执行计划。内嵌：四色标记 + 证据分级 + 错误三问 + 终态规则 + 安全守则 + 覆盖率报告 |
+| `references/feedback-workflow.md` | `/better-test feedback` | 反馈录入 + 规则提炼 + suppress。内嵌：回归 canary 提示 |
+| `references/protocol-update-workflow.md` | `/better-test protocol-update` | 认知约束升级 + changelog |
+| `references/reflect-workflow.md` | `/better-test reflect` | 历史经验提取：6 类分析 + 增量/全量两层机制 |
 | `references/progress-workflow.md` | `/better-test checkpoint` 或 `resume` | 断点续传 |
-| `references/templates.md` | 生成输出文件时 | 4 个核心文件的模板 + 质量标准 |
+| `references/templates.md` | 生成输出文件时 | 核心文件的模板 + 质量标准 |
 | `references/adapters.md` | 多平台注入 | Claude / Cursor / Gemini / Codex 适配 |
+
+### Tier 2: 扩展流程（条件触发加载）
+
+| File | 触发者 | 触发条件 | Content |
+|------|--------|---------|---------|
+| `procedures/bdd-scenarios.md` | init / update | 用户在信号源 F 提供了 PRD 或验收标准 | Given-When-Then 场景生成 |
+| `procedures/tdd-flow.md` | agent | 当前任务包含写新功能代码（不只是跑测试） | Red-Green-Refactor |
+| `procedures/contract-testing.md` | init | Step 1 分类为 API/Web 服务 **且** 有多服务调用链 | 契约测试步骤 |
+| `procedures/exploratory-charter.md` | 用户 / strategy | 用户要求"深度测试"；或 strategy 发现某模块 0 历史记录 | 探索性测试 charter |
+| `procedures/hypothesis-investigation.md` | test-execution | 错误解读三问无法定位（3 问都答了仍不确定） | 3-假设法 + 调查阶梯 + 证据分级完整定义 + bug 分类 |
+| `procedures/mutation-testing.md` | strategy | full/targeted **且** 有代码变更 **且** 项目有变异测试工具 | 增量变异测试 |
+| `procedures/flakiness-scoring.md` | update / strategy | update 检测到 flaky 信号；或推荐组含 known-issues Flaky 项 | 稳定性评分 |
+| `procedures/bug-report.md` | test-execution | 发现 bug 需要写报告 | 7 节标准格式 + yaml 元数据 |
+
+### Tier 3: 设计文档（面向人类，agent 不加载）
+
+| File | Content |
+|------|---------|
+| `references/methodologies/design-rationale.md` | 全部方法论的设计理由和研究依据：覆盖率（ICSE 2014、Google 变异测试）、调查方法（systematic-debugging、证据分级）、测试设计（TDD/BDD/契约/探索性研究数据）、执行纪律（DORA 2024、Meta flakiness）、环境陷阱、Bug Report 格式 |
 
 ## Interface Contract（与 better-work 集成）
 

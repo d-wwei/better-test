@@ -96,6 +96,14 @@ source: developer | human | inferred
 | fixed | （不写 suppress）| 等下次跑通过验证；下次跑通过后自动从 active fail 移除 |
 | fixed-differently | `known_behaviors` + 提示用户更新 test-groups.md 中该项的断言 | |
 
+**回归保护（Tier 1 核心流程）**：verdict=fixed 或 fixed-differently 时，自动提示：
+
+```
+1. 该测试项是否已加入 bug-regress canary？未加 → 建议加入
+2. fixed-differently → 同时更新 test-groups.md 中该项的 EXPECT_PATTERN
+3. 下次 strategy 自动推荐 bug-retest 覆盖此项
+```
+
 **重要**：`feedback-rules.json` 由本 skill 自动维护，**严禁人手编辑**（red line #7）。如果要调整规则，撤回并重新走 `/better-test feedback`。
 
 ### Step 4: 同步更新 known-issues.md（人类视图）

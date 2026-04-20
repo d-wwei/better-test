@@ -1,4 +1,4 @@
-**🇺🇸 English** | **[🇨🇳 中文](README.zh-CN.md)**
+**English** | **[中文](README.zh-CN.md)**
 
 # better-test
 
@@ -8,52 +8,73 @@ Of the five ways AI coding agents fail on 100k-line codebases, this one is the m
 
 > Didn't run the right tests — ran the unit tests, missed the integration tests.
 
-It's not an attitude problem. The agent doesn't know which tests cover which changes. It doesn't know which tests are already failing for known reasons. It doesn't know the test you care about needs a real account to run.
+The agent doesn't know which tests cover which changes. It doesn't know which tests are already failing for known reasons. It doesn't know the test you care about needs a real account to run.
 
-This knowledge lives in Slack threads, in the release engineer's head, in postmortems nobody re-reads. It evaporates between sessions.
+`better-test` captures this knowledge — the testing half of a [Full Context + Lite Control](https://github.com/d-wwei/better-work) framework. Persistent test playbook, developer-feedback loops, experience extraction, and a 4-layer constraint framework that prevents the agent from cutting corners.
 
-`better-test` captures it — the testing half of a [Full Context + Lite Control](https://github.com/d-wwei/better-work) framework. A persistent test playbook plus a developer-feedback loop that stops you from re-filing the same closed bug three times.
+## What's new in v2.0
 
-## What this repo knows that your agent doesn't
+v2.0 is a major redesign. Key additions:
 
-Your team has knowledge CI doesn't capture:
+- **4-layer constraint framework** (L0 goal calibration, L1 hooks, L2 independent sub-agent verification, L3 human audit panel) — ensures the agent doesn't declare false passes or skip steps
+- **Three-tier methodology architecture** — core procedures embedded in workflows (always loaded), extended procedures loaded by condition, design rationale for humans
+- **Test execution framework** — generates per-project execution plans combining universal discipline with project-specific knowledge
+- **Experience extraction** (`/better-test reflect`) — automatically learns from test history: validates impact-map mappings, tracks stability trends, identifies bug hotspots, synthesizes lessons
+- **Differential testing** (`compare` mode) — test a Rust rewrite against the C++ original, or compare versions
+- **Bug lifecycle management** — structured bug reports with OPEN → CONFIRMED → FIXED → VERIFIED → CLOSED tracking
 
-- "The WebSocket tests only matter when `subscribe.rs` changed."
-- "That flaky one in the auth group — dev says it's a test bug, ignore it."
-- "Last release we missed the keychain regression because nobody ran group H. Don't miss it again."
+## How it works
 
-Three files hold this:
+Three knowledge files capture what your team knows but CI doesn't:
 
 | File | What it contains |
 |------|------------------|
-| `test-groups.md` | How tests are grouped, what each covers, what each needs to run |
-| `impact-map.md` | Changed files / keywords → the test groups they affect |
-| `known-issues.md` | What's already known to fail, why, and the developer's verdict |
+| `test-groups.md` | How tests are grouped, what each covers, run commands, assertions, stability scores |
+| `impact-map.md` | Changed files / keywords → the test groups they affect (with evidence grading) |
+| `known-issues.md` | Known failures, developer verdicts, flaky tests with stability scores, lessons learned |
 
-When you change code and run `/better-test strategy`, the skill reads all three plus your `git diff`, then recommends a minimal test set with reasoning. You see exactly why groups A, B, D were picked — and which already-triaged items were excluded.
+When you change code:
+
+```
+/better-test strategy
+  → reads impact-map + known-issues + bugs-index + your git diff
+  → recommends: "Run groups A, B, D — 22 tests, ~8 min"
+  → explains: "src/auth/session.rs matches impact-map 'auth' → group A"
+  → checks: credentials ready? batch size ok? pyramid structure healthy?
+
+# Execute with per-project plan:
+  → generates execution plan from test-groups + known-issues + protocol
+  → four-color marking: pass/pending/fail/skip with evidence grading
+  → incremental reflect after completion: validates mappings, updates scores
+
+# If a test fails and the dev responds:
+/better-test feedback D-04 not-a-bug --note "dev confirmed expected behavior"
+  → writes verdict to history/ + extracts suppress rule
+  → next strategy auto-excludes D-04
+```
 
 ## The feedback loop
 
-Most testing skills stop at "run these tests." `better-test` also asks: what did the developer say about the last failure?
-
-When a bug report gets a developer response — "that's expected behavior," "fixed in a different way," "won't fix" — you feed it back:
+Most testing skills stop at "run these tests." `better-test` builds a compounding knowledge base:
 
 ```
-/better-test feedback D-04 not-a-bug --note "dev confirmed — cancel returning 404 is expected"
+init → strategy → execute → reflect → feedback → update → strategy (smarter)
+  ↑                                                                      ↓
+  └──────────────── knowledge files get more accurate over time ←────────┘
 ```
 
-The skill writes the verdict to `history/`, extracts a suppress rule into `feedback-rules.json`, and the next `/better-test strategy` run quietly excludes D-04. You don't re-file the same bug three times.
+Every test run makes the next one better: impact-map mappings get verified, stability scores get calibrated, timing estimates get corrected, lessons get extracted.
 
-Six verdict types:
+## Constraint framework
 
-| Verdict | Meaning | Effect |
-|---------|---------|--------|
-| `not-a-bug` | Developer confirms expected behavior | Excluded from active failures |
-| `fixed` | Addressed in this release | Re-tested once, then archived |
-| `fixed-differently` | Fixed but not how you expected | Re-tested with new expected output |
-| `wontfix` | Acknowledged, won't address | Excluded permanently with a note |
-| `deferred` | Known issue, postponed | Excluded until the target version |
-| `revoke` | Retract a previous verdict | Re-activates the test ID |
+The agent's quality is ensured by 4 layers, each catching what the previous misses:
+
+| Layer | Mechanism | What it catches |
+|-------|-----------|-----------------|
+| L0 Goal calibration | Protocol.md reframes agent as "test auditor, not test-pass assistant" | Training bias toward optimistic/complete/certain answers |
+| L1 Hooks | 5 system-level hooks (credential scan, empty result prompt, execution logging...) | Mechanical errors the agent might forget to check |
+| L2 Independent verification | Sub-agent audits execution log vs claims, coverage vs manifest, evidence quality | Cognitive errors: skipped steps, false passes, insufficient evidence |
+| L3 Human audit panel | 20-line decision-oriented summary assembled from structured data | Final judgment on ambiguous items; 30-second approve/reject |
 
 ## Installation
 
@@ -66,115 +87,72 @@ ln -s ~/repos/better-test ~/.claude/skills/better-test
 
 ### Other platforms
 
-Adapter install commands for Cursor, Gemini CLI, Codex, OpenCode, and OpenClaw live in `references/adapters.md`. Test knowledge files produced by `/better-test init` are platform-agnostic.
+Adapter install commands for Cursor, Gemini CLI, Codex, OpenCode, and OpenClaw live in `references/adapters.md`. Test knowledge files are platform-agnostic.
 
 ## Quick Start
-
-Inside a project directory (works best if `/better-code init` has already been run, so `.better-work/shared/` exists):
 
 ```
 /better-test init
 ```
 
-The skill classifies the testing situation (library / daemon / API / CLI / multi-service), explores the existing test structure, and writes:
-
-- `.better-work/test/protocol.md` — testing cognitive constraints
-- `.better-work/test/test-groups.md` — test group definitions with run conditions
-- `.better-work/test/impact-map.md` — changed-file patterns → test groups
-- `.better-work/test/known-issues.md` — known failures + verdicts
-
-Then the typical loop:
-
-```
-# After making code changes:
-/better-test strategy
-  → reads impact-map.md + known-issues.md + your git diff
-  → recommends: "Run groups A, B, D — 22 tests, ~5 min"
-  → explains why: "Changed src/subscribe.rs touches the subscription flow (group D)..."
-
-# If a test fails and the dev responds:
-/better-test feedback D-04 not-a-bug --note "dev confirmed expected behavior"
-  → writes verdict to history/
-  → extracts a suppress rule
-  → next strategy auto-excludes D-04
-```
-
-## Example strategy output
-
-After modifying `src/rest/funds.rs` and `src/auth/session.rs`:
-
-```
-Recommended: groups A (auth), B (REST read), C (REST POST)
-  — 22 tests, ~8 minutes, bring-your-own mode
-
-Reasoning:
-  • src/auth/session.rs matches impact-map keyword "auth" → group A (9 items)
-  • src/rest/funds.rs matches "REST" → groups B, C (5 + 8 items)
-
-Skipping: groups D, E, F, H, I (no change signal)
-Excluded: C-03 (wontfix, deferred to v1.5), B-07 (not-a-bug from 2026-03-12)
-
-Run with: cargo test -- --test-groups A,B,C
-```
-
-Every recommendation points to its impact-map entry. Every exclusion points to its feedback verdict. The reasoning is auditable; you can override anything before running.
+The skill classifies the project (11 types: library, daemon, API, CLI, mobile app, desktop app, browser extension, etc.), collects materials (API specs, PRD, error code tables), explores test structure, and generates knowledge files.
 
 ## Command Reference
 
 | Command | What it does |
 |---------|--------------|
-| `/better-test init` | First-time exploration of the test structure + generate knowledge files |
-| `/better-test update` | Signal-driven incremental update |
-| `/better-test strategy` | Analyze git diff + impact-map → recommend minimal test set with reasoning |
-| `/better-test feedback <id> <verdict>` | Record developer verdict → auto-refine suppress rules |
+| `/better-test init` | Explore test structure + collect materials + generate knowledge files |
+| `/better-test strategy` | Analyze changes → recommend test set with reasoning. Includes `compare` mode for differential testing |
+| `/better-test feedback <id> <verdict>` | Record developer verdict → auto-refine suppress rules + regression canary |
+| `/better-test update` | Signal-driven incremental update (new tests, new mappings, new materials from user) |
+| `/better-test reflect [scope]` | Extract experience from history: impact-map validation, stability trends, bug hotspots, lessons |
+| `/better-test protocol-update [text]` | Upgrade cognitive constraints from user input or session summary |
 | `/better-test checkpoint` | Save current test task state |
 | `/better-test resume` | Read progress and continue |
 
-All six work identically whether invoked directly or via `/better-work test <cmd>` (when better-work is installed).
+All commands work identically via `/better-work test <cmd>` when better-work is installed.
 
-## Output Structure
-
-Test knowledge lives under `.better-work/test/` (a symlink to `~/.better-work/<project>/test/`):
+## Architecture
 
 ```
-<project>/.better-work/                      → ~/.better-work/<project-name>/
-├── shared/                                  (read; written only when needed, tagged [better-test])
-│   └── index.md                             project entry point
-├── code/                                    (read-only; informs test priority)
-│   └── danger-zones.md                      high-risk files → more thorough tests
-└── test/                                    (better-test writes here)
-    ├── protocol.md                          ≤15 lines — testing cognitive constraints
-    ├── test-groups.md                       group definitions + run conditions
-    ├── impact-map.md                        change keyword → affected groups
-    ├── known-issues.md                      known failures / expected behaviors / triage
-    ├── status.md                            auto-refreshed summary
-    ├── progress.md                          gitignored — current test task state
-    └── history/                             test run history, git-tracked
-        ├── feedback-rules.json              auto-maintained, do not hand-edit
-        └── <version>/
-            └── run-NNN-<ts>/                results.json + summary.md per run
+references/
+├── Tier 1: Workflows (always loaded per command)
+│   ├── init-workflow.md              exploration + material collection + code reading
+│   ├── strategy-workflow.md          change detection + impact analysis + decision tree + compare mode
+│   ├── test-execution-workflow.md    framework + template for per-project execution plans
+│   ├── feedback-workflow.md          verdict recording + rule extraction + regression canary
+│   ├── reflect-workflow.md           6-type historical analysis (incremental + full)
+│   ├── update-workflow.md            6 signal types including new user materials
+│   ├── protocol-update-workflow.md   cognitive constraint upgrade + changelog
+│   └── progress-workflow.md          checkpoint / resume
+│
+├── Tier 2: Procedures (condition-triggered)
+│   ├── procedures/bdd-scenarios.md         when PRD is provided
+│   ├── procedures/tdd-flow.md              when writing new code
+│   ├── procedures/contract-testing.md      when multiple services interact
+│   ├── procedures/exploratory-charter.md   when deep testing requested
+│   ├── procedures/hypothesis-investigation.md   when error diagnosis needs escalation
+│   ├── procedures/mutation-testing.md      when code changes in full/targeted mode
+│   ├── procedures/flakiness-scoring.md     when flaky signal detected
+│   └── procedures/bug-report.md            when bug found during testing
+│
+└── Tier 3: Design docs (human reference, agent doesn't load)
+    └── methodologies/design-rationale.md   all research citations + design reasoning
 ```
-
-### One non-obvious rule
-
-**Pass must verify returned fields, not exit codes.** A daemon that returns an empty list has exit code 0 — if "exit 0 = pass" you've just greenlit a broken API. `protocol.md` enforces this as a red line. It's advisory (better-test can't run your tests for you), but it surfaces the bad test at review time.
 
 ## The Better-Work series
 
-- **[better-work](https://github.com/d-wwei/better-work)** — Lite Control + series entry point. Start there for the full design story.
+- **[better-work](https://github.com/d-wwei/better-work)** — Lite Control + series entry point
 - **[better-code](https://github.com/d-wwei/better-code)** — Full Context for coding
 - **better-test** (this repo) — Full Context for testing
 
-`better-test` reads from `shared/index.md` (project identity) and `code/danger-zones.md` (high-risk files → more thorough tests) when other subskills have populated them. It writes only to `test/` and, when necessary, to `shared/` with a `[better-test]` commit tag.
-
 ## Limitations
 
-- **No test runner built in.** `better-test` recommends which tests to run and why. Actually running them is your project's existing tooling (`cargo test` / `pytest` / `go test` / custom harness). Feed `results.json` back via `/better-test feedback` or save into `history/`.
-- **`impact-map.md` accuracy depends on feedback.** Initial entries are seeded from keywords. True accuracy grows as `/better-test feedback` and `/better-test update` refine the mappings.
-- **`feedback-rules.json` is auto-generated.** Do NOT hand-edit. Use `/better-test feedback <id> revoke` to retract, then re-enter with a fresh verdict.
-- **`strategy` doesn't run tests.** It returns the test set + invocation command. You run them.
+- **No test runner built in.** Recommends which tests to run and why. Running them is your project's tooling.
+- **`impact-map.md` accuracy grows over time.** Initial entries are seeded from keywords; `/better-test reflect` validates and upgrades them from test history.
+- **`feedback-rules.json` is auto-generated.** Do NOT hand-edit. Use `feedback <id> revoke` to retract.
+- **Constraint framework hooks are designed but not yet implemented.** L1-L3 require Claude Code hooks configuration.
 - **No CI integration yet.** GitHub Actions / GitLab CI integration is planned.
-- **`protocol.md` enforcement is advisory.** Can't prevent you from writing a bad test; can only flag it at review time.
 
 ## License
 

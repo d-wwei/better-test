@@ -9,9 +9,17 @@
 2. analyze_impact        ← 用 impact-map 把变更关键词映射到测试组
 3. read_history          ← 读历史结果 + feedback-rules
 4. recommend_strategy    ← 决策树推荐
-5. present_to_user       ← 展示分析过程 + 让用户确认/调整
-6. emit_command          ← 输出可执行的测试命令（不自动跑，由用户决定）
+5. pre_check             ← 凭证/依赖预检 + 结构性检查
+6. present_to_user       ← 展示分析过程 + 让用户确认/调整
+7. emit_command          ← 输出可执行的测试命令（不自动跑，由用户决定）
 ```
+
+---
+
+> **测试执行纪律**（四色标记、错误解读三问、终态规则、安全守则、凭证预检）
+> 已移至 `test-execution-workflow.md`。Strategy 负责"推荐跑什么"，execution 负责"怎么跑"。
+
+---
 
 ## Step 1: 变更检测（detect_changes）
 
@@ -80,9 +88,14 @@ git log <prev_version_tag>..HEAD --grep="fix|feature|breaking" → 提取关键 
 - suppress[].test_id → 这些 id 即使 fail 也不算 active
 - known_behaviors[] → 展示给用户但不影响推荐
 - lessons[] → 用于人类参考
+
+读 .better-work/test/history/bugs-index.md
+- FIXED 但未 VERIFIED 的 bug → 提取其 related_tests 加入 bug_retest_candidates
+- OPEN 的 bug → 提取其 related_tests 作为已知活跃 bug（展示但不自动推荐 retest）
 ```
 
 `active_failures = recent_fails - suppress`
+`bug_retest_candidates` = bugs-index 中 FIXED 但未 VERIFIED 的 bug 的 related_tests
 
 ## Step 4: 决策树（recommend_strategy）
 
@@ -101,13 +114,14 @@ ELIF 当前版本从未测过 (run_count == 0):
     → smoke
     reason: "该版本首次测试且无变更信息，推荐 smoke 快速验证"
 
-ELIF active_failures 非空:
-  → bug-retest:<active_fail_ids>
-  reason: "上次有 N 项活跃 fail（已排除 suppress），推荐复测"
+ELIF active_failures 非空 OR bug_retest_candidates 非空:
+  → bug-retest:<active_fail_ids + bug_retest_candidates>
+  reason: "上次有 N 项活跃 fail + M 个已修复待验证 bug，推荐复测"
+  注：bug_retest_candidates 来自 bugs-index.md 中 status=FIXED 的 bug 的 related_tests
 
 ELSE:
   → pass (必须显式问 y/N，默认 N)
-  reason: "该版本已测 N 次，全部通过（或仅剩 suppress 项）"
+  reason: "该版本已测 N 次，全部通过（或仅剩 suppress 项），无待验证 bug"
   agent 行为: 显示"该版本已全部通过，确定再跑吗？[y/N]: "，等待用户回复
               y → 降级为 smoke 跑一次最低成本验证
               N（默认）→ 跳过测试，输出"已建议跳过"
@@ -149,9 +163,37 @@ ELSE:
   2) smoke
   3) full
   4) targeted:<指定组>
-  5) bug-retest（若有 active failures）
-  6) 跳过测试
+  5) bug-retest（若有 active failures 或待验证 bug）
+  6) compare（对照测试，需要定义对照目标）
+  7) 跳过测试
 ```
+
+## Step 5.5: 条件检查（Tier 2 — 满足条件时触发）
+
+以下检查不是每次都做。根据 Step 1-4 的结果，条件匹配时才触发。
+
+### 变更批量检查（条件：Step 1 检测到变更文件列表）
+
+```
+> 15 个文件 → ⚠ "大批量变更风险高，建议拆分后逐批测试"
+6-15 个文件 → 提醒"变更较多，建议分批"
+≤ 5 个文件 → 不提醒
+```
+
+### 组合策略建议（条件：推荐 full 或 targeted 模式）
+
+```
+full 模式 → 建议配合代码审查 + 静态分析（不是 better-test 职责，但值得提醒）
+targeted + 核心业务变更 → 建议对变更文件做增量变异测试
+```
+
+### 发布策略建议（条件：smoke 模式且场景为发布前回归）
+
+```
+供参考：金丝雀发布 / 特性开关 / 蓝绿部署
+```
+
+详细说明见 `references/methodologies/` 对应文件。
 
 ## Step 6: 输出命令（emit_command）
 
@@ -162,8 +204,96 @@ ELSE:
 | smoke | 项目约定的 smoke 命令（来自 test-groups.md 中 `smoke_groups` 段） |
 | full | 项目约定的 full 命令 |
 | targeted:X Y | 把组 X、Y 对应的命令逐条列出 |
-| bug-retest | 列出 active_failures 中每个 ID 的复测命令 |
+| bug-retest | 列出 active_failures + 待验证 bug 的复测命令 |
+| compare | 见下方"对照测试模式" |
 | pass | 不输出命令，提示"已建议跳过" |
+
+## 对照测试模式（compare）
+
+差异测试：用一个已知正确的实现（基准）验证新实现的行为是否一致。
+
+### 适用场景
+
+| 场景 | 基准 | 被测 |
+|------|------|------|
+| 语言重写（C++ → Rust） | 旧 C++ 二进制 | 新 Rust 二进制 |
+| 版本对比 | v1.4.27 二进制 | v1.4.28 二进制 |
+| 修 bug 前后 | 修复前的 commit | 修复后的 commit |
+| Feature flag 对比 | flag=off | flag=on |
+
+### 前置条件
+
+test-groups.md 中需要定义测试目标：
+
+```markdown
+## 测试目标（compare 模式用）
+
+| 目标名 | 二进制/地址 | 端口 | 说明 |
+|--------|-----------|------|------|
+| rust-new | ./futu-opend | 11111 | 新 Rust 实现（被测对象） |
+| cpp-old | ./moomoo_OpenD | 11112 | 旧 C++ 实现（对照基准） |
+```
+
+如果没有定义测试目标，用户可以在 strategy 选择 compare 时临时指定。
+
+### 执行流程
+
+```
+1. 确认两个目标都可运行（端口清场、版本确认）
+2. 选择测试组（用户指定或用 strategy 推荐的组）
+3. 对每个测试项：
+   a. 先跑基准目标，记录返回值
+   b. 再跑被测目标，记录返回值
+   c. 对比两者：
+      - 完全一致 → ✅ 行为一致
+      - 被测有额外字段/能力 → ℹ️ 新功能（不算 fail）
+      - 基准通过但被测返回不同值 → ⚠ 差异（需调查）
+      - 基准通过但被测 fail → 🔴 回归
+4. 生成差异报告
+```
+
+### 差异报告格式
+
+```markdown
+# 对照测试报告 — <被测> vs <基准>
+
+## 统计
+一致: N/M (NN%)
+差异: N/M (NN%)
+新功能: N/M (NN%)
+回归: N/M (NN%)
+
+## 回归项（🔴 优先处理）
+
+| Test ID | 基准返回 | 被测返回 | 分析 |
+|---------|---------|---------|------|
+| C-05 | {"order_id": "..."} | -400 bad request | 被测缺失功能 |
+
+## 差异项（⚠ 需调查）
+
+| Test ID | 基准返回 | 被测返回 | 可能原因 |
+|---------|---------|---------|---------|
+| B-03 | {"power": 153.20} | {"power": 153.2} | 浮点格式差异 |
+
+## 新功能（ℹ️ 仅记录）
+
+| Test ID | 基准 | 被测 | 说明 |
+|---------|------|------|------|
+| I-10 | 不支持 | {"result": ...} | 新增 MCP 工具 |
+
+## 一致项
+<N> 项行为完全一致（列表省略，详见 results.json）
+```
+
+### 差异项的后续处理
+
+- 🔴 回归 → 写 bug report（bug_type: regression），加入 bugs-index
+- ⚠ 差异 → 调查是"有意的行为变更"还是 bug：
+  - 有意变更 → 更新 test-groups 中该项的期望值
+  - bug → 写 bug report
+- ℹ️ 新功能 → 如果重要，新增到 test-groups + surface manifest
+
+---
 
 ## 跨项目通用化要点
 

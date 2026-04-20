@@ -18,18 +18,16 @@
 ### 应注入的文件
 
 ```
+@.better-work/shared/index.md             ← 项目知识入口（init Step 3.0 确保始终存在）
 @.better-work/test/protocol.md            ← always-on，测试认知约束
 ```
 
-如果 `.better-work/shared/index.md` 已存在（better-code 创建）但 CLAUDE.md 还没引用 → 一并补上 `@.better-work/shared/index.md`。
-
 ### 注入步骤
 
-1. 检查项目根 `CLAUDE.md` 是否存在
-2. 如果存在 → 检查是否已含 `@.better-work/test/protocol.md`
-3. 缺少 → 在文件末尾追加（不要覆盖其他内容）
-4. 如果 CLAUDE.md 不存在 → 创建，含必要的 `@` 引用
-5. 如果 `.better-work/code/protocol.md` 存在但 CLAUDE.md 没引用 → 提示用户："better-code 的 protocol 也未注入，要一并加吗？"（不擅自加，避免越权）
+1. 检查项目根 `CLAUDE.md` 是否存在；不存在则创建
+2. 检查是否已含 `@.better-work/shared/index.md`；缺少则追加
+3. 检查是否已含 `@.better-work/test/protocol.md`；缺少则追加
+4. 如果 `.better-work/code/protocol.md` 存在但 CLAUDE.md 没引用 → 提示用户："better-code 的 protocol 也未注入，要一并加吗？"（不擅自加，避免越权）
 
 ### 按需读取的文件
 
