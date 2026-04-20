@@ -40,6 +40,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
     ├── test-groups.md                     ← 架构 4.2 定义：测试组定义 + 运行条件
     ├── impact-map.md                      ← 架构 4.2 定义：变更关键词 → 测试组映射
     ├── known-issues.md                    ← 架构 4.2 定义：已知 fail / 预期行为 / 经验
+    ├── env-config.md                      ← 测试环境配置（账号/服务/注意事项），init 创建，随时 update
     ├── status.md                          ← [扩展架构] 自动汇总：当前版本 / 活跃 fail / suppress
     ├── progress.md                        ← [扩展架构] 当前测试任务进度（断点续传）
     └── history/                           ← [扩展架构] 测试运行历史（git-tracked）

@@ -32,12 +32,13 @@
 ```markdown
 # 测试执行计划 — v<version> <mode>
 
-## 环境确认
-- [ ] daemon/服务状态: [PROJECT: 从 test-groups.md 运行条件提取]
-- [ ] 端口确认: lsof -iTCP:<port> -sTCP:LISTEN → 只有目标进程
-- [ ] 测试账号: [PROJECT: 从 test-groups.md 提取所需账号类型]
-- [ ] 环境变量: [PROJECT: 从 test-groups.md 提取所需变量]
-- [ ] 不可逆操作策略: a) 全执行 / b) 逐项问 / c) 全跳过 → 用户已选: [  ]
+## 环境确认（从 env-config.md 生成）
+- [ ] 服务状态: [PROJECT: 从 env-config.md 服务表提取，逐项检查健康状态]
+- [ ] 端口清场: lsof -iTCP:<port> -sTCP:LISTEN → 只有目标进程
+- [ ] 测试账号: [PROJECT: 从 env-config.md 账号表提取，确认状态=可用]
+- [ ] 环境变量: [PROJECT: 从 env-config.md 环境变量表提取，确认已设置]
+- [ ] 时间依赖: [PROJECT: 从 env-config.md 时间依赖表，当前是否在窗口内]
+- [ ] 不可逆操作策略: [PROJECT: 从 env-config.md 不可逆操作清单] → 用户已选: a) 全执行 / b) 逐项问 / c) 全跳过
 
 ## 执行顺序
 [PROJECT: 从 strategy 推荐的组列表 + test-groups.md 的组定义生成]
