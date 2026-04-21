@@ -225,6 +225,8 @@
 ```bash
 # 测试知识
 mkdir -p test/tools test/reference
+# Protocol 版本管理
+mkdir -p test/protocol-versions
 # tester 注册中心（多 agent 并行隔离）
 mkdir -p test/testers
 # 测试历史
@@ -320,7 +322,11 @@ projects:
 
 ## Step 4: 注入到当前平台
 
-参考 `references/adapters.md`。Claude Code 示例：项目 `CLAUDE.md`（若不存在则创建新文件）追加：
+参考 `references/adapters.md`（完整的平台适配策略）。此步骤只做 Layer 2（protocol 注入到项目配置），Layer 1（skill 注册）由 `install.sh` 完成。
+
+### Claude Code
+
+项目 `CLAUDE.md`（若不存在则创建新文件）追加：
 
 ```
 @.better-work/shared/index.md         # better-code 创建的项目知识（如已存在）
@@ -332,6 +338,31 @@ projects:
 1. CLAUDE.md **已有** `@.better-work/shared/index.md` → 仅追加 `@.better-work/test/protocol.md`（如尚无）
 2. CLAUDE.md **尚无** `@.better-work/shared/index.md` → 两行都追加
 
+### Codex CLI
+
+项目 `AGENTS.md`（若不存在则创建新文件）嵌入 protocol.md 内容：
+
+```markdown
+<!-- BETTER-TEST:BEGIN -->
+[读取 .better-work/test/protocol.md 的实际内容嵌入此处]
+
+知识文件位置（按需读）:
+- .better-work/test/test-groups.md
+- .better-work/test/impact-map.md
+- .better-work/test/known-issues.md
+- .better-work/test/status.md
+<!-- BETTER-TEST:END -->
+```
+
+注入策略：
+
+1. AGENTS.md **已有** `<!-- BETTER-TEST:BEGIN -->` → 定位 BEGIN/END 段**整体替换**
+2. AGENTS.md **尚无** → 追加整个 BEGIN/END 段
+
+### 其他平台
+
+按 `references/adapters.md` 中各平台对应小节执行。多平台同时存在则全部注入。
+
 ## Step 5: 报告
 
 向用户展示：
@@ -339,7 +370,7 @@ projects:
 - 项目测试场景分类结果
 - 识别到的测试组（数量 + 简要列表）
 - impact-map 的初始覆盖率（已映射关键词数 / 推测总关键词数）
-- 注入到了哪些 CLAUDE.md / 平台配置
+- 注入到了哪些平台配置（CLAUDE.md / AGENTS.md / GEMINI.md / .cursor/rules/）
 - 建议下一步：跑一次 `/better-test strategy` 看推荐策略
 
 ## 深度控制

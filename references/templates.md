@@ -223,42 +223,77 @@ protocol.md 的唯一职责：**校准 agent 的思维方向和判断标准。**
 
 ## protocol-changelog.md
 
-protocol.md 的变更日志。不自动加载，仅在 `/better-test protocol-update` 时读写。
+Protocol 的变更日志。叙事 header + Keep a Changelog 分类的混合格式。不自动加载，仅在 `/better-test protocol-update` 时读写。
 
 ```markdown
 # Protocol Changelog
 
-protocol.md 的每次变更记录。只追加，不修改已有条目。
+## [1.0.0] - YYYY-MM-DD
 
-## [YYYY-MM-DD] <操作类型>
+### Init — <风险等级>版模板首次生成
 
-- **操作**: add / modify / remove
-- **段落**: L0 目标校准 / 思维纪律 / 安全纪律
-- **内容**: <规则文本>
-- **来源**: init / user-input / session-summary
-- **原因**: <为什么加/改/删这条>
-- **一致性检查**: 已检查 [文件列表]，无冲突 / 冲突已同步修改
+**背景**: 项目首次 init，从 skill 模板生成 protocol.md。
+**策略**: 选择了 <严格/标准/宽松> 版，基于项目风险评估。
+**快照**: protocol-versions/v1.0.0.md
+**审批**: auto（init 默认）
+
+### Added
+- L0 目标校准（测试审计员角色定义）
+- 思维纪律（推测即验证、四态定性、三种用户）
+- 安全纪律（<按版本>）
+
+---
+
+## [1.1.0] - YYYY-MM-DD
+
+### {标题} — {一句话概要}
+
+**背景**: {为什么要做这个变更}
+**策略**: {采取了什么方案}
+**快照**: protocol-versions/v1.1.0.md
+**审批**: auto-validated / user-confirmed / L2-audited
+
+### Added
+- {新规则}
+
+### Changed
+- {修改了什么}
 ```
 
-init 时自动生成首条记录：
+### 格式规则
 
-```markdown
-## [2026-04-19] init
-
-- **操作**: init
-- **段落**: all
-- **内容**: <严格/标准/宽松>版模板生成
-- **来源**: /better-test init
-- **原因**: 首次初始化
-```
+1. 版本号用方括号 `[X.Y.Z]`（semver：新增规则 = minor，修改/删除 = major）
+2. 叙事部分限 10 行以内（背景 + 策略）
+3. 空分类省略（没 Removed 就不写）
+4. 不回溯改旧条目
+5. **快照路径**必填——指向 `protocol-versions/vX.Y.Z.md`
+6. **审批方式**必填——记录这次变更是自动验证/用户确认/L2 审计
 
 ### 质量标准
 
 | 项目 | 必须满足 |
 |------|---------|
 | 只追加 | 不修改/删除已有条目（历史不可篡改） |
-| 每条有来源 | init / user-input / session-summary，不能空 |
-| 每条有原因 | 说明为什么做这个变更，不能只写"更新" |
+| 每条有快照 | 变更前的 protocol 全文保存到 protocol-versions/ |
+| 每条有审批方式 | auto-validated / user-confirmed / L2-audited |
+| 叙事 ≤ 10 行 | 写动机和策略，不是技术博客 |
+
+---
+
+## protocol-versions/（全文快照）
+
+每次 protocol-update 自动保存当前 protocol.md 的完整副本。用于回滚和审计。
+
+```
+protocol-versions/
+├── v1.0.0.md    ← init 时的完整内容
+├── v1.1.0.md    ← 第一次 protocol-update 前的内容
+└── v2.0.0.md    ← 某次大改前的内容
+```
+
+回滚方式：`cp protocol-versions/vX.Y.Z.md protocol.md`
+
+init 时自动创建 `protocol-versions/` 目录和首个快照。
 | 与 protocol.md 同步 | 每次 protocol-update 必须同时写两个文件 |
 
 ---

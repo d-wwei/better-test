@@ -59,6 +59,20 @@ strategy 是 tester 自动注册的触发点。首次执行 strategy 时：
 8. git diff --stat + git log --oneline -10 → 快速浏览最近变更规模和方向
 ```
 
+### 经验提取（从现有知识文件提取本次相关的规则）
+
+```
+从 known-issues.md lessons 段 → 提取与本次变更/测试组相关的经验教训
+从 test-groups.md failure modes → 提取本次涉及的组的典型失败模式
+从 env-config.md 注意事项 → 提取当前环境的约束和基准定义
+
+→ 合并为"本次测试需要注意的 N 条关键经验"
+→ 在 Step 0.5 展示给用户
+→ 传递给 test-execution-workflow 作为执行计划的"本次需特别注意"段
+```
+
+这些经验不在 protocol 里（protocol 只放通用思维原则），而是从项目知识文件中**按当前上下文动态提取**。
+
 ### 形成初步判断
 
 ```

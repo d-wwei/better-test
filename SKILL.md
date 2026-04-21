@@ -36,7 +36,8 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 │   └── danger-zones.md
 └── test/                                  ← 写：测试专用
     ├── protocol.md                        ← 共享知识：测试认知约束（≤15 行），每对话注入
-    ├── protocol-changelog.md              ← 共享知识：变更日志（仅 protocol-update 时读写）
+    ├── protocol-changelog.md              ← 共享知识：变更日志（叙事+KAC 混合格式）
+    ├── protocol-versions/                 ← 共享知识：protocol 全文快照（每次 update 前保存）
     ├── test-groups.md                     ← 共享知识：测试组定义 + 运行条件
     ├── impact-map.md                      ← 共享知识：变更关键词 → 测试组映射
     ├── known-issues.md                    ← 共享知识：已知 fail / 预期行为 / 经验
