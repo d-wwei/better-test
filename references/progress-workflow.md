@@ -1,6 +1,6 @@
 # Progress Workflow — 断点续传
 
-管理 `.better-work/test/progress.md` 文件，让多轮长测试任务在跨 session 时不丢上下文。
+管理 `.better-work/test/testers/<tester-id>/progress.md` 文件，让多轮长测试任务在跨 session 时不丢上下文。每个 tester 有独立的 progress，互不干扰。
 
 ## 适用场景
 
@@ -21,7 +21,8 @@
 
 ```markdown
 # progress.md — 测试任务进度
-# 最后更新: <ISO 时间戳>
+# Tester: <tester-id>
+# 最后更新: <YYYY-MM-DDTHH:MM:SS±HH:MM>
 
 ## 当前任务
 [一句话：在做什么测试任务，为什么]
@@ -56,7 +57,7 @@
 [给下一个 session 的交接信息：]
 - 当前 daemon 状态: [running PID xxxx / not running / managed by skill]
 - 测试输出目录: [/tmp/futu-test-xxx/ 或对应项目的位置]
-- 上次 results.json 路径: [.better-work/test/history/<ver>/run-NNN-*/results.json]
+- 上次 results.json 路径: [.better-work/test/history/<ver>/run-<tester-id>-NNN-*/results.json]
 - 需要参考的 known-issues 条目: [test_ids]
 - 用户尚未回复的问题: [如有]
 ```
@@ -92,37 +93,64 @@
 
 ### 执行步骤
 
-1. 读 `.better-work/test/progress.md`
-2. 向用户汇报：
+1. **列出所有 tester**：扫描 `.better-work/test/testers/` 目录
+
+2. **展示 tester 列表**（读每个 tester 的 bio.md）：
 
 ```
+可用 tester:
+
+  1. claude-a3f2 | claude-code / opus-4-6 | last active: 04-21 14:23:07+08
+     scope: API regression testing for v2.1
+     progress: B 组进行中 (9/14 done), 待录 feedback 2 条
+     working notes: 3 条
+
+  2. codex-c9d4 | codex / gpt-5.4 | last active: 04-21 14:25:30-07
+     scope: smoke testing v2.1
+     progress: 全部完成 (8/8 pass)
+
+选择要恢复的 tester（输入编号）:
+```
+
+**快捷路径**：如果只有 1 个 tester 且 last_active < 24h → 自动恢复，跳过选择，告知用户。
+
+3. 用户选择后，**读 bio.md 的 working notes**（必读，含关键发现）
+
+4. 读 `testers/<tester-id>/progress.md`，向用户汇报：
+
+```
+恢复 tester: claude-a3f2
 上次进度:
 - 任务: <任务描述>
 - 版本: v<version>，模式: <mode>
 - 已完成 N 项，进行中 M 项，待跑 K 项，待录 feedback L 项
 - 上次停在: <恢复上下文中的位置>
 - 距上次更新: <时间差>
+- Working notes: <条数> 条关键发现（已读取）
 ```
 
-3. 如果距上次更新超过 7 天 → 提醒：
+5. 如果距上次更新超过 7 天 → 提醒：
    "进度记录已过 7 天。可能的变化：版本可能升级、daemon 状态可能不同、known-issues 可能新增。建议先跑 `/better-test update` 检查测试知识，再决定从哪续。"
 
-4. 检查环境状态：
+6. 检查环境状态：
    - 如果上次是 managed 模式 → 检查 daemon 是否还在跑
    - 如果上次依赖某临时文件 → 检查是否还存在
+   - 如果当前设备与 bio 记录的设备不同 → 报告差异
    - 如果有变化 → 报告差异
 
-5. 询问用户："从 [进行中的项] 续测，还是从头跑某段？"
+7. 询问用户："从 [进行中的项] 续测，还是从头跑某段？"
 
-6. 用户确认后，按上次的"测试上下文"恢复环境，继续执行
+8. 用户确认后：
+   - 更新 bio.md：新增 session history 行，更新 Current Session 表
+   - 按上次的"测试上下文"恢复环境，继续执行
 
 ### 冲突处理
 
-如果 progress.md 记录的 results.json 路径已被修改（比如新跑了一次）：
+如果 progress.md 记录的 results.json 路径已被修改（比如另一个 tester 跑了同版本）：
 - 读最新 results.json
 - 对比上次 progress 中"已完成"列表
 - 用最新数据修正进度（已完成可能更多了）
-- 报告："上次 checkpoint 后又跑了 N 项，进度已自动合并"
+- 报告："上次 checkpoint 后有其他 tester 跑了 N 项，进度已自动合并"
 
 如果 progress.md 提到的 daemon 已崩 / 端口被占 / 凭证过期：
 - 报告具体差异
@@ -148,17 +176,19 @@ Agent 检测到以下情况时，主动建议 checkpoint：
 ## 与其他 workflow 的衔接
 
 ```
-init       → 创建空 progress.md 模板
-strategy   → 执行前提示用户："要不要先 checkpoint？"
+init       → 创建 testers/ 目录（不创建具体 tester，等 strategy 或 checkpoint 时自动注册）
+strategy   → 如无活跃 tester 则自动注册；执行前提示用户："要不要先 checkpoint？"
 跑测试中   → 30 分钟提醒 / 跑完每组后提醒
-feedback   → 录入完一条后自动追加到 progress.md 的"已录 feedback"段
-update     → update 完后清空 progress.md 的"待录 feedback"段（已处理）
-resume     → 读 progress.md → 报告 → 询问 → 续跑
+feedback   → 录入完一条后自动追加到 testers/<tester-id>/progress.md 的"已录 feedback"段
+update     → update 完后清空当前 tester progress.md 的"待录 feedback"段（已处理）
+resume     → 列出 testers → 用户选择 → 读 bio + progress → 报告 → 询问 → 续跑
+checkpoint → 同时更新 bio.md 的 working notes（如有新发现）和 last_active
 ```
 
 ## 不要做的事
 
-- ❌ 不要把凭证写入 progress.md
+- ❌ 不要把凭证写入 progress.md 或 bio.md
 - ❌ 不要把 results.json 全文复制进 progress.md（只存路径）
 - ❌ 不要写"差不多/快完成了"这种模糊状态
 - ❌ 不要在没有 checkpoint 的情况下假装能 resume —— 没有就承认"无进度记录"
+- ❌ 不要跨 tester 写 progress —— 每个 tester 只写自己的 `testers/<tester-id>/progress.md`

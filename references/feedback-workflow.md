@@ -32,7 +32,7 @@ verdict 取值（共 6 种）:
 ### Step 1: 验证 test_id 存在
 
 ```
-读 .better-work/test/history/<current_version>/run-NNN-*/results.json（最近一次）
+读 .better-work/test/history/<current_version>/run-*-*/results.json（最近一次，跨所有 tester）
 查找 items[].id == <test_id>
 不存在 → 报错并提示用户检查 ID 拼写
 存在 → 继续
@@ -48,8 +48,9 @@ verdict 取值（共 6 种）:
 test_id: <id>
 verdict: <verdict>
 version: <version>
-date: <YYYY-MM-DD>
+date: <YYYY-MM-DDTHH:MM:SS±HH:MM>
 source: developer | human | inferred
+tester_id: <tester-id>
 ---
 
 ## 反馈内容
@@ -83,7 +84,7 @@ source: developer | human | inferred
     {"pattern": "<id>", "note": "<note>", "since": "<version>"}
   ],
   "lessons": [
-    {"insight": "<text>", "added": "<date>"}
+    {"insight": "<text>", "added": "<YYYY-MM-DDTHH:MM:SS±HH:MM>"}
   ]
 }
 ```

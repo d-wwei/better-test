@@ -2,6 +2,25 @@
 
 `/better-test strategy` 在跑测试**之前**做：上下文研判 + 范围对齐 + 变更检测 + 影响分析 + 分阶段执行计划。
 
+## Tester 注册（自动）
+
+strategy 是 tester 自动注册的触发点。首次执行 strategy 时：
+
+1. 检查 `.better-work/test/testers/` 是否有**当前 session 对应的活跃 tester**
+2. 如果没有 → 自动注册新 tester：
+   - 探测平台（env `CLAUDECODE=1` → claude-code；codex config → codex；等）
+   - 获取 session_id、model、device 信息
+   - 生成 tester-id：`<platform>-<sha1(session_id+timestamp)[:4]>`
+   - 创建 `testers/<tester-id>/bio.md`（填入 Current Session 表）
+   - 创建空 `testers/<tester-id>/status.md` 和 `testers/<tester-id>/progress.md`
+   - 报告："已注册 tester `<tester-id>`（<platform> / <model>）"
+3. 如果有单个 tester 且 last_active < 24h → 自动关联，更新 bio 的 session 信息
+4. 如果有多个 tester → 提示用户选择或创建新 tester
+
+后续所有写操作使用此 tester-id 隔离。
+
+---
+
 ## 核心流程
 
 ```
@@ -45,10 +64,10 @@
 ```
 基于以上材料，综合判断：
 
-  风险区域: "本版本改了 auth 模块，历史上 auth 区域有 3 个 bug（BUG-001, 003, 007），
+  风险区域: "本版本改了 auth 模块，历史上 auth 区域有 3 个 bug（BUG-claude-a3f2-001, 003, 007），
            上次跑 A 组时 A-03 flaky（稳定性 70%），开发者上次反馈说 session 处理重构了"
 
-  建议重点: "A 组全跑 + BUG-001 回归验证 + D 组因为和 auth 共享 session fixture 也建议跑"
+  建议重点: "A 组全跑 + BUG-claude-a3f2-001 回归验证 + D 组因为和 auth 共享 session fixture 也建议跑"
 
   待确认: "不确定这次重构是否影响了 MCP 的 auth 路径——代码 diff 可以确认"
 ```
@@ -62,13 +81,13 @@
 
   📋 本版本变更: auth 模块重构 + REST handler 微调
   ⚠ 风险区域: A 组（auth，历史 3 个 bug），D 组（共享 session fixture）
-  🔄 待验证: BUG-001（FIXED 未 VERIFIED）
+  🔄 待验证: BUG-claude-a3f2-001（FIXED 未 VERIFIED）
   📊 上次状态: A-03 flaky 70%，其余稳定
 
   我计划做：
     阶段 1: 基础验证（A 组 auth）
     阶段 2: 直接影响（A + B 组）+ 即时对照
-    阶段 3: 回归验证（BUG-001 相关项）
+    阶段 3: 回归验证（BUG-claude-a3f2-001 相关项）
     阶段 4: 边界扩展（D 组）
     阶段 5: 覆盖审计
 
@@ -194,8 +213,8 @@ git diff <prev_version_tag>..HEAD → 读实际变更内容（不只是文件名
 ## Step 3: 读历史（read_history）
 
 ```
-读 .better-work/test/history/<current_version>/run-NNN-*/results.json
-取最近一次（按 run 编号最大的）
+读 .better-work/test/history/<current_version>/run-*-*/results.json
+取最近一次（按时间戳最新的，跨所有 tester）
 统计：total / passed / failed / skipped
 提取 fail 项的 id 列表
 
@@ -365,7 +384,7 @@ IF 用户选择 compare 模式:
   阶段 1: 基础验证 — A 组（auth），预计 3 min
   阶段 2: 直接影响 — B, C 组 + 负向测试，预计 15 min
     假设: [列出关键假设 2-3 个]
-  阶段 3: 回归验证 — BUG-001 (C-05, C-07)，预计 3 min
+  阶段 3: 回归验证 — BUG-claude-a3f2-001 (C-05, C-07)，预计 3 min
   阶段 4: 边界扩展 — D 组（impact-map 信心 62%），预计 5 min
   阶段 5: 覆盖审计 — manifest 剩余接口，预计 8 min
 

@@ -225,6 +225,8 @@
 ```bash
 # 测试知识
 mkdir -p test/tools test/reference
+# tester 注册中心（多 agent 并行隔离）
+mkdir -p test/testers
 # 测试历史
 mkdir -p test/history
 touch test/history/bugs-index.md
@@ -234,6 +236,7 @@ touch test/history/bugs-index.md
 |------|------|------|
 | `test/tools/` | 跨版本复用的测试脚本（如 surface-walk.sh、mcp-client.py） | 只放可执行脚本，不放文档 |
 | `test/reference/` | 暂存区：无法归入版本目录的参考资料 | 放入时必须在文件首行写明原因；积累后细分 |
+| `test/testers/` | tester 注册中心，每个 tester 独立子目录 | init 只建空目录，具体 tester 由 strategy/checkpoint 自动注册 |
 | `test/history/` | **只放测试运行产出和版本级材料** | 不放参考资料、测试脚本、项目级文档 |
 | `test/history/<version>/input/` | 触发本版本测试的开发者输入（fix report、沟通记录） | 每版本一个 input/ |
 
@@ -261,7 +264,7 @@ touch test/history/bugs-index.md
 7. **`status.md`** — 自动生成的初始版本（仅项目概况 + 测试组列表，未跑过测试时无运行记录）
 7. **`progress.md`** — 初始化为空模板
 8. **`history/`** — 创建目录 + 两个 JSON 文件（均含 `schema_version: 1` 字段便于将来迁移）：
-   - `_meta.json` — schema: `{schema_version: 1, project: "<project-name>", test_target: "<被测对象描述>", created_at: "<ISO 时间戳>"}`
+   - `_meta.json` — schema: `{schema_version: 1, project: "<project-name>", test_target: "<被测对象描述>", created_at: "<YYYY-MM-DDTHH:MM:SS±HH:MM>"}`
    - `feedback-rules.json` — schema: `{schema_version: 1, suppress: [], known_behaviors: [], lessons: []}`
 
 ## Step 3.5: 同步知识 repo 的 .gitignore 标准模板
@@ -308,7 +311,7 @@ projects:
   <project-name>:
     path: <project-root 绝对路径>
     initialized_by: better-test
-    created_at: <ISO 时间戳>
+    created_at: <YYYY-MM-DDTHH:MM:SS±HH:MM>
     subskills:
       - better-test
 ```

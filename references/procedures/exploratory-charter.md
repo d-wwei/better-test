@@ -26,7 +26,7 @@
 ## 记录格式
 
 ```
-[HH:MM] 观察: <看到了什么>
+[MM-DD HH:MM:SS±ZZ] 观察: <看到了什么>
         证据: <direct / indirect>（见 investigation.md 证据分级）
         后续: 需要 → 加入 test-groups / 报 bug / 无需后续
 ```

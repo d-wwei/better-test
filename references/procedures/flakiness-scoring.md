@@ -9,7 +9,7 @@
 ```
 稳定性评分 = 过去 N 次运行中结果一致的次数 / N
 
-数据来源：history/<version>/run-NNN-*/results.json
+数据来源：history/<version>/run-*-*/results.json（跨所有 tester）
 ```
 
 ## 评分表

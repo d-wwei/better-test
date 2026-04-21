@@ -35,26 +35,39 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 ├── code/                                  ← 只读：高风险区域 → 触发更全面测试
 │   └── danger-zones.md
 └── test/                                  ← 写：测试专用
-    ├── protocol.md                        ← 测试认知约束（≤15 行），每对话注入
-    ├── protocol-changelog.md              ← protocol.md 的变更日志（仅 protocol-update 时读写）
-    ├── test-groups.md                     ← 架构 4.2 定义：测试组定义 + 运行条件
-    ├── impact-map.md                      ← 架构 4.2 定义：变更关键词 → 测试组映射
-    ├── known-issues.md                    ← 架构 4.2 定义：已知 fail / 预期行为 / 经验
-    ├── env-config.md                      ← 测试环境配置（账号/服务/注意事项），init 创建，随时 update
-    ├── surface-manifest.md                ← [扩展架构] 接口清单 SSOT：全部可测接口枚举（API/CLI/daemon 适用）
-    ├── tools/                             ← 跨版本复用的测试脚本（surface-walk.sh 等）
-    ├── reference/                         ← 暂存区：无法归入版本目录的参考资料
-    ├── status.md                          ← [扩展架构] 自动汇总：当前版本 / 活跃 fail / suppress
-    ├── progress.md                        ← [扩展架构] 当前测试任务进度（断点续传）
-    └── history/                           ← [扩展架构] 测试运行历史（git-tracked）
+    ├── protocol.md                        ← 共享知识：测试认知约束（≤15 行），每对话注入
+    ├── protocol-changelog.md              ← 共享知识：变更日志（仅 protocol-update 时读写）
+    ├── test-groups.md                     ← 共享知识：测试组定义 + 运行条件
+    ├── impact-map.md                      ← 共享知识：变更关键词 → 测试组映射
+    ├── known-issues.md                    ← 共享知识：已知 fail / 预期行为 / 经验
+    ├── env-config.md                      ← 共享知识：测试环境配置，init 创建，随时 update
+    ├── surface-manifest.md                ← 共享知识：接口清单 SSOT（API/CLI/daemon 适用）
+    ├── tools/                             ← 共享：跨版本复用的测试脚本（surface-walk.sh 等）
+    ├── reference/                         ← 共享：暂存参考资料
+    │
+    ├── testers/                           ← tester 注册中心（多 agent 并行隔离）
+    │   └── <tester-id>/                   ← 每个 tester 独立目录
+    │       ├── bio.md                     ← 身份 + session 链 + working notes + 追溯路径
+    │       ├── status.md                  ← 此 tester 的最新测试状态
+    │       └── progress.md                ← 此 tester 的断点
+    │
+    ├── status.md                          ← 聚合视图（从 testers/*/status.md 自动合并）
+    │
+    └── history/                           ← 测试运行历史（git-tracked）
         ├── _meta.json
-        ├── feedback-rules.json            ← 自动维护，勿手编
+        ├── feedback-rules.json            ← 共享：自动维护，勿手编
+        ├── bugs-index.md                  ← 共享：跨版本 bug 索引
         └── <version>/
-            ├── run-NNN-<ts>/              ← results.json + summary.md
-            └── feedback/<test_id>_<verdict>.md
+            ├── run-<tester-id>-NNN-<ts>/  ← 每次运行归档（tester-id 防并发碰撞）
+            │   ├── results.json + summary.md + process-log.md
+            │   ├── execution-log.md + l2-findings.md + audit-report.md
+            ├── feedback/<test_id>_<verdict>.md
+            └── bugs/BUG-<tester-id>-NNN-<slug>.md
 ```
 
-**架构扩展说明**：架构文档 v1.0 的 4.2 节只列了 `protocol.md` / `test-groups.md` / `impact-map.md` / `known-issues.md` 4 个文件。`status.md` / `progress.md` / `history/` 是 Phase 1 实现时为承接 futu-tester 的 `lib/{context,history}.sh` 能力而扩展的。后续架构 v1.1 应正式收录。
+**tester-id**：格式 `<platform>-<4hex>`（如 `claude-a3f2`、`codex-c9d4`），由 `sha1(session_id + timestamp)[:4]` 生成。一个 tester 可跨 session 存活（通过 resume），但同一时刻一个 tester 只对应一个进程。详见 `references/templates.md` 的 bio.md 模板。
+
+**时间戳规范**：所有时间戳统一为 ISO 8601 + 时区偏移，三档精度：Full `2026-04-21T14:23:07+08:00`、Compact `04-21 14:23:07+08`、Date-only `2026-04-21`。详见 `references/templates.md` 的 Timestamp Format Specification。
 
 **注入**（Claude Code 示例）：项目 CLAUDE.md 中追加 `@.better-work/test/protocol.md`。其他文件按需 Read。
 
@@ -67,17 +80,20 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 5. `impact-map.md` 中关键词→测试组的映射没有验证依据（人类知识或历史 fail 共现） → 必须标注 `[未验证]`
 6. `known-issues.md` 写入时未附 test_id + 判定来源（developer / human / inferred） → 违规
 7. `feedback-rules.json` 被人手编辑（应通过 `/better-test feedback` 提炼） → 违规，破坏自动化
-8. `progress.md` 中记录无法被下一个 session 理解的模糊状态（如"差不多跑完了"） → 违规，必须精确到测试 ID 和组
+8. `testers/<tester-id>/progress.md` 中记录无法被下一个 session 理解的模糊状态（如"差不多跑完了"） → 违规，必须精确到测试 ID 和组
 9. `init` 时跑全部测试以"摸清当前状态" → 违规，init 只读知识不执行测试
 10. flaky 测试连续 2+ 次表现不一致时，未在 `known-issues.md` 的 Flaky 段标注或未发起 `/better-test feedback ... deferred` → 违规，flaky 不能默默吞掉
+11. `bio.md` 的 working notes 超过 20 条 → 必须归档旧条目到 session log，保持可读性
+12. 时间戳不带时区偏移（如裸 `2026-04-21 14:23` 或 `<ISO>` 占位符） → 违规，必须使用三档规范格式
 
 ## Acceptance Criteria
 
 1. 新对话加载 `protocol.md` + Read `status.md` 后，agent 能准确说出"当前版本是什么 / 哪些 ID 在挂 / 哪些已 suppress"，无需重跑
 2. 代码变更后，agent 通过 `/better-test strategy` 在 ≤2 步内确定要跑的组（基于 impact-map.md + 变更信号），并显示推荐理由
 3. 同一个 bug 用 `/better-test feedback <id> wontfix` 录入后，下次 strategy 推荐时该项自动从 active failures 排除，不再重复提报
-4. `checkpoint` + `resume` 后，agent 能准确复述上次跑到哪个组的哪个 ID
+4. `checkpoint` + `resume` 后，agent 能准确复述上次跑到哪个组的哪个 ID（resume 时列出所有 tester，用户选择要恢复的 tester）
 5. `references/adapters.md` 为每个支持平台（Claude/Cursor/Gemini/Codex/OpenCode/OpenClaw）都给出**可粘贴执行**的注入语法（@ 引用 vs 内容嵌入），无 placeholder 占位
+6. 多 tester 并发测试时，各 tester 的 status/progress/run 目录互不干扰，聚合 status.md 正确合并所有 tester 状态
 
 ## References
 
