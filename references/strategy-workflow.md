@@ -218,6 +218,35 @@ git diff <prev_version_tag>..HEAD → 读实际变更内容（不只是文件名
 
 查错一个 bug 浪费研发团队的时间远超多跑几个测试的时间。所以宁可多跑不漏，不抢速度。
 
+### Compare 模式自动触发
+
+```
+IF env-config.md 定义了对照目标（旧版二进制 / C++ SDK / Python SDK / 其他参照物）
+   OR shared/index.md 标注了"重写项目"
+   OR 用户在 Step 0.5 提供了对照基准：
+  → compare 模式自动激活，不需要用户手动选
+  → 分阶段计划中每个阶段都先跑基准再跑被测
+  → 四色标记规则变为 compare 版本（见 test-execution-workflow）
+```
+
+### Changelog 逐条匹配
+
+```
+IF Step 1 检测到 CHANGELOG / release notes：
+  → 每条 changelog 条目必须映射到至少一个测试项
+  → 未映射的条目在 Step 6 展示给用户："以下 changelog 项没有对应测试，确认不需要测？"
+  → 用户确认后标为 ⏭️ 写原因，不允许静默跳过
+```
+
+### 版本基线快照
+
+```
+IF 旧版本仍可用且未保存过基线：
+  → 在执行测试前，先用旧版本跑关键接口保存行为快照
+  → 存入 history/<old_version>/baseline.json
+  → 供 compare 模式和 reflect 使用
+```
+
 ### 分阶段计划生成
 
 基于 Step 1-3 的输入，生成 5 阶段执行计划：

@@ -218,7 +218,26 @@
 
 不创建 `shared/map.md` 或 `shared/progress.md`——这些是 better-code 的职责。
 
-### 3.1–3.7 生成 test/ 文件
+### 3.0.5 预建目录骨架
+
+在生成任何知识文件之前，先建好完整目录结构。这样 agent 在后续测试过程中有明确的"该往哪放"指引，不会随手建新目录。
+
+```bash
+# 测试知识
+mkdir -p test/tools test/reference
+# 测试历史
+mkdir -p test/history
+touch test/history/bugs-index.md
+```
+
+| 目录 | 用途 | 边界 |
+|------|------|------|
+| `test/tools/` | 跨版本复用的测试脚本（如 surface-walk.sh、mcp-client.py） | 只放可执行脚本，不放文档 |
+| `test/reference/` | 暂存区：无法归入版本目录的参考资料 | 放入时必须在文件首行写明原因；积累后细分 |
+| `test/history/` | **只放测试运行产出和版本级材料** | 不放参考资料、测试脚本、项目级文档 |
+| `test/history/<version>/input/` | 触发本版本测试的开发者输入（fix report、沟通记录） | 每版本一个 input/ |
+
+### 3.1–3.8 生成 test/ 文件
 
 按以下顺序生成（参考 `references/templates.md` 的质量标准）：
 

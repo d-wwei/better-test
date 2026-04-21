@@ -48,10 +48,16 @@ protocol.md 不是操作手册。它的作用是：
 
 ```markdown
 ## 思维纪律
-- 间接推测必须标"推测"，只有直接证据可下定论
+- 间接推测必须标"推测"**并立即启动验证**（查基准/查 log/重复实验）。标了"推测"不去验证 = 留了隐患在报告里
 - 遇到模糊错误先诊断再行动，禁止直接重试或放弃
 - 用四态定性（✅/🟡/🔴/🐛），不用二分
 - 写测试请求时模拟三种用户：熟悉者（完整参数）/ 新手（只传 required）/ LLM agent（只传核心字段）
+
+## 执行检查点
+- 有基准实现（旧版本/C++ SDK/Python SDK）→ 必须走 compare 模式，不是可选
+- 发现疑似 bug 第一步是查基准，不是写"可能是设计如此"
+- 开测前先建 history/<version>/run-NNN/ 目录 + process-log.md，不是测完再补
+- changelog 每条都要映射到测试项，未映射的条目必须显式确认"不需要测"
 ```
 
 ### 严格版扩展（金融、生产 daemon、长跑系统等高风险）
@@ -100,10 +106,16 @@ protocol.md 不是操作手册。它的作用是：
 你的目标是找到每个接口在什么组合下会 silently 返错数据——silent failure 最难抓，必须主动找。
 
 ## 思维纪律
-- 间接推测必须标"推测"，只有直接证据可下定论
+- 间接推测必须标"推测"**并立即启动验证**（查基准/查 log/重复实验）。标了不验证 = 隐患
 - 遇到模糊错误先诊断再行动，禁止直接重试或放弃
 - 用四态定性（✅/🟡/🔴/🐛），不用二分
-- 写测试请求时模拟三种用户：熟悉者（完整参数）/ 新手（只传 required）/ LLM agent（只传核心字段）
+- 写测试请求时模拟三种用户：熟悉者 / 新手 / LLM agent
+
+## 执行检查点
+- 有基准实现 → 必须走 compare 模式，不是可选
+- 疑似 bug 第一步查基准，不是写"可能是设计如此"
+- 开测前建好 history/<version>/run-NNN/ + process-log.md
+- changelog 每条映射到测试项，未映射的显式确认
 
 ## 安全纪律
 - 测试开始时确认不可逆操作策略：a) 全执行 b) 逐项问 c) 全跳过
@@ -129,10 +141,16 @@ protocol.md 不是操作手册。它的作用是：
 你的目标是找到每个接口在什么组合下会 silently 返错数据——silent failure 最难抓，必须主动找。
 
 ## 思维纪律
-- 间接推测必须标"推测"，只有直接证据可下定论
+- 间接推测必须标"推测"**并立即启动验证**（查基准/查 log/重复实验）。标了不验证 = 隐患
 - 遇到模糊错误先诊断再行动，禁止直接重试或放弃
 - 用四态定性（✅/🟡/🔴/🐛），不用二分
-- 写测试请求时模拟三种用户：熟悉者（完整参数）/ 新手（只传 required）/ LLM agent（只传核心字段）
+- 写测试请求时模拟三种用户：熟悉者 / 新手 / LLM agent
+
+## 执行检查点
+- 有基准实现 → 必须走 compare 模式，不是可选
+- 疑似 bug 第一步查基准，不是写"可能是设计如此"
+- 开测前建好 history/<version>/run-NNN/ + process-log.md
+- changelog 每条映射到测试项，未映射的显式确认
 
 ## 安全纪律
 - 不可逆操作执行前确认策略
@@ -157,10 +175,16 @@ protocol.md 不是操作手册。它的作用是：
 你的目标是找到每个接口在什么组合下会 silently 返错数据——silent failure 最难抓，必须主动找。
 
 ## 思维纪律
-- 间接推测必须标"推测"，只有直接证据可下定论
+- 间接推测必须标"推测"**并立即启动验证**（查基准/查 log/重复实验）。标了不验证 = 隐患
 - 遇到模糊错误先诊断再行动，禁止直接重试或放弃
 - 用四态定性（✅/🟡/🔴/🐛），不用二分
-- 写测试请求时模拟三种用户：熟悉者（完整参数）/ 新手（只传 required）/ LLM agent（只传核心字段）
+- 写测试请求时模拟三种用户：熟悉者 / 新手 / LLM agent
+
+## 执行检查点
+- 有基准实现 → 必须走 compare 模式，不是可选
+- 疑似 bug 第一步查基准，不是写"可能是设计如此"
+- 开测前建好 history/<version>/run-NNN/ + process-log.md
+- changelog 每条映射到测试项，未映射的显式确认
 
 ## 安全纪律
 - 不把凭证写入任何 .better-work/ 文件
@@ -612,28 +636,44 @@ estimated_time: <分钟>
 ### 完整目录结构
 
 ```
-history/
-├── _meta.json                              ← 项目元信息（init 创建）
-├── feedback-rules.json                     ← suppress/known/lessons 规则（feedback 命令维护）
-├── bugs-index.md                           ← 跨版本 bug 索引（全局视图）
+test/
+├── tools/                                  ← 跨版本复用的测试脚本
+│   └── surface-walk.sh
+├── reference/                              ← 暂存区（无法归入版本目录的参考资料）
 │
-└── <version>/                              ← 按版本分目录（如 v1.4.27/）
-    ├── run-NNN-<ts>/                       ← 每次测试运行的完整归档
-    │   ├── results.json                    ← 测试结果（结构化数据）
-    │   ├── process-log.md                  ← 过程日志（流水账，记录试了什么/发现什么/推翻了什么）
-    │   ├── summary.md                      ← 2 分钟速览（大白话核心结论）
-    │   ├── execution-log.md                ← 执行日志（Hook 自动生成）
-    │   ├── l2-findings.md                  ← L2 独立验证结果
-    │   └── audit-report.md                 ← L3 审计面板
-    │
-    ├── feedback/                           ← test-level 反馈（per test item）
-    │   ├── B-05_not-a-bug.md
-    │   └── D-03_deferred.md
-    │
-    └── bugs/                               ← 本版本发现的 bug 报告
-        ├── BUG-001-option-chain-empty.md
-        └── BUG-002-auth-timeout.md
+├── history/                                ← 测试运行产出（下方有边界定义）
+│   ├── _meta.json                          ← 项目元信息（init 创建）
+│   ├── feedback-rules.json                 ← suppress/known/lessons 规则（feedback 命令维护）
+│   ├── bugs-index.md                       ← 跨版本 bug 索引（全局视图）
+│   │
+│   └── <version>/                          ← 按版本分目录
+│       ├── baseline.json                   ← 旧版本行为快照（测新版前保存）
+│       ├── input/                          ← 触发本版本测试的开发者输入（fix report、沟通记录）
+│       ├── run-NNN-<ts>/                   ← 每次测试运行的完整归档
+│       │   ├── results.json                ← 测试结果（结构化数据）
+│       │   ├── process-log.md              ← 过程日志（流水账）
+│       │   ├── summary.md                  ← 2 分钟速览
+│       │   ├── execution-log.md            ← 执行日志（Hook 自动生成）
+│       │   ├── l2-findings.md              ← L2 独立验证结果
+│       │   └── audit-report.md             ← L3 审计面板
+│       │
+│       ├── feedback/                       ← test-level 反馈（per test item）
+│       │   └── <test_id>_<verdict>.md
+│       │
+│       └── bugs/                           ← 本版本发现的 bug 报告
+│           └── BUG-NNN-<slug>.md
 ```
+
+### history/ 的边界（什么不该放）
+
+history/ **只放测试运行产出和版本级材料**。以下不属于 history/：
+
+| 不属于 history/ 的内容 | 该放哪 |
+|----------------------|--------|
+| 测试脚本（.sh / .py） | `test/tools/` |
+| 参考资料（API 文档、架构图） | `test/reference/` 或由用户管理 |
+| 项目级文档（README、设计文档） | 项目仓库本身 |
+| 中间临时文件（/tmp/ 下的 JSON） | 不归档，测试完成后清理或保留在 tmpdir |
 
 ### 三份核心输出文件
 
