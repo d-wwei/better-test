@@ -781,6 +781,123 @@ device:
 
 ---
 
+## strategy-plan.md（tester 的分阶段执行计划）
+
+Strategy workflow Step 4-5 的输出持久化。存放于 `testers/<tester-id>/strategy-plan.md`。
+
+**用途**：
+1. **Resume 免重跑** — 断点恢复时直接读取已确认的计划，无需重跑 strategy
+2. **多 Agent 协调** — Agent B 读 Agent A 的计划，避免重复测试同一组
+3. **人类审计** — 计划可追溯，事后可检查"当时为什么这样决策"
+4. **未来扩展** — 多 agent 在计划阶段互相参考改进 strategy
+
+```markdown
+---
+tester_id: <tester-id>
+version: v<X.Y.Z>
+mode: <smoke | full | targeted | bug-retest | compare>
+status: <draft | confirmed | in-progress | completed | superseded>
+created: <YYYY-MM-DDTHH:MM:SS±HH:MM>
+confirmed_at: <YYYY-MM-DDTHH:MM:SS±HH:MM | null>
+last_updated: <YYYY-MM-DDTHH:MM:SS±HH:MM>
+total_stages: <N>
+total_items: <N>
+---
+
+# Strategy Plan — v<X.Y.Z> <mode>
+# Tester: <tester-id>
+# Created: <MM-DD HH:MM:SS±ZZ>
+
+## Context Summary
+
+[Step 0 上下文研判摘要 — 3-5 行]
+
+## Change Analysis
+
+- Signal sources: <changelog | git-log | diff-content | manifest-diff | user-input>
+- Key changes:
+  - <变更 1>
+  - <变更 2>
+
+## Impact Scope
+
+- Affected groups: <组号 + 名称>
+- Affected items: <具体测试 ID（如有函数级分析）>
+- Active failures: <N>（suppress 后）
+- Bug retest candidates: <BUG-xxx-NNN 列表>
+
+## Phased Plan
+
+### Stage 1: 基础验证
+- Groups: <组号>
+- Items: <N>
+- Gate: 全部 ✅ 才继续
+
+### Stage 2: 直接影响 + 负向测试
+- Groups: <组号>
+- Items: <N>
+- Execution order: <依赖链 + 风险排序>
+- Hypotheses:
+  - H1: IF <变更> THEN <影响> BECAUSE <推理>
+    Expected: <字段 + 预期值>
+    Verify: <命令 + 字段>
+
+### Stage 3: 回归验证
+- Bug IDs: <BUG-xxx-NNN 列表>
+- Related tests: <测试 ID>
+- Evidence: confirmed 级
+
+### Stage 4: 边界扩展
+- Groups: <组号>
+- Impact-map confidence: <NN%>
+- Expansion hops: <1 | 2>
+
+### Stage 5: 覆盖审计
+- Manifest remaining: <N>
+- Policy: field-level 证据 or ⏭️ with reason
+
+## Known Risks
+
+- <flaky 测试、未验证映射、时间依赖约束>
+
+## User Adjustments
+
+[用户在 Step 6 确认时的修改。无修改则写"Accepted as-is"]
+
+## Accuracy Rules
+
+1. 每个 🔴 立刻加对照 → direct → confirmed
+2. 每个 🟡 立刻升级 → 不积累模糊状态
+3. 每个 ✅ 必须 field-level 证据
+4. 最终结论证据 ≥ direct
+5. 宁可 ⏭️ 写原因也不降标准凑覆盖率
+```
+
+### 状态生命周期
+
+| Status | 触发 | 含义 |
+|--------|------|------|
+| **draft** | Step 5.5 写入 | 计划已生成，含假设，待用户确认 |
+| **confirmed** | Step 6 用户确认 | 用户已批准，可开始执行 |
+| **in-progress** | Step 7 执行开始 | 正在执行中 |
+| **completed** | 所有阶段完成 | 本次 strategy 全部执行完毕 |
+| **superseded** | 重新运行 strategy | 新计划覆盖旧计划，旧计划标记为此状态 |
+
+**归档**：run 归档到 `history/<version>/run-<tester-id>-NNN-<ts>/` 时，同时复制当时的 `strategy-plan.md` 到归档目录，保留完整决策链。
+
+### 质量标准
+
+| 项目 | 必须满足 |
+|------|---------|
+| YAML frontmatter | 所有字段已填；status 来自有效枚举值；时间戳遵循三档规范 |
+| Stages | 编号 1-5（简化路径可少于 5）；每阶段有 groups + items |
+| Hypotheses | Stage 2 每个受影响组至少 1 条；IF-THEN-BECAUSE 格式 |
+| User Adjustments | 有修改必填；无修改写"Accepted as-is" |
+| 组/测试引用 | 组号和测试 ID 必须存在于 test-groups.md |
+| 不含凭证 | 与 progress.md 同规则 — 不写密码/token/API key |
+
+---
+
 ## history/ 目录
 
 ### 完整目录结构

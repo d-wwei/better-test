@@ -129,6 +129,35 @@
 - Working notes: <条数> 条关键发现（已读取）
 ```
 
+4.5 读 `testers/<tester-id>/strategy-plan.md`（如存在）：
+
+```
+IF 文件存在：
+  读取 YAML frontmatter 的 status 字段，在汇报中追加"策略状态"行：
+
+  status: draft       → "策略已生成但未确认。需先确认计划再继续执行。"
+  status: confirmed   → "策略已确认但未开始执行。可直接开始执行，无需重跑 strategy。"
+  status: in-progress → "策略正在执行中。结合 progress.md 确定断点，从当前阶段续跑。"
+  status: completed   → "策略已完成。无需续跑此计划。"
+  status: superseded  → "此计划已被新计划替代。检查是否有新的 strategy-plan.md。"
+
+IF 文件不存在：
+  → "无策略记录。需重新运行 /better-test strategy。"
+
+汇报格式追加：
+  恢复 tester: <tester-id>
+  上次进度:
+  - ...（原有字段）
+  - 策略状态: <status 对应的描述>
+  - 当前阶段: Stage <N> of <total>（仅 in-progress 时显示）
+```
+
+**Resume 决策逻辑**：
+- `confirmed` → 跳过 strategy，直接进入 test-execution-workflow（最大收益场景）
+- `in-progress` → 结合 progress.md 的"已完成/进行中/待跑"确定精确断点
+- `draft` → 展示 strategy-plan.md 内容，让用户确认（相当于从 Step 6 恢复）
+- `completed` / `superseded` / 不存在 → 正常 resume 流程，可能需要重跑 strategy
+
 5. 如果距上次更新超过 7 天 → 提醒：
    "进度记录已过 7 天。可能的变化：版本可能升级、daemon 状态可能不同、known-issues 可能新增。建议先跑 `/better-test update` 检查测试知识，再决定从哪续。"
 
@@ -177,11 +206,11 @@ Agent 检测到以下情况时，主动建议 checkpoint：
 
 ```
 init       → 创建 testers/ 目录（不创建具体 tester，等 strategy 或 checkpoint 时自动注册）
-strategy   → 如无活跃 tester 则自动注册；执行前提示用户："要不要先 checkpoint？"
+strategy   → 如无活跃 tester 则自动注册；生成 strategy-plan.md；执行前提示用户："要不要先 checkpoint？"
 跑测试中   → 30 分钟提醒 / 跑完每组后提醒
 feedback   → 录入完一条后自动追加到 testers/<tester-id>/progress.md 的"已录 feedback"段
 update     → update 完后清空当前 tester progress.md 的"待录 feedback"段（已处理）
-resume     → 列出 testers → 用户选择 → 读 bio + progress → 报告 → 询问 → 续跑
+resume     → 列出 testers → 用户选择 → 读 bio + progress + strategy-plan → 报告 → 询问 → 续跑
 checkpoint → 同时更新 bio.md 的 working notes（如有新发现）和 last_active
 ```
 

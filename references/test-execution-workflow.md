@@ -16,7 +16,7 @@
 
 ```
 输入：
-  strategy 推荐的测试组和模式（来自 strategy-workflow）
+  strategy 推荐的测试组和模式（来自 testers/<tester-id>/strategy-plan.md，或会话内 strategy 输出）
   + test-groups.md       [PROJECT] 测试组定义（运行命令、条件、断言）
   + impact-map.md        [PROJECT] 变更影响映射
   + known-issues.md      [PROJECT] 已知问题（suppress / flaky / lessons）

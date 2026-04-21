@@ -78,16 +78,32 @@ The agent's quality is ensured by 4 layers, each catching what the previous miss
 
 ## Installation
 
-### Claude Code (native)
+### All platforms (auto-detect)
 
 ```bash
 git clone https://github.com/d-wwei/better-test.git ~/repos/better-test
+cd ~/repos/better-test
+./install.sh            # detects Claude Code, Codex, etc. and creates symlinks
+./install.sh status     # verify what was installed
+```
+
+### Claude Code (manual)
+
+```bash
 ln -s ~/repos/better-test ~/.claude/skills/better-test
 ```
 
+### Codex CLI (manual)
+
+```bash
+ln -s ~/repos/better-test ~/.codex/skills/better-test
+```
+
+Codex invokes the skill with `$better-test` (instead of `/better-test`). The SKILL.md format is natively compatible — no conversion needed.
+
 ### Other platforms
 
-Adapter install commands for Cursor, Gemini CLI, Codex, OpenCode, and OpenClaw live in `references/adapters.md`. Test knowledge files are platform-agnostic.
+Cursor, Gemini CLI, OpenCode, and OpenClaw adapter instructions live in `references/adapters.md`. Test knowledge files are platform-agnostic.
 
 ## Quick Start
 

@@ -2,6 +2,50 @@
 
 All notable changes to **better-test** (Better-Work series testing subskill) are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project uses [Semantic Versioning](https://semver.org/).
 
+## [2.3.0] - 2026-04-21
+
+Persist strategy plans to `testers/<tester-id>/strategy-plan.md` for session resilience, multi-agent coordination, and human audit.
+
+### Added
+
+- **`strategy-plan.md` tester-isolated file**: Strategy workflow Step 4-5 output persisted as markdown with YAML frontmatter. Status lifecycle: draft → confirmed → in-progress → completed → superseded
+- **Resume reads strategy plan**: `/better-test resume` checks for existing strategy-plan.md and can skip re-running strategy when a confirmed/in-progress plan exists
+- **Multi-agent coordination**: Step 5.5 scans other testers' plans before persisting, shows overlap info in Step 6
+- **Template and quality standards**: New `strategy-plan.md` section in `templates.md` with full template, lifecycle table, and quality standards
+
+### Changed
+
+- `strategy-workflow.md`: Added Step 5.5 persist_plan; Step 6 updates status on confirmation; Step 7 references file for execution handoff
+- `progress-workflow.md`: Resume step 4.5 reads strategy-plan.md; enhanced report includes strategy status; cross-workflow衔接 updated
+- `test-execution-workflow.md`: Input specification updated to read from strategy-plan.md as primary source
+- `SKILL.md`: Output structure updated with strategy-plan.md; acceptance criteria #4 extended for strategy-based resume
+
+### Source
+
+Design driven by real failure mode: session break after strategy completion but before execution start loses the entire plan. Multi-agent coordination and human audit are secondary benefits enabled by the same persistence.
+
+## [2.2.0] - 2026-04-21
+
+Native multi-platform skill support. SKILL.md format verified compatible with Codex CLI — same file works on both Claude Code and Codex without modification.
+
+### Added
+
+- **Native Codex CLI skill support**: SKILL.md + references/ architecture works on Codex out of the box. Codex auto-discovers the skill and can execute init/strategy/feedback workflows via `$better-test` invocation
+- **`install.sh` unified installer**: auto-detects installed agent platforms (Claude Code, Codex), creates symlinks for skill registration. Supports `install`, `uninstall`, and `status` subcommands
+- **`agents/openai.yaml`**: Codex-specific sidecar file for UI metadata and invocation policy. Claude Code ignores it
+- **Two-layer architecture** in `adapters.md`: Layer 1 (skill registration via symlink) + Layer 2 (protocol injection into project config). Clearly separates "agent can run commands" from "testing discipline is always-on"
+- **Skill discovery path table** in `adapters.md`: documents all platform-specific paths for skill registration
+
+### Changed
+
+- `adapters.md`: Codex section rewritten from "embed in AGENTS.md" to native skill installation + protocol injection. OpenCode/OpenClaw split into separate section (no skill system)
+- `init-workflow.md` Step 4: added Codex platform injection example with AGENTS.md BEGIN/END markers
+- `README.md` + `README.zh-CN.md`: Installation section updated with `install.sh` auto-detect, Codex manual install, and platform-specific invocation syntax (`$` vs `/`)
+
+### Source
+
+Architecture validated by experiment: Codex CLI v0.122.0 successfully detected better-test skill, loaded SKILL.md body, read references/init-workflow.md, and executed init Steps 1-2 with correct output. Cross-platform knowledge sharing verified: Codex read Claude Code-generated test knowledge files (futu-opend-rs) and produced accurate strategy recommendations.
+
 ## [2.0.5] - 2026-04-20
 
 Extracted generalizable testing patterns from futu-rust-opend-tester battle experience (v1.4.26-v1.4.45).
@@ -140,6 +184,7 @@ Major redesign: constraint framework, three-tier methodology architecture, test 
 
 ---
 
+[2.2.0]: https://github.com/d-wwei/better-test/compare/v2.1.0...v2.2.0
 [2.0.0]: https://github.com/d-wwei/better-test/compare/v1.3.1...v2.0.0
 [1.3.1]: https://github.com/d-wwei/better-test/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/d-wwei/better-test/compare/v1.2.0...v1.3.0

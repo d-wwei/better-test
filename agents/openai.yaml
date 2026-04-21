@@ -1,0 +1,9 @@
+interface:
+  display_name: "Better Test"
+  short_description: "Test knowledge management for AI coding agents"
+  icon_small: null
+  icon_large: null
+  brand_color: "#10B981"
+
+policy:
+  allow_implicit_invocation: true

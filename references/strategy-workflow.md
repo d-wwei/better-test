@@ -31,8 +31,9 @@ strategy 是 tester 自动注册的触发点。首次执行 strategy 时：
 3. read_history          ← 历史结果 + feedback-rules + bugs-index
 4. generate_plan         ← 生成分阶段执行计划（质量优先）
 5. form_hypotheses       ← 为每个阶段写测试假设
-6. present_to_user       ← 展示计划 + 假设 + 让用户确认
-7. emit_to_execution     ← 交给 test-execution-workflow 执行
+5.5 persist_plan         ← 写 strategy-plan.md（status: draft）
+6. present_to_user       ← 从 strategy-plan.md 展示 + 确认 → status: confirmed
+7. emit_to_execution     ← execution 读 strategy-plan.md
 ```
 
 ---
@@ -380,6 +381,45 @@ IF 用户选择 compare 模式:
 - 假设被证实 → 找到 bug，证据链清晰（"我预测这里会坏，果然坏了，因为..."）
 - 假设被否定 → 也有价值（"预测没坏，说明这个变更没影响这个路径"）
 
+## Step 5.5: 持久化计划（persist_plan）
+
+Step 4 + 5 完成后，将完整计划（含假设）写入 `testers/<tester-id>/strategy-plan.md`，status 设为 `draft`。
+
+### 写入流程
+
+```
+1. 如果 testers/<tester-id>/strategy-plan.md 已存在且 status != completed:
+   → 旧文件 status 改为 superseded，last_updated 更新
+   → 再写新文件（覆盖）
+
+2. 组装 strategy-plan.md：
+   - YAML frontmatter: tester_id, version, mode, status=draft, created, confirmed_at=null, last_updated, total_stages, total_items
+   - Context Summary ← Step 0 摘要
+   - Change Analysis ← Step 1 变更检测结果
+   - Impact Scope ← Step 2 影响分析
+   - Phased Plan ← Step 4 分阶段计划
+   - Hypotheses 嵌入 Stage 2 ← Step 5 假设
+   - Known Risks ← 从 Step 3 提取
+   - User Adjustments ← 留空（Step 6 填写）
+   - Accuracy Rules ← 准确度铁律
+
+3. 写入 testers/<tester-id>/strategy-plan.md
+```
+
+### 多 Agent 协调
+
+```
+写入前，扫描 testers/*/strategy-plan.md（排除自己）：
+  IF 存在其他 tester 的计划且 status 为 confirmed 或 in-progress：
+    → 提取其 Phased Plan 中的 groups 列表
+    → 在 Step 6 展示时附加：
+      "其他 tester 正在测试的组：
+        claude-a3f2: A, B, C 组（in-progress）
+        codex-c9d4: D, E 组（confirmed）
+       建议避开重复覆盖。"
+    → 不自动排除（用户决定），但提供信息
+```
+
 ## Step 6: 展示计划 + 假设给用户确认（present_to_user）
 
 ```
@@ -408,13 +448,25 @@ IF 用户选择 compare 模式:
 接受此计划？[y / 调整 / 只跑部分阶段 / 切换 compare 模式]
 ```
 
+### 确认后更新 strategy-plan.md
+
+```
+用户确认后：
+  → 更新 strategy-plan.md YAML: status=confirmed, confirmed_at=<now>, last_updated=<now>
+  → 如果用户做了调整 → 填写 "## User Adjustments" 段（具体改了什么）
+  → 如果用户原样接受 → User Adjustments 写 "Accepted as-is"
+```
+
 ## Step 7: 交给 test-execution-workflow（emit_to_execution）
 
-用户确认后，把计划传递给 `test-execution-workflow.md`：
-- 分阶段计划
-- 每阶段的假设
-- 准确度铁律
-- 用户追加的上下文
+用户确认后，test-execution-workflow 从 `testers/<tester-id>/strategy-plan.md` 读取计划：
+- 分阶段计划（Phased Plan 段）
+- 每阶段的假设（Hypotheses 段）
+- 准确度铁律（Accuracy Rules 段）
+- 用户追加的上下文（User Adjustments 段）
+
+执行开始时更新 `strategy-plan.md` YAML：`status=in-progress, last_updated=<now>`。
+所有阶段完成后更新：`status=completed, last_updated=<now>`。
 
 ### 附加提醒（嵌入 Step 6 展示中，条件触发）
 

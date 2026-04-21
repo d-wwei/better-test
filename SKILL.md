@@ -50,7 +50,8 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
     │   └── <tester-id>/                   ← 每个 tester 独立目录
     │       ├── bio.md                     ← 身份 + session 链 + working notes + 追溯路径
     │       ├── status.md                  ← 此 tester 的最新测试状态
-    │       └── progress.md                ← 此 tester 的断点
+    │       ├── progress.md                ← 此 tester 的断点
+    │       └── strategy-plan.md           ← 此 tester 的分阶段执行计划（strategy 输出）
     │
     ├── status.md                          ← 聚合视图（从 testers/*/status.md 自动合并）
     │
@@ -92,7 +93,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 1. 新对话加载 `protocol.md` + Read `status.md` 后，agent 能准确说出"当前版本是什么 / 哪些 ID 在挂 / 哪些已 suppress"，无需重跑
 2. 代码变更后，agent 通过 `/better-test strategy` 在 ≤2 步内确定要跑的组（基于 impact-map.md + 变更信号），并显示推荐理由
 3. 同一个 bug 用 `/better-test feedback <id> wontfix` 录入后，下次 strategy 推荐时该项自动从 active failures 排除，不再重复提报
-4. `checkpoint` + `resume` 后，agent 能准确复述上次跑到哪个组的哪个 ID（resume 时列出所有 tester，用户选择要恢复的 tester）
+4. `checkpoint` + `resume` 后，agent 能准确复述上次跑到哪个组的哪个 ID（resume 时列出所有 tester，用户选择要恢复的 tester）。如有 `strategy-plan.md`（status: confirmed 或 in-progress），resume 可跳过重跑 strategy 直接从计划续跑
 5. `references/adapters.md` 为每个支持平台（Claude/Cursor/Gemini/Codex/OpenCode/OpenClaw）都给出**可粘贴执行**的注入语法（@ 引用 vs 内容嵌入），无 placeholder 占位
 6. 多 tester 并发测试时，各 tester 的 status/progress/run 目录互不干扰，聚合 status.md 正确合并所有 tester 状态
 
