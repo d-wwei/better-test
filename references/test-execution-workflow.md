@@ -99,6 +99,26 @@ grep daemon/service log 查 error code
 
 三问无法定位 → 加载 Tier 2 `procedures/hypothesis-investigation.md`（3-假设调查法）。
 
+### 预期错误 ≠ 测试失败
+
+API 返回错误码不一定是 bug。区分三种情况：
+
+```
+1. 业务拒绝（如 -400 "insufficient balance"）
+   → 如果测试场景预期被拒绝（权限测试、边界测试），这是 ✅ pass
+   → 关键：验证错误码和错误消息是否与预期一致
+
+2. 参数错误（如 -1 "invalid parameter"）
+   → 先排除是测试自身参数写错。换已知正确的参数重跑
+   → 如果确认参数正确但仍报错 → 🔴 这是 bug
+
+3. 服务内部包装（如 daemon 把 backend -1001 包装成 -400）
+   → 看 debug log 中的原始错误码，不依赖外层包装
+   → 包装导致信息丢失本身可能值得作为 lesson 记录
+```
+
+经验法则：**错误码是数据，不是判决**。pass/fail 取决于"这个错误码在当前测试场景中是否是预期行为"。
+
 ### 证据分级
 
 每个判断必须标注证据级别：

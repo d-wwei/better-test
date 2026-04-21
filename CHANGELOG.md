@@ -2,6 +2,22 @@
 
 All notable changes to **better-test** (Better-Work series testing subskill) are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project uses [Semantic Versioning](https://semver.org/).
 
+## [2.0.5] - 2026-04-20
+
+Extracted generalizable testing patterns from futu-rust-opend-tester battle experience (v1.4.26-v1.4.45).
+
+### Added
+
+- `surface-manifest.md` as first-class output file: enumeration of all testable interfaces (REST/CLI/MCP/WS) as coverage denominator SSOT. Conditional generation for API/CLI/daemon projects (`SKILL.md`, `templates.md`, `init-workflow.md`)
+- Version-pinned manifest diff: detect new/removed/changed interfaces between versions as strategy signal source D (`strategy-workflow.md`)
+- Cross-group scenario definitions in `test-groups.md` template: named end-to-end paths spanning multiple test groups (`templates.md`)
+- Per-group smoke subsets in `test-groups.md` template: define mini validation subset per large group for smoke mode (`templates.md`)
+- "Expected error ≠ test failure" guidance: explicit 3-case classification for API error codes in execution discipline (`test-execution-workflow.md`)
+
+### Source
+
+Patterns extracted from [futu-rust-opend-tester](https://github.com/d-wwei/futu-rust-opend-tester) Iron Rules #6-9 and surface manifest system. Domain-specific knowledge (futu-opend-rs test groups, manifests, MCP parameter styles) remains in project-level test knowledge.
+
 ## [2.0.0] - 2026-04-20
 
 Major redesign: constraint framework, three-tier methodology architecture, test execution framework, experience extraction, and differential testing.

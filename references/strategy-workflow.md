@@ -135,7 +135,18 @@ git diff <prev_version_tag>..HEAD → 读实际变更内容（不只是文件名
 
 为什么不只看文件名：改了 `src/auth/session.rs` 可能只加了一行注释（无影响），也可能重写了 session 过期逻辑（高影响）。文件名匹配会把两种情况都推荐跑全组，diff 内容分析能区分。
 
-### 信号源 D：用户提供（Step 0.5 对齐时已收集）
+### 信号源 D：Surface Manifest Diff（如有清单）
+
+```
+适用于：项目有 surface-manifest.md 且版本更新时
+对比 上一版本的 surface-manifest.md 与当前版本（或 --help 输出）
+  新增接口 → 标为覆盖缺口，加入阶段 5 优先处理
+  删除接口 → 检查 test-groups 中对应项是否需要标废弃
+  参数变更 → 检查对应 EXPECT_PATTERN 是否仍然有效
+来源标记: manifest-diff
+```
+
+### 信号源 E：用户提供（Step 0.5 对齐时已收集）
 
 ```
 用户在 Step 0.5 中提供的额外上下文：

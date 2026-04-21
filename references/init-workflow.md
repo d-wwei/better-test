@@ -238,7 +238,8 @@
 3. **`impact-map.md`** — 从信号源 A 的目录划分 + 信号源 B 的 CI 矩阵推断初始版本。若无依据则只列已知关键词，标 `[未验证]` 待 update 累积
 4. **`known-issues.md`** — 初始化为空模板（待 feedback 累积）。如果信号源 E 有强信号可写"待验证条目"
 5. **`env-config.md`** — 测试环境配置。从信号源 F（用户提供的材料）+ 信号源 B（CI 配置）中提取：测试账号、服务地址、环境变量、时间依赖、不可逆操作清单、使用注意事项。没有用户提供的信息则写空模板（各段标"待补充"）。随时可通过 update（信号 6）补充
-6. **`status.md`** — 自动生成的初始版本（仅项目概况 + 测试组列表，未跑过测试时无运行记录）
+6. **`surface-manifest.md`**（条件生成）— Step 1 分类为 API/Daemon/CLI/MCP 类项目时生成。从信号源 F（API 规范）或 `--help` 输出或源码路由扫描枚举全部可测接口。纯库/前端项目跳过。初始版本覆盖状态全标"未覆盖"，待首次测试后更新
+7. **`status.md`** — 自动生成的初始版本（仅项目概况 + 测试组列表，未跑过测试时无运行记录）
 7. **`progress.md`** — 初始化为空模板
 8. **`history/`** — 创建目录 + 两个 JSON 文件（均含 `schema_version: 1` 字段便于将来迁移）：
    - `_meta.json` — schema: `{schema_version: 1, project: "<project-name>", test_target: "<被测对象描述>", created_at: "<ISO 时间戳>"}`

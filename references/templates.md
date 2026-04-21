@@ -257,6 +257,22 @@ estimated_time: <分钟>
 groups: <ALL>
 total_items: <N>
 estimated_time: <分钟>
+
+## 场景集合（跨组）
+
+跨多组的端到端场景。单组测试验证模块内正确性，场景测试验证模块间交互。
+
+| 场景名 | 涉及组 | 描述 | 运行命令 |
+|--------|--------|------|---------|
+| <name> | A, C, D | <什么端到端路径> | `<命令>` |
+
+## 每组 smoke 子集（如适用）
+
+大组可定义最小验证子集，smoke 模式时只跑这些项：
+
+| 组 | smoke 子集 | 选择理由 |
+|----|-----------|---------|
+| I | I-01, I-02, I-03 | 元数据 + 核心工具 + schema 验证 |
 ```
 
 ### 字段说明
@@ -449,6 +465,83 @@ estimated_time: <分钟>
 - `test-groups.md` 的"运行条件"引用 env-config 中的环境变量和账号
 - `test-execution-workflow.md` 的"环境确认"段从 env-config 取检查清单
 - `strategy-workflow.md` Step 0.5 对齐时引用 env-config 的时间依赖和不可逆操作
+
+---
+
+## surface-manifest.md（接口清单 SSOT）
+
+枚举被测对象的全部可测接口。覆盖率计算的分母来源。适用于 API/CLI/daemon/MCP 等有明确接口边界的项目类型；纯库/前端组件项目可选跳过。
+
+```markdown
+# Surface Manifest — v<X.Y.Z>
+
+> 生成时间: <ISO> | 来源: <API spec / --help 输出 / 代码扫描 / 手工整理>
+
+## 统计
+
+| 类别 | 数量 |
+|------|------|
+| REST endpoints | <N> |
+| CLI subcommands | <N> |
+| MCP tools | <N> |
+| 其他（WebSocket / gRPC / ...） | <N> |
+| **总计** | **<M>** |
+
+## REST Endpoints
+
+| 方法 | 路径 | 必选参数 | 说明 | 覆盖状态 |
+|------|------|---------|------|---------|
+| GET | /health | — | 健康检查 | ✅ A-01 |
+| POST | /api/funds | account_id | 资金查询 | ✅ B-03 |
+| POST | /api/place-order | account_id, code, qty, price | 下单 | ⏭️ 安全约束 |
+
+## CLI Subcommands
+
+| 命令 | 必选参数 | 说明 | 覆盖状态 |
+|------|---------|------|---------|
+| ping | — | RTT 检测 | ✅ E-01 |
+| quote | --code | 报价查询 | ✅ E-02 |
+
+## MCP Tools（如适用）
+
+| 工具名 | 必选参数 | 说明 | 覆盖状态 |
+|--------|---------|------|---------|
+| get_warrant | symbols | 窝轮查询 | ✅ I-04 |
+
+## 未覆盖接口
+
+| 接口 | 原因 | 风险评估 |
+|------|------|---------|
+| POST /api/modify-order | 需要活跃订单，安全约束 | 中——回归时需人工验证 |
+```
+
+### 版本间 diff
+
+每个新版本生成清单后，与上一版本 diff：
+
+```
+新增接口 → 标为覆盖缺口 → strategy 阶段 5 优先处理
+删除接口 → 从 test-groups 移除对应测试项（或标废弃）
+参数变更 → 检查对应测试项的 EXPECT_PATTERN 是否仍然有效
+```
+
+### 生成方式
+
+| 来源 | 优先级 | 说明 |
+|------|--------|------|
+| API 规范文件（OpenAPI/proto） | 最高 | 解析后自动枚举 |
+| `--help` / `--version` 输出 | 高 | CLI/daemon 的子命令树 |
+| 源码路由扫描（`@app.route`/`Router`） | 中 | 适用于 Web 框架 |
+| 手工整理 | 兜底 | 标 `[手工]` 以便自动化工具后续接管 |
+
+### 质量标准
+
+| 项目 | 必须满足 |
+|------|---------|
+| 版本号 | 必须标明清单对应的被测对象版本 |
+| 来源 | 标注清单来源（spec / help / code / manual） |
+| 覆盖状态 | 每个接口标注 ✅ test_id / ⏭️ 原因 / 🔴 未覆盖 |
+| 不含凭证 | 示例参数不含真实密码/token |
 
 ---
 
