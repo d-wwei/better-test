@@ -38,7 +38,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 ├── code/                                      ← 只读：高风险区域 → 触发更全面测试
 │   └── danger-zones.md
 └── test/                                      ← 写：测试专用
-    ├── protocol.md                            ← 共享知识：测试认知约束（≤15 行），每对话注入
+    ├── protocol.md                            ← 共享知识：测试认知约束（≤30 行），每对话注入
     ├── protocol-changelog.md                  ← 共享知识：变更日志
     ├── protocol-versions/                     ← 共享知识：protocol 全文快照
     ├── test-groups.md                         ← 共享知识：测试组定义 + 运行条件
@@ -102,7 +102,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 
 ## Red Lines
 
-1. `protocol.md` 超过 15 行 → 必须精简，不可突破
+1. `protocol.md` 超过 30 行 → 必须精简，不可突破（L0 ~12 + 思维纪律 ~4 + 安全纪律 ~3 + 项目纪律 ≤5 + 标题/空行 ~6）
 2. pass 判定只依赖退出码或"输出非空"（不验证返回值字段） → 违反测试铁律，必须改用具体字段断言
 3. skip 没有醒目标注（视觉上等同 pass） → 违规，必须明确 `~` 或 `[skip]` 标记并附原因
 4. `test-groups.md` 中条目缺少"运行条件"（环境、依赖、是否需要真账户）或"如何运行" → 不完整
