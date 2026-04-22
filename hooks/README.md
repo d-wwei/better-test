@@ -1,10 +1,33 @@
 # better-test Hooks
 
-L1 constraint hooks for Claude Code. These run automatically before/after tool calls to enforce testing discipline.
+L1 constraint hooks. Run automatically before/after tool calls to enforce testing discipline.
 
-## Installation
+## Installation (Recommended: gate.sh global)
 
-Add the following to your project's `.claude/settings.json` (or `~/.claude/settings.json` for global):
+Add the following to **global** `~/.claude/settings.json`. Gate.sh auto-detects whether the current project uses better-test and dispatches to individual hooks. Non-better-test projects: ~10ms overhead (immediate exit).
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {"matcher": "Edit|Write", "hooks": [{"type": "command", "command": "\"$HOME\"/.claude/skills/better-test/hooks/gate.sh pre-edit-write"}]}
+    ],
+    "PostToolUse": [
+      {"matcher": "Bash", "hooks": [{"type": "command", "command": "\"$HOME\"/.claude/skills/better-test/hooks/gate.sh post-bash"}]},
+      {"matcher": "Write", "hooks": [{"type": "command", "command": "\"$HOME\"/.claude/skills/better-test/hooks/gate.sh post-write"}]}
+    ]
+  }
+}
+```
+
+Or via `install.sh`:
+```bash
+./install.sh        # also configures global hooks
+```
+
+## Alternative: Per-project installation (legacy)
+
+Add the following to your project's `.claude/settings.json`:
 
 ```json
 {

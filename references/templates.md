@@ -24,20 +24,31 @@
 
 ---
 
-## protocol.md（≤30 行）
+## Protocol 拆分架构（≤30 行合计）
 
-测试认知约束。每对话通过 `@` 引用自动加载。**影响 agent 怎么思考，不告诉 agent 做什么步骤。**
+Protocol 拆分为两层注入，skill 升级自动传播基座，项目自定义不受影响：
 
-模板分四部分：**L0 目标校准** + **思维纪律** + **安全纪律**（按风险等级选）+ **项目纪律**（项目自定义口子）。
+```
+CLAUDE.md（或 AGENTS.md/GEMINI.md）注入两行：
+  @~/.claude/skills/better-test/protocol-base.md    ← skill 级（L0 + 思维纪律），随 skill 自动更新
+  @.better-work/test/protocol.md                     ← 项目级（安全纪律 + 项目纪律），项目自己维护
+```
+
+| 文件 | 内容 | 谁维护 | 升级时 |
+|------|------|--------|--------|
+| `protocol-base.md`（skill 仓库根目录） | L0 目标校准 + 思维纪律 | skill 维护者 | 自动传播到所有项目 |
+| `protocol.md`（项目 .better-work/test/） | 安全纪律 + 项目纪律 | 项目 protocol-update | 项目独立维护 |
+
+### 项目 protocol.md 模板
+
+init 时生成。只包含安全纪律（按风险等级选）+ 项目纪律口子。**不包含 L0 和思维纪律**——那些在 protocol-base.md 里。
 
 ### 设计理念
 
-protocol.md 的唯一职责：**校准 agent 的思维方向和判断标准。** 它不是操作手册。
-
-以下内容**不放 protocol**：
+以下内容**不放任何 protocol 文件**：
 - 执行步骤（四色标记、三问、覆盖率计算）→ `test-execution-workflow.md` Tier 1
-- 执行检查点（建目录、走 compare、匹配 changelog）→ 从项目知识文件（env-config / known-issues / test-groups）由 Hook 在行动时刻派生注入
-- 项目特有的经验教训 → `known-issues.md` lessons 段 / `test-groups.md` failure modes / `env-config.md` 注意事项
+- 执行检查点（建目录、走 compare、匹配 changelog）→ 从项目知识文件由 Hook 在行动时刻派生注入
+- 项目特有的经验教训 → `known-issues.md` lessons / `test-groups.md` failure modes / `env-config.md`
 
 **"执行检查点"不写 protocol 的理由**：这些规则能从项目文件推导（如"有基准 → 走 compare"推导自 env-config 有对照目标）。写进 protocol 是重复定义——源文件改了但 protocol 忘了同步就产生矛盾。
 

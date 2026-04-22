@@ -48,14 +48,16 @@
 ### 应注入的文件
 
 ```
-@.better-work/shared/index.md             ← 项目知识入口（init Step 3.0 确保始终存在）
-@.better-work/test/protocol.md            ← always-on，测试认知约束
+@.better-work/shared/index.md                          ← 项目知识入口
+@~/.claude/skills/better-test/protocol-base.md         ← skill 级通用原则（L0 + 思维纪律），随 skill 自动更新
+@.better-work/test/protocol.md                          ← 项目级扩展（安全纪律 + 项目纪律）
 ```
 
 ### 注入步骤
 
 1. 检查项目根 `CLAUDE.md` 是否存在；不存在则创建
 2. 检查是否已含 `@.better-work/shared/index.md`；缺少则追加
+3. 检查是否已含 `@~/.claude/skills/better-test/protocol-base.md`；缺少则追加（**新增**）
 3. 检查是否已含 `@.better-work/test/protocol.md`；缺少则追加
 4. 如果 `.better-work/code/protocol.md` 存在但 CLAUDE.md 没引用 → 提示用户："better-code 的 protocol 也未注入，要一并加吗？"（不擅自加，避免越权）
 
