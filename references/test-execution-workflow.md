@@ -116,7 +116,9 @@
 
 **这不是建议，是结构约束**——模板的必填字段跳不过，违反验证规则的组合不允许。
 
-### 🟡 升级路径
+### 🟡 升级路径（产生时就地解决，不积累）
+
+🟡 产生时**立刻**升级——"先全部跑完再处理 🟡"的思路导致 🟡 永远不会被处理。
 
 ```
 🟡 检测到空结果或模糊错误
@@ -176,6 +178,24 @@ API 返回错误码不一定是 bug。区分三种情况：
 不允许 guess 级别出现在任何输出中。
 
 **binary 级证据的使用场景**：当开发者声称"修了一个 hardcode 字符串"或"改了错误消息格式"，用 `strings <binary> | grep "<关键字>"` 验证 literal 是否真的变了。这比"跑接口看返回"更直接——证明代码路径确实改了，不只是"碰巧返回对了"。
+
+### 证据质量纪律
+
+```
+1. 推测即验证: 标了推测/indirect 的结论必须在当 Phase 内验证（查基准/查 debug log/换参数重跑）
+   → 标注和验证在同一个动作中完成。"标了推测继续往下测"= 永远不会回来处理的 TODO
+
+2. 单次观测不定论: 异常值不能单次定论（不能定"是 bug"也不能定"不是 bug"）
+   → 至少两个时间点采样（间隔 ≥5min）+ 参考实现对照，再下结论
+   → 区分暂态(cache 延迟) vs 持久(真 bug)。暂态值未确认持久性不得报 bug
+
+3. 合理化阻断: 看到异常现象后，先查参考实现（App/UI > C++ > 被测对象），后下结论
+   → "可能是设计如此"/"可能是闭市"/"可能是我参数写错了"不是调查终点
+   → 顺序不能反：先合理化再查证据 = 确认偏误
+
+4. 覆盖声明: 声称"X surface 一致"必须附验证数量占总数比例
+   → "4 项验证一致"不能说成"三 surface 一致"（实际有 184 个接口）
+```
 
 ### 每个接口的测试深度（happy path 只是起点）
 
@@ -272,14 +292,26 @@ Agent 需要做的记录：
 
 ```
 1. 加载 procedures/bug-report.md 模板
-2. 按 7 节格式写 bug report
-3. 写入 run 目录内 bugs/BUG-NNN-<slug>.md（run 内编号）
-4. results.json 中相关 items 的 bug_ids 填入 BUG-NNN
-5. 单 tester: 完成后更新 bugs-index.md；多 tester: 由 /better-test merge 合并
-6. 继续执行剩余测试（不因发现 bug 中断整组测试）
+2. 按 7 节格式写 bug report（两层结构：先大白话说影响，再技术细节）
+3. severity 用"最坏场景下谁受影响"定，不用自己碰到的场景。pre-existing 记在 fix_note 不降 severity
+4. pre-existing 必须标注（found_in 字段）——不标注开发者会误判为回归
+5. changelog 声称修复但实测未变 → 醒目标注 [CHANGELOG 声称修复但未确认]
+6. 写入 run 目录内 bugs/BUG-NNN-<slug>.md（run 内编号）
+7. results.json 中相关 items 的 bug_ids 填入 BUG-NNN
+8. 单 tester: 完成后更新 bugs-index.md；多 tester: 由 /better-test merge 合并
+9. 继续执行剩余测试（不因发现 bug 中断整组测试）
 ```
 
 Bug ID 全局递增。如果不确定是不是新 bug（可能是已知 bug 的新表现），先检查 bugs-index.md。
+
+### Bug Retest 规则
+
+```
+对 FIXED 未 VERIFIED 的 bug 做 retest 时：
+1. sim≠real: 涉及 backend 交互的 bug retest 必须用 real 账号。sim 错误码可能与 real 不同，同一 bug 在 sim 上可能不可见
+2. 全路径覆盖: bug 标 VERIFIED 前必须覆盖所有已知 failure paths。changelog 提到"补修某路径"时该路径必须单独验证
+3. 跨 tester 复现: 采信其他 tester 的 bug 前必须亲自复现——复现不只是确认，还能帮自己排查问题
+```
 
 ---
 
@@ -399,6 +431,9 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 - 证据只放最关键的一条。不是"我做了 5 步调查"，是"debug log 里看到 code=-1001"
 - 影响用"谁会受影响"来说，不用技术术语
 - 2 分钟能读完。超过了就砍
+- **外部自包含**：给开发者的报告不能引用本地路径。复现步骤、证据、对照全部在一个文件内
+- **先列表再数**：写"一共 X 个"之前，先输出编号列表逐个确认状态（active/推翻/合并），从列表机械地数
+- **边跑边写**：results.json / process-log 每跑完一项就写一条，不攒到最后补
 
 ---
 
