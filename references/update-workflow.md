@@ -97,7 +97,7 @@ Q4（对所有进 protocol 的）: 具体到 agent 能对照自检吗？
 | 经验教训 | **测试期间**：run 目录内 progress.md 关键发现段；**非测试期间**：known-issues.md lessons 段 | 证据级别 ≥ confirmed |
 | 覆盖缺口 | **测试期间**：run 目录内 summary.md；**非测试期间**：status.md 覆盖缺口段 | 标明风险和建议测试组 |
 | 新材料 | 对应文件（见下方材料处理表） | 立刻分析影响 |
-| 环境发现 | env-config.md | — |
+| 环境发现 | env-config.md | **立即更新**——新账号/特殊行为发现时当场写入，不等测试结束。等到结束补时细节已丢失 |
 | surface 变化 | surface-manifest.md | 新增标"未覆盖"，删除标"废弃" |
 
 > **测试期间 vs 非测试期间**：如果当前有活跃 tester（`.active-sessions/` 有 session 文件），Flaky/经验/覆盖缺口写到 run 目录内，由 `/better-test merge` 或单 tester 完成后合并到项目级文件。如果不在测试期间（如会话初始化时跑 update），可以直接写项目级文件。

@@ -993,6 +993,12 @@ history/ **只放测试运行产出和版本级材料**。以下不属于 histor
 | 项目级文档（README、设计文档） | 项目仓库本身 |
 | 中间临时文件（/tmp/ 下的 JSON） | 不归档，测试完成后清理或保留在 tmpdir |
 
+### 执行纪律通则（适用于所有输出文件）
+
+- **写产出前 re-read 对应模板**：读过 ≠ 记住。每次写输出文件前花 30 秒核对本段对应模板，比写完被打回重做快得多
+- **边跑边写**：process-log / results.json 每跑完一项就写一条。攒到最后补的后果：格式不统一、细节遗漏、赶工质量下降
+- **数量机械对齐**：声称 X 个 bug 就写 X 个文件。分类用 found_in / bug_type 字段，不用"写不写文件"来做分类
+
 ### 三份核心输出文件
 
 每次测试运行产出三份面向不同受众的文件：
@@ -1082,6 +1088,11 @@ history/ **只放测试运行产出和版本级材料**。以下不属于 histor
 | 技术深度 | 完整 | 完整（可复现级） | 只放核心证据 |
 | 语言 | 技术语言 OK | 结构化技术语言 | 大白话 |
 
+**summary 额外规则**：
+- **外部自包含**：给开发者的报告不能引用本地路径。复现步骤、证据、对照全部在一个文件内
+- **编号统一**：bug 编号使用单一连续序列（#1, #2, #3...），不区分旧/新来源。术语自解释——如果一个词需要额外解释，用解释替换该词
+- **先列表再数**：写"一共 X 个"之前，先输出编号列表逐个确认状态（active/推翻/合并），从列表机械地数。不凭记忆报数字
+
 ### 归档
 
 不再需要归档步骤。所有测试产出直接写入 run 目录 `history/<ver>/run-<tester-id>-NNN-<ts>/`，无需从 testers/ 复制。
@@ -1156,7 +1167,9 @@ lessons 的 `evidence_level` 字段——只有 proven 级的洞察才能写入 
       "error_code": "<如果 fail，错误码>",
       "error_detail": "<错误详情，不含凭证>",
       "stability_score": 1.0,
-      "bug_ids": []
+      "bug_ids": [],
+      "comparison_baseline": "<基准返回值摘要，如无对照则 null>",
+      "pre_existing": false
     }
   ]
 }
@@ -1194,7 +1207,14 @@ RESULT_FILE: <子 Agent 写入的文件路径>
 
 每个 bug 一个文件，存放在 tester 的 run 目录内 `bugs/`。文件名格式 `BUG-NNN-<slug>.md`，NNN 在 run 内递增。Coordinator merge 后分配项目级编号 `BUG-<version>-NNN`。
 
-使用 `procedures/bug-report.md` 的 7 节模板写正文。底部附 yaml 元数据管理 bug 生命周期：
+使用 `procedures/bug-report.md` 的 7 节模板写正文。**写作规则**：
+
+- **两层结构**：第一层用非技术人员能看懂的大白话（问题是什么、影响谁、有多严重），第二层是开发者需要的技术细节（复现步骤、log 证据、根因分析）
+- **pre-existing 标注**：found_in 字段标注首次出现版本。不标注 → 开发者误判为回归，排查方向错误
+- **changelog 声称修复**：实测未变的 bug 醒目标注 `[CHANGELOG 声称修复但未确认]`，对开发者调试方向有重要影响
+- **severity**：用最坏场景下谁受影响定，pre-existing 记在 fix_note 不降 severity
+
+底部附 yaml 元数据管理 bug 生命周期：
 
 ```yaml
 bug:
