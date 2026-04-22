@@ -11,13 +11,73 @@ strategy 是 tester 自动注册的触发点。首次执行 strategy 时：
    - 探测平台（env `CLAUDECODE=1` → claude-code；codex config → codex；等）
    - 获取 session_id、model、device 信息
    - 生成 tester-id：`<platform>-<sha1(session_id+timestamp)[:4]>`
-   - 创建 `testers/<tester-id>/bio.md`（填入 Current Session 表）
-   - 创建空 `testers/<tester-id>/status.md` 和 `testers/<tester-id>/progress.md`
+   - 创建 `testers/<tester-id>/registry.md`（身份 + Resources 段 + Runs 表）
+   - 创建 run 目录 `history/<version>/run-<tester-id>-001-<ts>/`
+   - 在 run 目录内写入 `bio.md`（此 run 的身份快照，不可变）
    - 报告："已注册 tester `<tester-id>`（<platform> / <model>）"
-3. 如果有单个 tester 且 last_active < 24h → 自动关联，更新 bio 的 session 信息
+3. 如果有单个 tester 且 last_active < 24h → 自动关联，创建新 run 目录（NNN 递增），更新 registry.md 的 Runs 表
 4. 如果有多个 tester → 提示用户选择或创建新 tester
 
-后续所有写操作使用此 tester-id 隔离。
+### 资源感知
+
+```
+注册时扫描所有 testers/*/registry.md 的 Resources 段：
+  IF 有其他活跃 tester：
+    → 展示其资源占用（端口、daemon PID、config 路径）
+    → 新 tester 需要避开已占用的资源
+    → 将自己的资源声明写入 registry.md Resources 段
+
+  示例：
+    "当前活跃 tester:
+      claude-a3f2: daemon port 11111, PID 12345
+     本 tester 将使用: daemon port 11112"
+
+资源变更时（如重启 daemon 换端口），tester 更新自己的 registry.md Resources 段。
+其他 tester 在需要操作共享资源时按需读取（最终一致，非实时轮询）。
+```
+
+### Session 注册（Hook 支持）
+
+```
+注册完成后，写入 session 标识文件供 hook 识别当前 tester：
+  mkdir -p .better-work/test/.active-sessions
+  echo '{"tester_id":"<tester-id>","run_dir":"history/<version>/run-<tester-id>-NNN-<ts>"}' \
+    > .better-work/test/.active-sessions/$PPID.json
+
+$PPID 是 Claude Code 进程的 PID（从 Bash 工具调用中获取）。
+session-write-guard.sh hook 使用此文件识别 tester 身份，阻止跨 tester 写入。
+
+Session 清理：tester 完成所有测试后删除自己的 session 文件。
+```
+
+### 注册门控（Gate）
+
+```
+注册完成后，必须验证以下文件存在才能继续：
+  1. testers/<tester-id>/registry.md — 存在且含 YAML frontmatter
+  2. history/<version>/run-<tester-id>-NNN-<ts>/bio.md — 存在
+  3. .active-sessions/$PPID.json — 存在（hook 需要）
+  任一缺失 → 阻断，不进入 Step 0（context_research）
+```
+
+### 写权限矩阵
+
+```
+Tester 测试期间可写：
+  ✅ testers/<自己的 id>/registry.md     ← 自己的可变状态（资源、Runs 表）
+  ✅ history/<version>/run-<自己>-*/      ← 自己的 run 输出（全部文件）
+
+Tester 测试期间不可写：
+  ❌ testers/<别人>/ 或 run-<别人>-*/     ← 其他 tester 的文件
+  ❌ test/status.md                       ← derived view，coordinator 写
+  ❌ test/known-issues.md                 ← derived view，coordinator 写
+  ❌ history/bugs-index.md                ← derived view，coordinator 写
+  ❌ history/feedback-rules.json          ← derived view，coordinator 从 feedback 文件重建
+
+对其他 tester 的读权限：按需读取 testers/*/registry.md（了解资源占用）。
+```
+
+后续所有写操作使用此 tester-id 隔离，产出写入 run 目录。
 
 ---
 
@@ -85,6 +145,10 @@ strategy 是 tester 自动注册的触发点。首次执行 strategy 时：
   建议重点: "A 组全跑 + BUG-claude-a3f2-001 回归验证 + D 组因为和 auth 共享 session fixture 也建议跑"
 
   待确认: "不确定这次重构是否影响了 MCP 的 auth 路径——代码 diff 可以确认"
+
+  ⚠ 全绿校验: IF 上次运行全部通过且本次初步判断无高风险：
+    → 不要直接跳过，先检查：error path 覆盖了吗？负向测试做了吗？三种用户姿态测了吗？compare 做了吗？
+    → "0 bug 是红灯不是绿灯"——全绿时第一反应应是"漏了什么"
 ```
 
 ## Step 0.5: 与用户对齐（align_with_user）
@@ -270,6 +334,10 @@ IF Step 1 检测到 CHANGELOG / release notes：
   → 每条 changelog 条目必须映射到至少一个测试项
   → 未映射的条目在 Step 6 展示给用户："以下 changelog 项没有对应测试，确认不需要测？"
   → 用户确认后标为 ⏭️ 写原因，不允许静默跳过
+
+  声称修复的条目特殊处理：
+  → 在计划中标注 `[CHANGELOG 声称修复——需验证]`，优先级高于普通变更
+  → 实测未变时在报告中醒目标出 `[CHANGELOG 声称修复但未确认]`
 ```
 
 ### 版本基线快照
@@ -279,6 +347,27 @@ IF 旧版本仍可用且未保存过基线：
   → 在执行测试前，先用旧版本跑关键接口保存行为快照
   → 存入 history/<old_version>/baseline.json
   → 供 compare 模式和 reflect 使用
+```
+
+### 测试前提验证（Pre-check）
+
+```
+在生成分阶段计划之前，验证以下前提条件：
+
+1. 标的物有效性: 确认所有测试标的物（代码/合约/产品/URL）当前有效存在
+   → 期货有到期日、期权有行权日、临时 token 会过期——用 stock_list/static-info 确认
+   → 标的不存在会被误判为"系统路由错误"，浪费大量排查时间
+
+2. 环境清理: 确认测试环境无残留状态
+   → credentials 文件（同 platform 多账号可能碰撞）、端口占用、残留进程
+   → 具体清理步骤由 env-config.md 注意事项定义
+
+3. 环境确认: 验证测试前提假设
+   → baseline 接口类型（REST vs 二进制协议）、密码可用性、枚举正确值
+   → 每个"我以为"都是一个潜在的环境陷阱
+
+4. 时段依赖标注: 标注哪些测试项依赖时间/市场时段
+   → 不在正确时段时标 skip + 具体原因，不要强行测得到模糊结果
 ```
 
 ### 分阶段计划生成
@@ -298,11 +387,17 @@ IF 旧版本仍可用且未保存过基线：
     a. 依赖链排序（被依赖的先跑）
     b. 同级按历史风险排序（bug 多的先跑）
   负向测试: 对每个 ✅ pass 的接口，选 1-2 个负向场景（错误参数 / 权限边界 / 边界值）
+  三种用户姿态: 每个关键接口列出三种请求体——完整参数(熟悉者) / 只传 required(新手) / 核心字段(LLM agent)
+  字段三态枚举: 每个可选字段至少测 3 种状态——key 缺失 / null / 合法值
+  error path 显式列出: 计划中为每个接口显式列出 error path 测试项，与 happy path 同等权重。静默失败（ret=0 但无效果）比报错更危险
 
 阶段 3: 回归验证
   输入: bugs-index 中 FIXED 未 VERIFIED 的 bug + active_failures + regression canary
   做什么: 跑 related_tests，和修复前对照验证因果关系
   准确度要求: fix 的验证需要 confirmed 级证据（不是"跑通了就行"）
+  sim≠real: 涉及 backend 交互的 bug retest 必须选 real 账号。sim 错误码可能与 real 不同，同一 bug 在 sim 上可能不可见
+  全路径覆盖: bug 标 VERIFIED 前必须覆盖所有已知 failure paths。changelog 提到"补修某路径"时该路径必须单独验证
+  跨 tester 复现: 采信其他 tester 的 bug 前必须亲自复现——复现不只是确认，还能帮自己排查问题
 
 阶段 4: 边界扩展
   输入: 与阶段 2 组相邻的组（共享依赖 / 调用链上下游）
@@ -319,6 +414,11 @@ IF 旧版本仍可用且未保存过基线：
     能深测（有 EXPECT_PATTERN + 运行条件满足）→ 执行并要求 field-level 证据
     不能深测 → 标 ⏭️ 写原因。不为覆盖率凑数
   输出: 最终可达覆盖率 T / R = NN%
+
+阶段 5+: 状态回验（贯穿所有阶段后）
+  测试操作可能改变账户/系统状态（如 margin 消耗、挂单数量变化）
+  所有阶段完成后重新验证关键状态，确认无不可逆变化
+  如有异常 → 记录到 process-log 并评估是否影响测试结论
 ```
 
 ### 贯穿所有阶段的准确度铁律
@@ -329,7 +429,13 @@ IF 旧版本仍可用且未保存过基线：
 3. 每个 ✅ pass 必须有 field-level 证据 → exit=0 级别不算 pass
 4. 每个结论的证据级别 ≥ direct → indirect 不能出现在最终结果中
 5. 宁可 ⏭️ 写原因也不降低证据标准凑覆盖率
-6. 每个阶段完成后报告证据质量分布（confirmed / direct / indirect 各几项）
+6. 每个阶段完成后报告证据质量分布（confirmed / direct / indirect 各几项），indirect >30% → 立即补强
+7. 推测即验证: 标了推测/indirect 的结论必须在当 Phase 内验证——标注和验证在同一动作完成。推测停留不验证 = 违规
+8. 单次观测不定论: 异常值至少两个时间点采样（间隔 ≥5min）+ 参考实现对照，区分暂态(cache)/持久(bug)。暂态未确认持久性不得报 bug
+9. 合理化阻断: 看到异常先查参考实现（按 Ground Truth 层级），后下结论。"可能是设计如此"/"可能是闭市"不是调查终点
+10. severity 用最坏场景下谁受影响定，不用自己碰到的场景。pre-existing 记在 fix_note 不降 severity
+11. 覆盖声明必须附验证数量占总数比例（"4 项验证一致"不等于"184 个接口一致"）
+12. 🟡 产生时就地解决——"先全部跑完再处理"导致 🟡 永远不会被处理
 ```
 
 ### 特殊情况的简化路径
@@ -357,9 +463,9 @@ IF 用户选择 compare 模式:
 ```
 对阶段 2 的每个受影响组/项：
 
-  假设格式：
+  假设格式（必须包含具体预期值和验证方法，"应该能工作"/"应该已修"不是合格假设）：
     IF <变更描述> THEN <可能的影响> BECAUSE <推理>
-    预期结果: <具体字段名 + 预期值/行为>
+    预期结果: <具体字段名 + 预期值/行为>（必须足够具体，能在测试后机械对照）
     验证方法: <跑什么命令，看什么字段>
 
   示例：
@@ -383,12 +489,12 @@ IF 用户选择 compare 模式:
 
 ## Step 5.5: 持久化计划（persist_plan）
 
-Step 4 + 5 完成后，将完整计划（含假设）写入 `testers/<tester-id>/strategy-plan.md`，status 设为 `draft`。
+Step 4 + 5 完成后，将完整计划（含假设）写入当前 run 目录的 `strategy-plan.md`，status 设为 `draft`。
 
 ### 写入流程
 
 ```
-1. 如果 testers/<tester-id>/strategy-plan.md 已存在且 status != completed:
+1. 如果 run-<tester-id>-NNN-<ts>/strategy-plan.md 已存在且 status != completed:
    → 旧文件 status 改为 superseded，last_updated 更新
    → 再写新文件（覆盖）
 
@@ -403,13 +509,16 @@ Step 4 + 5 完成后，将完整计划（含假设）写入 `testers/<tester-id>
    - User Adjustments ← 留空（Step 6 填写）
    - Accuracy Rules ← 准确度铁律
 
-3. 写入 testers/<tester-id>/strategy-plan.md
+3. 写入 run-<tester-id>-NNN-<ts>/strategy-plan.md
 ```
 
 ### 多 Agent 协调
 
 ```
-写入前，扫描 testers/*/strategy-plan.md（排除自己）：
+写入前，扫描其他 tester 的 run 目录中的 strategy-plan.md（排除自己）：
+  → 读取 testers/*/registry.md 找到各 tester 的最新 run 路径
+  → 读取各 run 目录下的 strategy-plan.md
+
   IF 存在其他 tester 的计划且 status 为 confirmed 或 in-progress：
     → 提取其 Phased Plan 中的 groups 列表
     → 在 Step 6 展示时附加：
@@ -459,7 +568,7 @@ Step 4 + 5 完成后，将完整计划（含假设）写入 `testers/<tester-id>
 
 ## Step 7: 交给 test-execution-workflow（emit_to_execution）
 
-用户确认后，test-execution-workflow 从 `testers/<tester-id>/strategy-plan.md` 读取计划：
+用户确认后，test-execution-workflow 从当前 run 目录的 `strategy-plan.md` 读取计划：
 - 分阶段计划（Phased Plan 段）
 - 每阶段的假设（Hypotheses 段）
 - 准确度铁律（Accuracy Rules 段）
@@ -467,6 +576,33 @@ Step 4 + 5 完成后，将完整计划（含假设）写入 `testers/<tester-id>
 
 执行开始时更新 `strategy-plan.md` YAML：`status=in-progress, last_updated=<now>`。
 所有阶段完成后更新：`status=completed, last_updated=<now>`。
+同时更新 `testers/<tester-id>/registry.md` 的 Runs 表状态。
+
+### 子 Agent 委托规则
+
+```
+IF 计划中某些阶段/组委托给子 agent 执行：
+  1. Spot check: 主 agent 必须抽查 ≥20% 的子 agent ✅ 结论（用不同账号/参数/验证方法）
+     → bug retest 结论必须亲自验证关键项（子 agent 缺乏完整上下文，可能做出"局部合理但全局错误"的判断）
+  2. 资源锁定: sub-agent 必须锁死资源标识（端口号/账号）
+     → 指定资源无响应时报错退出，不自动寻找其他端口
+  3. 并行隔离: 破坏性操作（重启服务/切换配置）的测试组最后跑、单独跑
+     → 同资源多 agent 会互斥，测试前规划好资源分配（账号、端口、进程）
+```
+
+### L2 对抗审查
+
+```
+触发条件: full / targeted / compare / bug-retest 模式完成后，主动 spawn 子 Agent 做对抗审查
+  → 不是被提醒才做，是流程必做步骤
+  → 加载 references/l2-audit-prompts.md
+
+审查焦点: L2 的价值在于挑战定性，不在于发现新 bug
+  → severity 评级是否用了"最坏场景"标准
+  → pass/fail 判定是否有 field-level 证据（不是用 trivial case 凑 pass）
+  → skip 是否掩盖了已知缺陷（应标 fail + pre-existing）
+  → 覆盖声明是否附了覆盖率
+```
 
 ### 附加提醒（嵌入 Step 6 展示中，条件触发）
 
@@ -490,6 +626,19 @@ Step 4 + 5 完成后，将完整计划（含假设）写入 `testers/<tester-id>
 | 版本对比 | v1.4.27 二进制 | v1.4.28 二进制 |
 | 修 bug 前后 | 修复前的 commit | 修复后的 commit |
 | Feature flag 对比 | flag=off | flag=on |
+
+### Ground Truth 层级
+
+```
+对照时的正确性层级（高到低）：
+  1. App / UI（终端用户看到的值）— 最终 ground truth
+  2. 参考实现（C++ / Python SDK）— 技术 ground truth
+  3. 被测对象（新实现）
+
+比较时对齐字段语义，不只比数值。
+  → 参考实现的 power 字段 ≠ App 的"购买力"——它们可能是不同计算
+  → 不同账号登录时数据不同，比较返回字段结构一致性（核心字段是否都有）> 数值一致性
+```
 
 ### 前置条件
 

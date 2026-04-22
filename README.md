@@ -123,6 +123,7 @@ The skill classifies the project (11 types: library, daemon, API, CLI, mobile ap
 | `/better-test update` | Signal-driven incremental update (new tests, new mappings, new materials from user) |
 | `/better-test reflect [scope]` | Extract experience from history: impact-map validation, stability trends, bug hotspots, lessons |
 | `/better-test protocol-update [text]` | Upgrade cognitive constraints from user input or session summary |
+| `/better-test merge` | Merge results from multiple testers — interactive run selection, conflict detection, unified report |
 | `/better-test checkpoint` | Save current test task state |
 | `/better-test resume` | Read progress and continue |
 

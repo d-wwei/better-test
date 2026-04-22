@@ -54,7 +54,29 @@ if [[ -z "$LOG_DIR" ]]; then
   exit 0
 fi
 
-LOG_FILE="$LOG_DIR/execution-log.md"
+# Try to find tester's run directory via session file (Phase 2: per-tester isolation)
+# If session file exists, write to run directory; otherwise fallback to shared location
+SESSION_DIR="$LOG_DIR/.active-sessions"
+RUN_LOG_DIR=""
+if [[ -d "$SESSION_DIR" ]]; then
+  for PID in $PPID $(ps -o ppid= -p $PPID 2>/dev/null | tr -d ' '); do
+    if [[ -f "$SESSION_DIR/$PID.json" ]]; then
+      RUN_DIR_REL=$(jq -r '.run_dir // empty' < "$SESSION_DIR/$PID.json")
+      if [[ -n "$RUN_DIR_REL" ]]; then
+        # run_dir is relative to .better-work/test/, e.g. "history/v1.4.28/run-xxx-001-..."
+        RUN_LOG_DIR="$LOG_DIR/$RUN_DIR_REL"
+      fi
+      break
+    fi
+  done
+fi
+
+if [[ -n "$RUN_LOG_DIR" && -d "$RUN_LOG_DIR" ]]; then
+  LOG_FILE="$RUN_LOG_DIR/execution-log.md"
+else
+  # Fallback: shared location (backward compatible, used when no active session)
+  LOG_FILE="$LOG_DIR/execution-log.md"
+fi
 
 # Get timestamp with timezone offset
 TIMESTAMP=$(date +"%Y-%m-%dT%H:%M:%S%z" | sed 's/\([0-9][0-9]\)$/:\1/')

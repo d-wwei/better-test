@@ -193,19 +193,18 @@ Smoke 模式不触发（覆盖率审计对 smoke 无意义）。
 ```
 1. 测试完成，results.json 已写入
 2. 读本文件（references/l2-audit-prompts.md）
-3. 准备输入文件路径：
-   - execution-log: test/execution-log.md（或 testers/<tester-id>/execution-log.md）
-   - results: history/<version>/run-<tester-id>-NNN/results.json
+3. 准备输入文件路径（全部在当前 run 目录内）：
+   - execution-log: run-<tester-id>-NNN-<ts>/execution-log.md
+   - results: run-<tester-id>-NNN-<ts>/results.json
    - test-groups: test/test-groups.md
    - surface-manifest: test/surface-manifest.md（如有）
    - known-issues: test/known-issues.md
-   - bugs: history/<version>/bugs/
+   - bugs: run-<tester-id>-NNN-<ts>/bugs/
 4. 填充 3 个 prompt 模板的文件路径
 5. Spawn 子 Agent（用 Agent tool），传入合并后的 prompt
    建议合并为一次 spawn（3 个审计一起做），减少开销
-6. 子 Agent 输出写入 testers/<tester-id>/l2-findings.md
-7. 主 Agent 读 l2-findings.md，嵌入审计面板（audit-report.md）
-8. 归档 l2-findings.md 到 history/<version>/run-<tester-id>-NNN/
+6. 子 Agent 输出写入 run-<tester-id>-NNN-<ts>/l2-findings.md
+7. 主 Agent 读 l2-findings.md，嵌入审计面板（run 目录内 audit-report.md）
 ```
 
 ### 合并 Prompt（推荐：一次 spawn 做 3 个审计）

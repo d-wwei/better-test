@@ -125,6 +125,7 @@ Cursor、Gemini CLI、OpenCode、OpenClaw 的适配安装命令见 `references/a
 | `/better-test update` | 信号驱动的增量更新（新测试、新映射、用户提供的新材料） |
 | `/better-test reflect [scope]` | 从历史中提取经验：映射验证、稳定性趋势、bug 热点、经验综合 |
 | `/better-test protocol-update [text]` | 从用户输入或会话总结升级认知约束 |
+| `/better-test merge` | 合并多 tester 结果 — 交互式选择 run，冲突检测，统一报告 |
 | `/better-test checkpoint` | 保存当前测试任务进度 |
 | `/better-test resume` | 从上次断点恢复 |
 

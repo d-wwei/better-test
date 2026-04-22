@@ -32,16 +32,17 @@ verdict 取值（共 6 种）:
 ### Step 1: 验证 test_id 存在
 
 ```
-读 .better-work/test/history/<current_version>/run-*-*/results.json（最近一次，跨所有 tester）
+读当前 tester 的 run 目录内 results.json
 查找 items[].id == <test_id>
-不存在 → 报错并提示用户检查 ID 拼写
+不存在 → 扩大搜索到同版本其他 run-*-*/results.json
+仍不存在 → 报错并提示用户检查 ID 拼写
 存在 → 继续
 ```
 
 ### Step 2: 写 feedback markdown 文件
 
 ```
-路径: .better-work/test/history/<version>/feedback/<test_id>_<verdict>.md
+路径: run-<tester-id>-NNN-<ts>/feedback/<test_id>_<verdict>.md
 内容:
 
 ---
@@ -71,31 +72,22 @@ tester_id: <tester-id>
 
 `source` 默认 `developer`。如果是 agent 自己推断的（很少用），标 `inferred` 并要求人类 review。
 
-### Step 3: 自动提炼为规则（write to feedback-rules.json）
+### Step 3: 规则映射（不直接写 feedback-rules.json）
 
-按 verdict 类型映射到 `feedback-rules.json` 的不同段：
+Feedback markdown 文件中的 verdict 决定其最终在 `feedback-rules.json` 中的映射。**但 tester 测试期间不直接写 feedback-rules.json** — 该文件由 coordinator 通过 `/better-test merge` 从所有 run 的 feedback/ 文件重建。
 
-```json
-{
-  "suppress": [
-    {"test_id": "<id>", "reason": "<note>", "since": "<version>"}
-  ],
-  "known_behaviors": [
-    {"pattern": "<id>", "note": "<note>", "since": "<version>"}
-  ],
-  "lessons": [
-    {"insight": "<text>", "added": "<YYYY-MM-DDTHH:MM:SS±HH:MM>"}
-  ]
-}
-```
+单 tester 场景：tester 在 run 完成后自行重建 feedback-rules.json。
 
-| verdict | 写入段 | 行为 |
-|---------|-------|------|
+映射规则（coordinator 或单 tester 在重建时使用）：
+
+| verdict | 映射到 feedback-rules.json 的段 | 行为 |
+|---------|------|------|
 | not-a-bug | `suppress` | 永久排除 active failures |
 | wontfix | `suppress` | 永久排除 active failures |
 | deferred | `known_behaviors` | 仍算 fail，但提示"已知" |
 | fixed | （不写 suppress）| 等下次跑通过验证；下次跑通过后自动从 active fail 移除 |
 | fixed-differently | `known_behaviors` + 提示用户更新 test-groups.md 中该项的断言 | |
+| revoke | 撤销该 test_id 之前的任何 verdict | 按时间序列处理，后写的 revoke 覆盖先写的 verdict |
 
 **回归保护（Tier 1 核心流程）**：verdict=fixed 或 fixed-differently 时，自动提示：
 
@@ -105,7 +97,7 @@ tester_id: <tester-id>
 3. 下次 strategy 自动推荐 bug-retest 覆盖此项
 ```
 
-**重要**：`feedback-rules.json` 由本 skill 自动维护，**严禁人手编辑**（red line #7）。如果要调整规则，撤回并重新走 `/better-test feedback`。
+**重要**：`feedback-rules.json` 由 `/better-test merge` 自动重建或单 tester 在 run 完成后重建，**严禁人手编辑**（red line #7）。如果要调整规则，撤回并重新走 `/better-test feedback`。
 
 ### Step 4: 同步更新 known-issues.md（人类视图）
 

@@ -3,8 +3,8 @@ name: better-test
 description: |
   测试知识管理：为项目构建持久化的测试组定义、变更影响映射、已知问题库和测试认知约束，支持变更驱动的策略推荐、跨 session 反馈循环和断点续传。Better-Work 系列子技能。
   触发场景：发布新版本前回归、修了 bug 想验证、变更后想知道跑哪些测试、录入开发者反馈避免重复提报。独立命令 /better-test，或作为子技能 /better-work test。
-  Subcommands: init, update, strategy, feedback, protocol-update, reflect, checkpoint, resume
-argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-update [text] | reflect [scope] | checkpoint | resume"
+  Subcommands: init, update, strategy, feedback, protocol-update, reflect, checkpoint, resume, merge
+argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-update [text] | reflect [scope] | checkpoint | resume | merge"
 ---
 
 # Better Test
@@ -25,49 +25,76 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 - `/better-test reflect [scope]` — 从历史数据提取经验：impact-map 验证、稳定性趋势、bug 热点、经验综合、耗时校准、模式提炼。增量版在每次测试后自动执行
 - `/better-test checkpoint` — 保存当前测试任务进度
 - `/better-test resume` — 从上次断点恢复
+- `/better-test merge` — 合并多个 tester 的测试结果（交互式选择 run，校验冲突，生成统一报告）
 
 ## Output Structure
 
+两种角色，严格隔离：**Tester** 在自己的 run 目录内独立工作；**Coordinator** 在所有 tester 完成后合并结果。
+
 ```
-.better-work/                              ← 与 better-code 共享
-├── shared/                                ← 读/写：所有 skill 可读写（架构 8.1）
-│   └── index.md                           ← 优先只读；如写则 commit 标 [better-test]
-├── code/                                  ← 只读：高风险区域 → 触发更全面测试
+.better-work/                                  ← 与 better-code 共享
+├── shared/                                    ← 读/写：所有 skill 可读写
+│   └── index.md                               ← 优先只读；如写则 commit 标 [better-test]
+├── code/                                      ← 只读：高风险区域 → 触发更全面测试
 │   └── danger-zones.md
-└── test/                                  ← 写：测试专用
-    ├── protocol.md                        ← 共享知识：测试认知约束（≤15 行），每对话注入
-    ├── protocol-changelog.md              ← 共享知识：变更日志（叙事+KAC 混合格式）
-    ├── protocol-versions/                 ← 共享知识：protocol 全文快照（每次 update 前保存）
-    ├── test-groups.md                     ← 共享知识：测试组定义 + 运行条件
-    ├── impact-map.md                      ← 共享知识：变更关键词 → 测试组映射
-    ├── known-issues.md                    ← 共享知识：已知 fail / 预期行为 / 经验
-    ├── env-config.md                      ← 共享知识：测试环境配置，init 创建，随时 update
-    ├── surface-manifest.md                ← 共享知识：接口清单 SSOT（API/CLI/daemon 适用）
-    ├── tools/                             ← 共享：跨版本复用的测试脚本（surface-walk.sh 等）
-    ├── reference/                         ← 共享：暂存参考资料
+└── test/                                      ← 写：测试专用
+    ├── protocol.md                            ← 共享知识：测试认知约束（≤15 行），每对话注入
+    ├── protocol-changelog.md                  ← 共享知识：变更日志
+    ├── protocol-versions/                     ← 共享知识：protocol 全文快照
+    ├── test-groups.md                         ← 共享知识：测试组定义 + 运行条件
+    ├── impact-map.md                          ← 共享知识：变更关键词 → 测试组映射
+    ├── known-issues.md                        ← derived view（coordinator 写，tester 只读）
+    ├── env-config.md                          ← 共享知识：测试环境配置
+    ├── surface-manifest.md                    ← 共享知识：接口清单 SSOT
+    ├── status.md                              ← derived view（coordinator 写，tester 只读）
+    ├── tools/                                 ← 共享：跨版本复用的测试脚本
+    ├── reference/                             ← 共享：暂存参考资料
     │
-    ├── testers/                           ← tester 注册中心（多 agent 并行隔离）
-    │   └── <tester-id>/                   ← 每个 tester 独立目录
-    │       ├── bio.md                     ← 身份 + session 链 + working notes + 追溯路径
-    │       ├── status.md                  ← 此 tester 的最新测试状态
-    │       ├── progress.md                ← 此 tester 的断点
-    │       └── strategy-plan.md           ← 此 tester 的分阶段执行计划（strategy 输出）
+    ├── testers/                               ← 轻量注册表
+    │   └── <tester-id>/
+    │       └── registry.md                    ← 身份 + 资源声明 + run 列表（tester 自己可写）
     │
-    ├── status.md                          ← 聚合视图（从 testers/*/status.md 自动合并）
-    │
-    └── history/                           ← 测试运行历史（git-tracked）
+    └── history/                               ← 测试运行产出（git-tracked）
         ├── _meta.json
-        ├── feedback-rules.json            ← 共享：自动维护，勿手编
-        ├── bugs-index.md                  ← 共享：跨版本 bug 索引
+        ├── feedback-rules.json                ← derived view（coordinator 从各 run 的 feedback/ 重建）
+        ├── bugs-index.md                      ← derived view（coordinator 从 merge 输出生成）
+        │
         └── <version>/
-            ├── run-<tester-id>-NNN-<ts>/  ← 每次运行归档（tester-id 防并发碰撞）
-            │   ├── results.json + summary.md + process-log.md
+            ├── run-<tester-id>-NNN-<ts>/      ← tester 的完整工作目录（自包含）
+            │   ├── bio.md                     ← 此 run 的 tester 身份快照（不可变）
+            │   ├── strategy-plan.md           ← 此 run 的分阶段执行计划
+            │   ├── progress.md                ← 断点（checkpoint 写入）
+            │   ├── status.md                  ← 此 tester 本 run 的测试结果
+            │   ├── results.json               ← 结构化结果
+            │   ├── process-log.md             ← 过程日志
+            │   ├── summary.md                 ← 2 分钟速览
             │   ├── execution-log.md + l2-findings.md + audit-report.md
-            ├── feedback/<test_id>_<verdict>.md
-            └── bugs/BUG-<tester-id>-NNN-<slug>.md
+            │   ├── bugs/                      ← 此 tester 发现的 bug（run 内编号）
+            │   │   └── BUG-NNN-<slug>.md
+            │   └── feedback/                  ← 此 tester 录入的 feedback
+            │       └── <test_id>_<verdict>.md
+            │
+            ├── merge-<coordinator-id>-<ts>/   ← coordinator 工作目录（仅多 tester 时需要）
+            │   ├── bio.md                     ← coordinator 身份
+            │   ├── status.md                  ← 合并工作状态
+            │   ├── conflict-log.md            ← tester 间差异和冲突记录
+            │   ├── merged-summary.md          ← 统一结论
+            │   ├── merged-results.json        ← 聚合结果
+            │   └── bugs/                      ← 校验后的 bug（项目级编号）
+            │       └── BUG-<version>-NNN-<slug>.md
+            │
+            ├── input/                         ← 触发本版本测试的开发者输入
+            └── baseline.json                  ← 旧版本行为快照（compare 模式用）
 ```
 
-**tester-id**：格式 `<platform>-<4hex>`（如 `claude-a3f2`、`codex-c9d4`），由 `sha1(session_id + timestamp)[:4]` 生成。一个 tester 可跨 session 存活（通过 resume），但同一时刻一个 tester 只对应一个进程。详见 `references/templates.md` 的 bio.md 模板。
+**写权限矩阵**：
+
+| 角色 | 可写 | 不可写 |
+|------|------|--------|
+| **Tester**（测试期间） | `testers/<自己>/registry.md` + `run-<自己>-*/` 内全部文件 | 其他 tester 的文件、项目级聚合文件（status.md / known-issues.md / bugs-index.md / feedback-rules.json） |
+| **Coordinator**（merge 时） | 项目级聚合文件 + `merge-<自己>-*/` 内全部文件 | tester 的 run 目录（只读） |
+
+**tester-id**：格式 `<platform>-<4hex>`（如 `claude-a3f2`、`codex-c9d4`），由 `sha1(session_id + timestamp)[:4]` 生成。一个 tester 可跨 session 存活（通过 resume），但同一时刻一个 tester 只对应一个进程。详见 `references/templates.md` 的 registry.md 模板。
 
 **时间戳规范**：所有时间戳统一为 ISO 8601 + 时区偏移，三档精度：Full `2026-04-21T14:23:07+08:00`、Compact `04-21 14:23:07+08`、Date-only `2026-04-21`。详见 `references/templates.md` 的 Timestamp Format Specification。
 
@@ -81,12 +108,18 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 4. `test-groups.md` 中条目缺少"运行条件"（环境、依赖、是否需要真账户）或"如何运行" → 不完整
 5. `impact-map.md` 中关键词→测试组的映射没有验证依据（人类知识或历史 fail 共现） → 必须标注 `[未验证]`
 6. `known-issues.md` 写入时未附 test_id + 判定来源（developer / human / inferred） → 违规
-7. `feedback-rules.json` 被人手编辑（应通过 `/better-test feedback` 提炼） → 违规，破坏自动化
-8. `testers/<tester-id>/progress.md` 中记录无法被下一个 session 理解的模糊状态（如"差不多跑完了"） → 违规，必须精确到测试 ID 和组
+7. `feedback-rules.json` 被人手编辑（应通过 `/better-test feedback` 提炼或 `/better-test merge` 重建） → 违规，破坏自动化
+8. `progress.md` 中记录无法被下一个 session 理解的模糊状态（如"差不多跑完了"） → 违规，必须精确到测试 ID 和组
 9. `init` 时跑全部测试以"摸清当前状态" → 违规，init 只读知识不执行测试
 10. flaky 测试连续 2+ 次表现不一致时，未在 `known-issues.md` 的 Flaky 段标注或未发起 `/better-test feedback ... deferred` → 违规，flaky 不能默默吞掉
-11. `bio.md` 的 working notes 超过 20 条 → 必须归档旧条目到 session log，保持可读性
-12. 时间戳不带时区偏移（如裸 `2026-04-21 14:23` 或 `<ISO>` 占位符） → 违规，必须使用三档规范格式
+11. 时间戳不带时区偏移（如裸 `2026-04-21 14:23` 或 `<ISO>` 占位符） → 违规，必须使用三档规范格式
+12. tester 测试期间写入项目级聚合文件（`test/status.md`、`known-issues.md`、`bugs-index.md`、`feedback-rules.json`） → 违规，这些是 derived view，只有 coordinator 通过 `/better-test merge` 写入
+13. tester 注册后未完成 `registry.md` + `run-*/bio.md` 创建就开始执行测试 → 违规，必须先通过注册门控
+14. tester 测试期间写入其他 tester 的 `testers/<别人>/` 或 `run-<别人>-*/` → 违规，严格隔离
+15. bug retest 涉及 backend 交互（下单/交易/账户操作）时，不得仅在 sim 环境验证 → 违规，sim 错误码可能与 real 不同，同一 bug 在 sim 上可能不可见
+16. run 目录缺少 `results.json`（只有 markdown 无结构化数据） → 不完整，机器可解析的结果是跨 session 自动对比的前提
+17. strategy 阶段 changelog 条目未逐一映射到测试项且未映射条目无显式标注 `⏭️ 不需要测: <原因>` → 违规，不允许静默跳过
+18. 已知有 bug 的功能点标 pass（用 trivial case 凑）或用 skip 掩盖已知缺陷 → 违规，已知缺陷应标 fail + 注明 pre-existing
 
 ## Acceptance Criteria
 
@@ -95,7 +128,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 3. 同一个 bug 用 `/better-test feedback <id> wontfix` 录入后，下次 strategy 推荐时该项自动从 active failures 排除，不再重复提报
 4. `checkpoint` + `resume` 后，agent 能准确复述上次跑到哪个组的哪个 ID（resume 时列出所有 tester，用户选择要恢复的 tester）。如有 `strategy-plan.md`（status: confirmed 或 in-progress），resume 可跳过重跑 strategy 直接从计划续跑
 5. `references/adapters.md` 为每个支持平台（Claude/Cursor/Gemini/Codex/OpenCode/OpenClaw）都给出**可粘贴执行**的注入语法（@ 引用 vs 内容嵌入），无 placeholder 占位
-6. 多 tester 并发测试时，各 tester 的 status/progress/run 目录互不干扰，聚合 status.md 正确合并所有 tester 状态
+6. 多 tester 并发测试时，各 tester 只写自己的 `run-<自己>-*/` 目录和 `testers/<自己>/registry.md`，互不干扰。`/better-test merge` 能从多个 run 目录正确生成聚合 status.md、bugs-index.md 和 conflict-log.md
 
 ## References
 
@@ -113,6 +146,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 | `references/l2-audit-prompts.md` | 测试完成后（full/targeted/compare/bug-retest） | L2 子 Agent 审查 prompt：执行审计 + 覆盖率对账 + 证据审计 + l2-findings.md 格式 |
 | `references/protocol-update-workflow.md` | `/better-test protocol-update` | 认知约束升级 + changelog |
 | `references/reflect-workflow.md` | `/better-test reflect` | 历史经验提取：6 类分析 + 增量/全量两层机制 |
+| `references/merge-workflow.md` | `/better-test merge` | 多 tester 结果合并：扫描 run → 冲突检测 → bug 校验 → 生成聚合文件 |
 | `references/progress-workflow.md` | `/better-test checkpoint` 或 `resume` | 断点续传 |
 | `references/templates.md` | 生成输出文件时 | 核心文件的模板 + 质量标准 |
 | `references/adapters.md` | 多平台注入 | Claude / Cursor / Gemini / Codex 适配 |

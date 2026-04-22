@@ -1,6 +1,6 @@
 # Progress Workflow — 断点续传
 
-管理 `.better-work/test/testers/<tester-id>/progress.md` 文件，让多轮长测试任务在跨 session 时不丢上下文。每个 tester 有独立的 progress，互不干扰。
+管理 `run-<tester-id>-NNN-<ts>/progress.md` 文件，让多轮长测试任务在跨 session 时不丢上下文。每个 tester 的 progress 在自己的 run 目录内，互不干扰。
 
 ## 适用场景
 
@@ -93,20 +93,19 @@
 
 ### 执行步骤
 
-1. **列出所有 tester**：扫描 `.better-work/test/testers/` 目录
+1. **列出所有 tester**：扫描 `.better-work/test/testers/` 目录，读每个 tester 的 `registry.md`
 
-2. **展示 tester 列表**（读每个 tester 的 bio.md）：
+2. **展示 tester 列表**（从 registry.md 找到最新 run，读 run 内 progress.md）：
 
 ```
 可用 tester:
 
   1. claude-a3f2 | claude-code / opus-4-6 | last active: 04-21 14:23:07+08
-     scope: API regression testing for v2.1
+     latest run: run-claude-a3f2-002-... (v1.4.28, in-progress)
      progress: B 组进行中 (9/14 done), 待录 feedback 2 条
-     working notes: 3 条
 
   2. codex-c9d4 | codex / gpt-5.4 | last active: 04-21 14:25:30-07
-     scope: smoke testing v2.1
+     latest run: run-codex-c9d4-001-... (v1.4.28, completed)
      progress: 全部完成 (8/8 pass)
 
 选择要恢复的 tester（输入编号）:
@@ -114,22 +113,22 @@
 
 **快捷路径**：如果只有 1 个 tester 且 last_active < 24h → 自动恢复，跳过选择，告知用户。
 
-3. 用户选择后，**读 bio.md 的 working notes**（必读，含关键发现）
+3. 用户选择后，从 registry.md 的 Runs 表定位最新 run 目录
 
-4. 读 `testers/<tester-id>/progress.md`，向用户汇报：
+4. 读 run 目录内的 `progress.md`，向用户汇报：
 
 ```
 恢复 tester: claude-a3f2
+Run: run-claude-a3f2-002-...
 上次进度:
 - 任务: <任务描述>
 - 版本: v<version>，模式: <mode>
 - 已完成 N 项，进行中 M 项，待跑 K 项，待录 feedback L 项
 - 上次停在: <恢复上下文中的位置>
 - 距上次更新: <时间差>
-- Working notes: <条数> 条关键发现（已读取）
 ```
 
-4.5 读 `testers/<tester-id>/strategy-plan.md`（如存在）：
+4.5 读 run 目录内的 `strategy-plan.md`（如存在）：
 
 ```
 IF 文件存在：
@@ -146,6 +145,7 @@ IF 文件不存在：
 
 汇报格式追加：
   恢复 tester: <tester-id>
+  Run: <run directory>
   上次进度:
   - ...（原有字段）
   - 策略状态: <status 对应的描述>
@@ -165,23 +165,21 @@ IF 文件不存在：
    - 如果上次是 managed 模式 → 检查 daemon 是否还在跑
    - 如果上次依赖某临时文件 → 检查是否还存在
    - 如果当前设备与 bio 记录的设备不同 → 报告差异
+   - 读 `testers/*/registry.md` 的 Resources 段，检查资源冲突（端口被其他 tester 占用）
    - 如果有变化 → 报告差异
 
 7. 询问用户："从 [进行中的项] 续测，还是从头跑某段？"
 
 8. 用户确认后：
-   - 更新 bio.md：新增 session history 行，更新 Current Session 表
+   - 更新 `testers/<tester-id>/registry.md` 的 last_active
+   - 如果需要新 run → 创建新 run 目录 + bio.md，更新 registry.md Runs 表
+   - 如果续跑同一 run → 继续写入同一 run 目录
    - 按上次的"测试上下文"恢复环境，继续执行
 
 ### 冲突处理
 
-如果 progress.md 记录的 results.json 路径已被修改（比如另一个 tester 跑了同版本）：
-- 读最新 results.json
-- 对比上次 progress 中"已完成"列表
-- 用最新数据修正进度（已完成可能更多了）
-- 报告："上次 checkpoint 后有其他 tester 跑了 N 项，进度已自动合并"
-
 如果 progress.md 提到的 daemon 已崩 / 端口被占 / 凭证过期：
+- 读 `testers/*/registry.md` Resources 段确认端口占用情况
 - 报告具体差异
 - 不自动重启 daemon —— 让用户决定
 
@@ -206,12 +204,13 @@ Agent 检测到以下情况时，主动建议 checkpoint：
 
 ```
 init       → 创建 testers/ 目录（不创建具体 tester，等 strategy 或 checkpoint 时自动注册）
-strategy   → 如无活跃 tester 则自动注册；生成 strategy-plan.md；执行前提示用户："要不要先 checkpoint？"
-跑测试中   → 30 分钟提醒 / 跑完每组后提醒
-feedback   → 录入完一条后自动追加到 testers/<tester-id>/progress.md 的"已录 feedback"段
-update     → update 完后清空当前 tester progress.md 的"待录 feedback"段（已处理）
-resume     → 列出 testers → 用户选择 → 读 bio + progress + strategy-plan → 报告 → 询问 → 续跑
-checkpoint → 同时更新 bio.md 的 working notes（如有新发现）和 last_active
+strategy   → 如无活跃 tester 则自动注册（创建 registry.md + run 目录 + bio.md）；生成 strategy-plan.md 到 run 目录
+跑测试中   → 30 分钟提醒 / 跑完每组后提醒；所有写操作在 run 目录内
+feedback   → 录入完一条后写入 run 目录内 feedback/；追加到 progress.md 的"已录 feedback"段
+update     → update 完后清空当前 run progress.md 的"待录 feedback"段（已处理）
+resume     → 扫描 testers/*/registry.md → 用户选择 → 读 run 目录内 progress + strategy-plan → 报告 → 续跑
+checkpoint → 写入 run 目录内 progress.md + 更新 registry.md last_active
+merge      → 所有 tester 完成后，coordinator 读各 run 目录合并结果
 ```
 
 ## 不要做的事
@@ -220,4 +219,5 @@ checkpoint → 同时更新 bio.md 的 working notes（如有新发现）和 las
 - ❌ 不要把 results.json 全文复制进 progress.md（只存路径）
 - ❌ 不要写"差不多/快完成了"这种模糊状态
 - ❌ 不要在没有 checkpoint 的情况下假装能 resume —— 没有就承认"无进度记录"
-- ❌ 不要跨 tester 写 progress —— 每个 tester 只写自己的 `testers/<tester-id>/progress.md`
+- ❌ 不要跨 tester 写 progress —— 每个 tester 只写自己 run 目录内的 `progress.md`
+- ❌ 不要在测试期间写项目级聚合文件（status.md、known-issues.md 等）—— 那是 coordinator 的职责
