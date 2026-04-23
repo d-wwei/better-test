@@ -34,10 +34,10 @@ if [[ ! -f "$RUN_DIR/bio.md" ]]; then
 fi
 
 TESTERS_DIR=$(echo "$RUN_DIR" | sed 's|\(.*\.better-work/test\)/.*|\1/testers|')
-if [[ -n "$TESTER_ID" ]] && [[ -d "$TESTERS_DIR" ]]; then
+if [[ -n "$TESTER_ID" ]]; then
   REGISTRY="$TESTERS_DIR/$TESTER_ID/registry.md"
   if [[ ! -f "$REGISTRY" ]]; then
-    WARNINGS="${WARNINGS}registry.md not found at $REGISTRY. "
+    WARNINGS="${WARNINGS}registry.md not found at $REGISTRY (testers/ directory may not exist yet). "
   fi
 fi
 

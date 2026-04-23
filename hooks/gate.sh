@@ -70,8 +70,13 @@ dispatch_hook() {
   exit_code=$?
 
   if [[ $exit_code -eq 2 ]]; then
+    # Intentional block by sub-hook
     BLOCK=true
     BLOCK_MSG=$(cat "$stderr_file" 2>/dev/null)
+  elif [[ $exit_code -ne 0 ]]; then
+    # Unexpected error (syntax error, jq failure, etc.) — fail-closed, not fail-open
+    BLOCK=true
+    BLOCK_MSG="better-test gate: sub-hook $(basename "$script") exited with unexpected code $exit_code. Blocking as safety precaution. stderr: $(cat "$stderr_file" 2>/dev/null)"
   elif [[ -n "$result" ]]; then
     local ctx
     ctx=$(echo "$result" | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null)

@@ -171,7 +171,7 @@ Recommended order (most specific first, cheapest first):
 3. `derived-view-guard.sh` — filename match + lockfile check
 4. `session-write-guard.sh` — filename match + session file read (most expensive)
 
-PostToolUse hooks are informational/validation — they don't block the already-completed tool call (exit 2 shows a warning but the write already happened). Order matters less.
+PostToolUse hooks are informational/validation — they inject warnings via `additionalContext` (exit 0 + JSON), not block (the write already happened). Order matters less.
 
 ## .gitignore
 
