@@ -12,16 +12,22 @@ The agent doesn't know which tests cover which changes. It doesn't know which te
 
 `better-test` captures this knowledge — the testing half of a [Full Context + Lite Control](https://github.com/d-wwei/better-work) framework. Persistent test playbook, developer-feedback loops, experience extraction, and a 4-layer constraint framework that prevents the agent from cutting corners.
 
-## What's new in v2.0
+## What's new in v3.x
 
-v2.0 is a major redesign. Key additions:
+v3.0: Multi-agent parallel testing + tester/coordinator two-role architecture.
+v3.1: Hook enforcement, protocol split, skill upgrade pipeline.
 
-- **4-layer constraint framework** (L0 goal calibration, L1 hooks, L2 independent sub-agent verification, L3 human audit panel) — ensures the agent doesn't declare false passes or skip steps
-- **Three-tier methodology architecture** — core procedures embedded in workflows (always loaded), extended procedures loaded by condition, design rationale for humans
-- **Test execution framework** — generates per-project execution plans combining universal discipline with project-specific knowledge
-- **Experience extraction** (`/better-test reflect`) — automatically learns from test history: validates impact-map mappings, tracks stability trends, identifies bug hotspots, synthesizes lessons
-- **Differential testing** (`compare` mode) — test a Rust rewrite against the C++ original, or compare versions
-- **Bug lifecycle management** — structured bug reports with OPEN → CONFIRMED → FIXED → VERIFIED → CLOSED tracking
+Key capabilities:
+
+- **8 L1 hooks + gate.sh universal entry** — credential scan, derived-view guard, session isolation, execution logging, post-test checklist, results validation. gate.sh auto-detects better-test projects from global config (no per-project setup)
+- **Protocol split** — `protocol-base.md` (skill-level, auto-propagates) + project `protocol.md` (safety + project discipline). Skill upgrades reach all projects automatically
+- **Tester isolation** — parallel agents write to separate `run-<tester-id>-NNN/` directories. `/better-test merge` produces unified results
+- **4-layer constraint framework** (L0 goal calibration, L1 hooks, L2 independent sub-agent verification, L3 human audit panel)
+- **49 field-tested lessons** integrated from real project testing (futu-opend-rs v1.4.26-v1.4.59)
+- **Skill upgrade pipeline** — universal lessons queue to `pending-skill-upgrades.md`, reviewed and promoted to skill files
+- **Experience extraction** (`/better-test reflect`) — learns from test history
+- **Differential testing** (`compare` mode) — test a Rust rewrite against the C++ original
+- **Bug lifecycle management** — OPEN → CONFIRMED → FIXED → VERIFIED → CLOSED
 
 ## How it works
 

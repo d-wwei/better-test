@@ -2,6 +2,34 @@
 
 All notable changes to **better-test** (Better-Work series testing subskill) are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project uses [Semantic Versioning](https://semver.org/).
 
+## [3.1.0] - 2026-04-22
+
+### Hook enforcement + protocol split + skill upgrade pipeline
+
+**背景**: Phase B 实测发现 workflow 文本规则遵守率约 40%。核心问题：agent 读了规则但执行时跳过（乐观偏差 + 跳步赶进度 + 被动调查）。Lite Control 不够——需要 Proportional Control。
+**策略**: 系统级 hook 在行动时刻强制执行；protocol 拆分让 skill 升级自动传播；通用经验有了向上流通道。
+
+### Added
+- `hooks/gate.sh`: universal hook entry point — global config auto-detects better-test projects, dispatches to 8 hook scripts. Non-better-test projects ~10ms exit
+- `protocol-base.md`: skill-level protocol base (L0 + thinking discipline) — auto-propagates on skill upgrade
+- `references/pending-skill-upgrades.md`: universal lesson promotion queue (agent appends, human reviews)
+- update-workflow Step 5.5: universal lessons route to both project files AND skill upgrade queue
+- 49 field-tested lessons integrated into 7 skill files (strategy-workflow 12 edits, test-execution 5 edits, templates 5 edits, SKILL.md +4 red lines, feedback/update/progress 1 each)
+- `references/methodologies/constraint-evolution-story.md`: full v1.3.1→v3.0 journey documentation
+- `references/codex-hook-adaptation-brief.md`: Codex L1 gap analysis + cross-platform requirements
+
+### Changed
+- SKILL.md red line #1: protocol limit 15→30 lines (was contradicting templates.md since v2.2.0)
+- Protocol architecture: split from single file to skill base + project extension (two `@` injections)
+- Hook deployment: from per-project settings.json (8 entries each) to global gate.sh (3 entries total)
+- update-workflow: unified entry for ALL testing experience with 4-question routing tree + skill promotion
+- constraint-framework.md: updated to 8 hooks (was 5+1 design-only), knowledge-extraction hook marked as deprioritized
+- README (EN + CN): synced to v3.1 with new architecture description, "Full Context + Proportional Control"
+
+### Fixed
+- SKILL.md protocol line limit was 15 while templates.md said 30 — now consistently 30
+- futu-opend-rs missing 3 v3.0 hooks in settings.json — now all 8 deployed (then migrated to gate.sh)
+
 ## [3.0.0] - 2026-04-22
 
 Tester/Coordinator two-role architecture for parallel multi-agent testing. Testers are fully isolated during testing; coordinator merges results after all testers complete.
