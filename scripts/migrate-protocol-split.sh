@@ -93,19 +93,19 @@ PROJECT_LINE="@.better-work/test/protocol.md"
 if [[ -f "$CLAUDE_MD" ]]; then
   HAS_BASE=false
   HAS_PROJECT=false
-  grep -qF "protocol-base.md" "$CLAUDE_MD" && HAS_BASE=true
+  grep -qxF "$BASE_LINE" "$CLAUDE_MD" && HAS_BASE=true
   grep -qF "$PROJECT_LINE" "$CLAUDE_MD" && HAS_PROJECT=true
 
   # Strategy: insert/reorder in-place, preserving all other lines' positions.
   # Use line-by-line rebuild to avoid sed pattern issues with special chars.
 
   if [[ "$HAS_BASE" == "true" && "$HAS_PROJECT" == "true" ]]; then
-    BASE_LINE_NUM=$(grep -nF "protocol-base.md" "$CLAUDE_MD" | head -1 | cut -d: -f1)
+    BASE_LINE_NUM=$(grep -nxF "$BASE_LINE" "$CLAUDE_MD" | head -1 | cut -d: -f1)
     PROJECT_LINE_NUM=$(grep -nF "$PROJECT_LINE" "$CLAUDE_MD" | head -1 | cut -d: -f1)
     if [[ $BASE_LINE_NUM -gt $PROJECT_LINE_NUM ]]; then
       # Wrong order — remove base from its current position, insert it right before project
       TMPF=$(mktemp)
-      grep -vF "protocol-base.md" "$CLAUDE_MD" > "$TMPF"
+      grep -vxF "$BASE_LINE" "$CLAUDE_MD" > "$TMPF"
       # Now insert base before the project line
       TMPF2=$(mktemp)
       while IFS= read -r line; do
@@ -136,7 +136,7 @@ if [[ -f "$CLAUDE_MD" ]]; then
     TMPF=$(mktemp)
     while IFS= read -r line; do
       echo "$line"
-      if echo "$line" | grep -qF "protocol-base.md"; then
+      if echo "$line" | grep -qxF "$BASE_LINE"; then
         echo "$PROJECT_LINE"
       fi
     done < "$CLAUDE_MD" > "$TMPF"
