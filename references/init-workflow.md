@@ -246,7 +246,7 @@ touch test/history/bugs-index.md
 
 按以下顺序生成（参考 `references/templates.md` 的质量标准）：
 
-1. **`protocol.md`** — 测试认知约束。从模板中选择适合项目风险等级的版本（严格/标准/宽松），询问用户。**无人值守 fallback**（fork 会话 / CI / 无交互通道）：默认选 **标准版**，在 Step 5 报告中明示选择原因让用户可事后切换
+1. **`protocol.md`** — **项目级**测试认知约束（安全纪律 + 项目纪律口子）。L0 和思维纪律已在 skill 的 `protocol-base.md` 中，不重复生成。从模板中按风险等级（严格/标准/宽松）选择安全纪律版本，询问用户。**无人值守 fallback**：默认 **标准版**，Step 5 报告中明示。项目纪律段初始为空（由 `/better-test protocol-update` 积累）
 2. **`test-groups.md`** — 从信号源 A + B + F 提取。每组包含：名称、覆盖范围、运行命令、运行条件（环境变量、依赖、是否需要真账户）
 
 **新增测试项检查（Tier 1 核心流程）**：每个测试项写入 test-groups.md 前，必须过 4 问：
@@ -329,14 +329,14 @@ projects:
 项目 `CLAUDE.md`（若不存在则创建新文件）追加：
 
 ```
-@.better-work/shared/index.md         # better-code 创建的项目知识（如已存在）
-@.better-work/test/protocol.md        # 测试认知约束
+@.better-work/shared/index.md                          # 项目知识入口
+@~/.claude/skills/better-test/protocol-base.md         # skill 级通用原则（自动跟随 skill 升级）
+@.better-work/test/protocol.md                          # 项目级扩展（安全纪律 + 项目纪律）
 ```
 
 注入策略（Step 3.0 已确保 `shared/index.md` 始终存在）：
 
-1. CLAUDE.md **已有** `@.better-work/shared/index.md` → 仅追加 `@.better-work/test/protocol.md`（如尚无）
-2. CLAUDE.md **尚无** `@.better-work/shared/index.md` → 两行都追加
+逐行检查，缺少的追加。已存在的不重复。三行都是必须的。
 
 ### Codex CLI
 
