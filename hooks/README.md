@@ -125,8 +125,8 @@ Replace `<SKILL_PATH>` with the actual path to the better-test skill directory.
 #### registration-gate.sh
 - **Type**: PostToolUse on Write
 - **Trigger**: When `strategy-plan.md` is written to a `run-*/` directory
-- **What it does**: Verifies that `bio.md` exists in the same run directory AND `registry.md` exists for the tester. Blocks if missing
-- **Why**: Prevents agents from starting test execution without completing registration
+- **What it does**: Verifies that `bio.md` exists in the same run directory AND `registry.md` exists for the tester. **Warns if missing** (PostToolUse cannot block an already-completed write — it injects a warning via additionalContext urging the agent to create the missing files before proceeding)
+- **Why**: Catches agents that start test execution without completing registration
 
 #### session-write-guard.sh
 - **Type**: PreToolUse on Edit|Write

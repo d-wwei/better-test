@@ -76,34 +76,46 @@ echo "Protocol split done: $PROTOCOL"
 echo "  - L0 + thinking discipline: removed (now in skill's protocol-base.md)"
 echo "  - Safety + project discipline: kept"
 
-# Update CLAUDE.md — ensure both protocol-base.md and project protocol.md are injected
+# Update CLAUDE.md — ensure both lines present in correct order (base before project)
 CLAUDE_MD="$PROJECT_ROOT/CLAUDE.md"
 BASE_LINE="@~/.claude/skills/better-test/protocol-base.md"
 PROJECT_LINE="@.better-work/test/protocol.md"
 
 if [[ -f "$CLAUDE_MD" ]]; then
-  CHANGED=false
+  HAS_BASE=false
+  HAS_PROJECT=false
+  grep -qF "protocol-base.md" "$CLAUDE_MD" && HAS_BASE=true
+  grep -qF "$PROJECT_LINE" "$CLAUDE_MD" && HAS_PROJECT=true
 
-  # Ensure protocol-base.md injection exists
-  if ! grep -qF "protocol-base.md" "$CLAUDE_MD"; then
+  if [[ "$HAS_BASE" == "true" && "$HAS_PROJECT" == "true" ]]; then
+    # Both present — check order: base must come before project
+    BASE_LINE_NUM=$(grep -nF "protocol-base.md" "$CLAUDE_MD" | head -1 | cut -d: -f1)
+    PROJECT_LINE_NUM=$(grep -nF "$PROJECT_LINE" "$CLAUDE_MD" | head -1 | cut -d: -f1)
+    if [[ $BASE_LINE_NUM -gt $PROJECT_LINE_NUM ]]; then
+      # Wrong order — remove base, re-insert before project
+      grep -vF "protocol-base.md" "$CLAUDE_MD" > "$CLAUDE_MD.tmp"
+      sed "/$PROJECT_LINE/i\\
+$BASE_LINE" "$CLAUDE_MD.tmp" > "$CLAUDE_MD"
+      rm -f "$CLAUDE_MD.tmp"
+      echo "CLAUDE.md: reordered — moved protocol-base.md before project protocol.md"
+    else
+      echo "CLAUDE.md: both present in correct order, no changes"
+    fi
+  elif [[ "$HAS_PROJECT" == "true" && "$HAS_BASE" == "false" ]]; then
+    # Has project but missing base — insert base BEFORE project line
+    sed -i '' "s|$PROJECT_LINE|$BASE_LINE\\
+$PROJECT_LINE|" "$CLAUDE_MD"
+    echo "CLAUDE.md: inserted protocol-base.md before existing project protocol"
+  elif [[ "$HAS_BASE" == "true" && "$HAS_PROJECT" == "false" ]]; then
+    # Has base but missing project — append project AFTER base line
+    sed -i '' "/protocol-base.md/a\\
+$PROJECT_LINE" "$CLAUDE_MD"
+    echo "CLAUDE.md: appended project protocol.md after existing base"
+  else
+    # Neither present — append both in correct order
     echo "$BASE_LINE" >> "$CLAUDE_MD"
-    echo "CLAUDE.md: added protocol-base.md injection"
-    CHANGED=true
-  else
-    echo "CLAUDE.md: protocol-base.md already present"
-  fi
-
-  # Ensure project protocol.md injection exists
-  if ! grep -qF "$PROJECT_LINE" "$CLAUDE_MD"; then
     echo "$PROJECT_LINE" >> "$CLAUDE_MD"
-    echo "CLAUDE.md: added project protocol.md injection"
-    CHANGED=true
-  else
-    echo "CLAUDE.md: project protocol.md already present"
-  fi
-
-  if [[ "$CHANGED" == "false" ]]; then
-    echo "CLAUDE.md: both injections already present, no changes"
+    echo "CLAUDE.md: added both injections (base then project)"
   fi
 else
   echo "Warning: CLAUDE.md not found at $CLAUDE_MD — manual injection needed"

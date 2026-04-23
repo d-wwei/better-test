@@ -102,7 +102,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 
 ## Red Lines
 
-1. `protocol.md` 超过 30 行 → 必须精简，不可突破（L0 ~12 + 思维纪律 ~4 + 安全纪律 ~3 + 项目纪律 ≤5 + 标题/空行 ~6）
+1. 项目 `protocol.md` 超过 15 行 → 必须精简（安全纪律 ~3 + 项目纪律 ≤5 + 标题/空行 ~5）。L0 + 思维纪律在 skill 的 `protocol-base.md`（~18 行），项目不改
 2. pass 判定只依赖退出码或"输出非空"（不验证返回值字段） → 违反测试铁律，必须改用具体字段断言
 3. skip 没有醒目标注（视觉上等同 pass） → 违规，必须明确 `~` 或 `[skip]` 标记并附原因
 4. `test-groups.md` 中条目缺少"运行条件"（环境、依赖、是否需要真账户）或"如何运行" → 不完整
