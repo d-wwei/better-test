@@ -96,26 +96,40 @@ if [[ -f "$CLAUDE_MD" ]]; then
   grep -qF "protocol-base.md" "$CLAUDE_MD" && HAS_BASE=true
   grep -qF "$PROJECT_LINE" "$CLAUDE_MD" && HAS_PROJECT=true
 
+  # Strategy: insert/reorder in-place, preserving all other lines' positions.
+  # Use line-by-line rebuild to avoid sed pattern issues with special chars.
+
   if [[ "$HAS_BASE" == "true" && "$HAS_PROJECT" == "true" ]]; then
-    # Both present — check order: base must come before project
     BASE_LINE_NUM=$(grep -nF "protocol-base.md" "$CLAUDE_MD" | head -1 | cut -d: -f1)
     PROJECT_LINE_NUM=$(grep -nF "$PROJECT_LINE" "$CLAUDE_MD" | head -1 | cut -d: -f1)
     if [[ $BASE_LINE_NUM -gt $PROJECT_LINE_NUM ]]; then
-      # Wrong order — rebuild: remove both lines, re-insert in correct order before other content
+      # Wrong order — remove base from its current position, insert it right before project
       TMPF=$(mktemp)
-      grep -vF "protocol-base.md" "$CLAUDE_MD" | grep -vF "$PROJECT_LINE" > "$TMPF"
-      { echo "$BASE_LINE"; echo "$PROJECT_LINE"; cat "$TMPF"; } > "$CLAUDE_MD"
+      grep -vF "protocol-base.md" "$CLAUDE_MD" > "$TMPF"
+      # Now insert base before the project line
+      TMPF2=$(mktemp)
+      while IFS= read -r line; do
+        if echo "$line" | grep -qF "$PROJECT_LINE"; then
+          echo "$BASE_LINE"
+        fi
+        echo "$line"
+      done < "$TMPF" > "$TMPF2"
+      mv "$TMPF2" "$CLAUDE_MD"
       rm -f "$TMPF"
-      echo "CLAUDE.md: reordered — base before project (rebuilt file)"
+      echo "CLAUDE.md: reordered — moved protocol-base.md before project protocol.md"
     else
       echo "CLAUDE.md: both present in correct order, no changes"
     fi
   elif [[ "$HAS_PROJECT" == "true" && "$HAS_BASE" == "false" ]]; then
-    # Has project but missing base — rebuild: remove project, prepend base+project, append rest
+    # Has project but missing base — insert base right before the project line
     TMPF=$(mktemp)
-    grep -vF "$PROJECT_LINE" "$CLAUDE_MD" > "$TMPF"
-    { echo "$BASE_LINE"; echo "$PROJECT_LINE"; cat "$TMPF"; } > "$CLAUDE_MD"
-    rm -f "$TMPF"
+    while IFS= read -r line; do
+      if echo "$line" | grep -qF "$PROJECT_LINE"; then
+        echo "$BASE_LINE"
+      fi
+      echo "$line"
+    done < "$CLAUDE_MD" > "$TMPF"
+    mv "$TMPF" "$CLAUDE_MD"
     echo "CLAUDE.md: inserted protocol-base.md before existing project protocol"
   elif [[ "$HAS_BASE" == "true" && "$HAS_PROJECT" == "false" ]]; then
     # Has base but missing project — insert project right after base
