@@ -1,0 +1,173 @@
+{
+  "schema_version": 1,
+  "hooks": [
+    {
+      "id": "credential-scan",
+      "phase": "core",
+      "priority": "P0",
+      "rule_path": "hooks/lib/rules/credential-scan.sh",
+      "summary": "Block credential-like content written into .better-work/test/ paths.",
+      "platforms": {
+        "claude": {
+          "status": "active",
+          "event": "PreToolUse",
+          "matcher": "Edit|Write",
+          "entrypoint": "hooks/credential-scan.sh"
+        },
+        "codex": {
+          "status": "active",
+          "event": "PreToolUse",
+          "matcher": "Edit|Write",
+          "entrypoint": "hooks/codex/credential-scan.sh"
+        }
+      }
+    },
+    {
+      "id": "feedback-rules-guard",
+      "phase": "core",
+      "priority": "P0",
+      "rule_path": "hooks/lib/rules/feedback-rules-guard.sh",
+      "summary": "Block direct edits to feedback-rules.json.",
+      "platforms": {
+        "claude": {
+          "status": "active",
+          "event": "PreToolUse",
+          "matcher": "Edit|Write",
+          "entrypoint": "hooks/feedback-rules-guard.sh"
+        },
+        "codex": {
+          "status": "active",
+          "event": "PreToolUse",
+          "matcher": "Edit|Write",
+          "entrypoint": "hooks/codex/feedback-rules-guard.sh"
+        }
+      }
+    },
+    {
+      "id": "execution-log",
+      "phase": "core",
+      "priority": "P0",
+      "rule_path": "hooks/lib/rules/execution-log.sh",
+      "summary": "Append every shell command and output to execution-log.md for L2 audit.",
+      "platforms": {
+        "claude": {
+          "status": "active",
+          "event": "PostToolUse",
+          "matcher": "Bash",
+          "entrypoint": "hooks/execution-log.sh"
+        },
+        "codex": {
+          "status": "active",
+          "event": "PostToolUse",
+          "matcher": "Bash",
+          "entrypoint": "hooks/codex/execution-log.sh"
+        }
+      }
+    },
+    {
+      "id": "post-test-checklist",
+      "phase": "core",
+      "priority": "P1",
+      "rule_path": "hooks/lib/rules/post-test-checklist.sh",
+      "summary": "Inject post-completion checklist after results.json is written.",
+      "platforms": {
+        "claude": {
+          "status": "active",
+          "event": "PostToolUse",
+          "matcher": "Write",
+          "entrypoint": "hooks/post-test-checklist.sh"
+        },
+        "codex": {
+          "status": "active",
+          "event": "PostToolUse",
+          "matcher": "Write",
+          "entrypoint": "hooks/codex/post-test-checklist.sh"
+        }
+      }
+    },
+    {
+      "id": "results-validation",
+      "phase": "core",
+      "priority": "P1",
+      "rule_path": "hooks/lib/rules/results-validation.sh",
+      "summary": "Warn when results.json misses required fields or uses invalid evidence semantics.",
+      "platforms": {
+        "claude": {
+          "status": "active",
+          "event": "PostToolUse",
+          "matcher": "Write",
+          "entrypoint": "hooks/results-validation.sh"
+        },
+        "codex": {
+          "status": "active",
+          "event": "PostToolUse",
+          "matcher": "Write",
+          "entrypoint": "hooks/codex/results-validation.sh"
+        }
+      }
+    },
+    {
+      "id": "derived-view-guard",
+      "phase": "phase-b",
+      "priority": "P1",
+      "rule_path": "hooks/lib/rules/derived-view-guard.sh",
+      "summary": "Protect project-level derived views unless merge lockfile is present.",
+      "platforms": {
+        "claude": {
+          "status": "active",
+          "event": "PreToolUse",
+          "matcher": "Edit|Write",
+          "entrypoint": "hooks/derived-view-guard.sh"
+        },
+        "codex": {
+          "status": "planned",
+          "event": "PreToolUse",
+          "matcher": "Edit|Write",
+          "entrypoint": "hooks/codex/derived-view-guard.sh"
+        }
+      }
+    },
+    {
+      "id": "registration-gate",
+      "phase": "phase-b",
+      "priority": "P1",
+      "rule_path": "hooks/lib/rules/registration-gate.sh",
+      "summary": "Require tester registration artifacts before strategy-plan.md is accepted.",
+      "platforms": {
+        "claude": {
+          "status": "active",
+          "event": "PostToolUse",
+          "matcher": "Write",
+          "entrypoint": "hooks/registration-gate.sh"
+        },
+        "codex": {
+          "status": "planned",
+          "event": "PostToolUse",
+          "matcher": "Write",
+          "entrypoint": "hooks/codex/registration-gate.sh"
+        }
+      }
+    },
+    {
+      "id": "session-write-guard",
+      "phase": "phase-b",
+      "priority": "P1",
+      "rule_path": "hooks/lib/rules/session-write-guard.sh",
+      "summary": "Prevent testers from writing into other testers' run directories.",
+      "platforms": {
+        "claude": {
+          "status": "active",
+          "event": "PreToolUse",
+          "matcher": "Edit|Write",
+          "entrypoint": "hooks/session-write-guard.sh"
+        },
+        "codex": {
+          "status": "planned",
+          "event": "PreToolUse",
+          "matcher": "Edit|Write",
+          "entrypoint": "hooks/codex/session-write-guard.sh"
+        }
+      }
+    }
+  ]
+}
