@@ -24,7 +24,7 @@
 
 ---
 
-## Protocol 拆分架构（≤30 行合计）
+## Protocol 拆分架构（base ~18 行 + project ≤15 行）
 
 Protocol 拆分为两层注入，skill 升级自动传播基座，项目自定义不受影响：
 

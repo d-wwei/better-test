@@ -196,9 +196,9 @@ echo '{"tool_name":"Write","tool_input":{"file_path":"/project/.better-work/test
 echo '{"tool_name":"Write","tool_input":{"file_path":"/project/.better-work/test/history/v1/run-claude-a3f2-001-1234/status.md","content":"test"}}' | ./hooks/derived-view-guard.sh
 # Expected: exit 0
 
-# Test registration-gate: should block (no bio.md)
+# Test registration-gate: should warn (no bio.md) — PostToolUse, exit 0 with additionalContext
 echo '{"tool_name":"Write","tool_input":{"file_path":"/project/.better-work/test/history/v1/run-claude-a3f2-001-1234/strategy-plan.md","content":"test"}}' | ./hooks/registration-gate.sh
-# Expected: exit 2 (bio.md not found)
+# Expected: exit 0, JSON with additionalContext warning about missing bio.md
 
 # Test session-write-guard: should allow (no session file = graceful fallback)
 echo '{"tool_name":"Write","tool_input":{"file_path":"/project/.better-work/test/history/v1/run-claude-a3f2-001-1234/results.json","content":"test"}}' | ./hooks/session-write-guard.sh

@@ -11,6 +11,15 @@
 # 5. Backs up original files before modifying
 set -e
 
+# Portable sed -i (BSD vs GNU)
+sedi() {
+  if sed --version 2>/dev/null | grep -q GNU; then
+    sed -i "$@"
+  else
+    sedi "$@"
+  fi
+}
+
 PROJECT_ROOT="${1:-.}"
 
 # Find protocol.md
@@ -103,12 +112,12 @@ $BASE_LINE" "$CLAUDE_MD.tmp" > "$CLAUDE_MD"
     fi
   elif [[ "$HAS_PROJECT" == "true" && "$HAS_BASE" == "false" ]]; then
     # Has project but missing base — insert base BEFORE project line
-    sed -i '' "s|$PROJECT_LINE|$BASE_LINE\\
+    sedi "s|$PROJECT_LINE|$BASE_LINE\\
 $PROJECT_LINE|" "$CLAUDE_MD"
     echo "CLAUDE.md: inserted protocol-base.md before existing project protocol"
   elif [[ "$HAS_BASE" == "true" && "$HAS_PROJECT" == "false" ]]; then
     # Has base but missing project — append project AFTER base line
-    sed -i '' "/protocol-base.md/a\\
+    sedi "/protocol-base.md/a\\
 $PROJECT_LINE" "$CLAUDE_MD"
     echo "CLAUDE.md: appended project protocol.md after existing base"
   else
