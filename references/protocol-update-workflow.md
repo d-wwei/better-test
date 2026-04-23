@@ -32,8 +32,8 @@ Q1: 这条是关于"怎么想/判断"还是"怎么做/执行"？
     怎么想 → 继续 Q2
 
 Q2: 这条是所有项目通用还是这个项目特有？
-    所有项目通用 → protocol.md 通用段（L0 / 思维纪律 / 安全纪律）
-      ⚠ 通用段的修改影响所有未来项目 → 需要 L2 审计 + 用户确认
+    所有项目通用 → skill 的 protocol-base.md（L0 + 思维纪律）
+      ⚠ 修改 protocol-base.md 影响所有项目 → 排队到 pending-skill-upgrades.md，需人审核 + L2 审计
     这个项目特有 → 继续 Q3
 
 Q3: 每次测试都需要想到还是特定情况才用？
@@ -72,7 +72,7 @@ Q4: 具体到 agent 能对照自检吗？
 |---------|---------|------|
 | 新增到项目纪律段 | **自动验证通过 → 自动写入** | 低风险，只是追加项目经验 |
 | 修改项目纪律段现有规则 | **自动验证 + 通知用户**（不阻塞） | 中风险 |
-| 修改通用段（L0/思维纪律/安全纪律） | **用户确认 + L2 审计** | 高风险——影响所有未来测试 |
+| 修改 protocol-base.md（L0/思维纪律） | **排队 pending-skill-upgrades → 人审核 + L2 审计** | 高风险——影响所有项目 |
 | 删除任何规则 | **用户确认 + L2 审计 + 触发检查** | 最高风险——检查最近 5 次是否被触发 |
 
 ### L2 审计 protocol 变更时检查
@@ -87,7 +87,7 @@ Q4: 具体到 agent 能对照自检吗？
 ## Step 4: 呈现变更方案
 
 ```
-当前 protocol.md（<N>/30 行）:
+当前项目 protocol.md（安全纪律 + 项目纪律，≤15 行）:
   [显示完整内容]
 
 分流结果:
@@ -135,15 +135,15 @@ Q4: 具体到 agent 能对照自检吗？
 
 ## Step 6: 通用原则升级提议
 
-如果在测试中发现一条经验可能是**所有项目通用**的（不只是当前项目）：
+如果发现一条经验可能是**所有项目通用**的：
 
 ```
-Agent 提出候选："我发现这条经验在 3 个不同场景中都适用，可能是通用的"
-  → 写入当前项目的 protocol 项目纪律段（立即生效）
-  → 同时在 protocol-changelog 中标注"通用原则候选"
-  → 提醒用户："这条可能值得升级到 skill 模板（影响所有项目）。需要你手动审核后修改 skill 的 templates.md。"
+Agent 提出候选："这条经验在 3 个不同场景中都适用，可能是通用的"
+  → 写入项目 protocol 项目纪律段（当前项目立即生效）
+  → 排队到 skill 的 references/pending-skill-upgrades.md（等人审核）
+  → protocol-changelog 标注"通用原则候选"
 
-Agent 不能自动修改 skill 级 templates.md。通用原则升级必须人操作。
+Agent 不能自动修改 skill 的 protocol-base.md。通用原则升级走 pending-skill-upgrades 排队。
 ```
 
 ---
@@ -153,7 +153,6 @@ Agent 不能自动修改 skill 级 templates.md。通用原则升级必须人操
 - ❌ 不要把执行步骤写入 protocol（去 workflow）
 - ❌ 不要把能从 env-config/known-issues 派生的规则写入 protocol（让 Hook 注入）
 - ❌ 不要把空话写入 protocol（"注意质量"不是规则）
-- ❌ 不要修改通用段（L0/思维纪律/安全纪律）而不做 L2 审计
+- ❌ 不要直接修改 skill 的 protocol-base.md — 排队到 pending-skill-upgrades.md
 - ❌ 不要删除规则而不检查最近是否被触发
-- ❌ 不要 agent 自行修改 skill 级 templates.md（通用原则升级必须人操作）
 - ❌ 不要跳过保存全文快照到 protocol-versions/

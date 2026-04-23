@@ -20,10 +20,7 @@ Add the following to **global** `~/.claude/settings.json`. Gate.sh auto-detects 
 }
 ```
 
-Or via `install.sh`:
-```bash
-./install.sh        # also configures global hooks
-```
+Note: `install.sh` only creates skill symlinks (Layer 1 registration). It does **not** configure hooks. Global hook config must be added manually per the JSON above, or by a future `install-hooks.sh` script.
 
 ## Alternative: Per-project installation (legacy)
 

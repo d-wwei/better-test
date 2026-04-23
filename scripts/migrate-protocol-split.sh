@@ -76,22 +76,34 @@ echo "Protocol split done: $PROTOCOL"
 echo "  - L0 + thinking discipline: removed (now in skill's protocol-base.md)"
 echo "  - Safety + project discipline: kept"
 
-# Update CLAUDE.md
+# Update CLAUDE.md — ensure both protocol-base.md and project protocol.md are injected
 CLAUDE_MD="$PROJECT_ROOT/CLAUDE.md"
-if [[ -f "$CLAUDE_MD" ]]; then
-  SKILL_PATH="$HOME/.claude/skills/better-test/protocol-base.md"
+BASE_LINE="@~/.claude/skills/better-test/protocol-base.md"
+PROJECT_LINE="@.better-work/test/protocol.md"
 
-  if grep -q "protocol-base.md" "$CLAUDE_MD"; then
-    echo "CLAUDE.md: protocol-base.md already injected, skipping"
+if [[ -f "$CLAUDE_MD" ]]; then
+  CHANGED=false
+
+  # Ensure protocol-base.md injection exists
+  if ! grep -qF "protocol-base.md" "$CLAUDE_MD"; then
+    echo "$BASE_LINE" >> "$CLAUDE_MD"
+    echo "CLAUDE.md: added protocol-base.md injection"
+    CHANGED=true
   else
-    # Add protocol-base.md before the project protocol line
-    if grep -q "@.better-work/test/protocol.md" "$CLAUDE_MD"; then
-      sed -i '' "s|@.better-work/test/protocol.md|@~/.claude/skills/better-test/protocol-base.md\n@.better-work/test/protocol.md|" "$CLAUDE_MD"
-      echo "CLAUDE.md: added protocol-base.md injection before project protocol"
-    else
-      echo "@~/.claude/skills/better-test/protocol-base.md" >> "$CLAUDE_MD"
-      echo "CLAUDE.md: appended protocol-base.md injection"
-    fi
+    echo "CLAUDE.md: protocol-base.md already present"
+  fi
+
+  # Ensure project protocol.md injection exists
+  if ! grep -qF "$PROJECT_LINE" "$CLAUDE_MD"; then
+    echo "$PROJECT_LINE" >> "$CLAUDE_MD"
+    echo "CLAUDE.md: added project protocol.md injection"
+    CHANGED=true
+  else
+    echo "CLAUDE.md: project protocol.md already present"
+  fi
+
+  if [[ "$CHANGED" == "false" ]]; then
+    echo "CLAUDE.md: both injections already present, no changes"
   fi
 else
   echo "Warning: CLAUDE.md not found at $CLAUDE_MD — manual injection needed"

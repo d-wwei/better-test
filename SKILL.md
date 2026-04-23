@@ -38,7 +38,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 ├── code/                                      ← 只读：高风险区域 → 触发更全面测试
 │   └── danger-zones.md
 └── test/                                      ← 写：测试专用
-    ├── protocol.md                            ← 共享知识：测试认知约束（≤30 行），每对话注入
+    ├── protocol.md                            ← 项目级扩展：安全纪律 + 项目纪律（≤15 行），每对话注入。L0 + 思维纪律在 skill 的 protocol-base.md
     ├── protocol-changelog.md                  ← 共享知识：变更日志
     ├── protocol-versions/                     ← 共享知识：protocol 全文快照
     ├── test-groups.md                         ← 共享知识：测试组定义 + 运行条件
@@ -98,7 +98,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 
 **时间戳规范**：所有时间戳统一为 ISO 8601 + 时区偏移，三档精度：Full `2026-04-21T14:23:07+08:00`、Compact `04-21 14:23:07+08`、Date-only `2026-04-21`。详见 `references/templates.md` 的 Timestamp Format Specification。
 
-**注入**（Claude Code 示例）：项目 CLAUDE.md 中追加 `@.better-work/test/protocol.md`。其他文件按需 Read。
+**注入**（Claude Code 示例）：项目 CLAUDE.md 中追加两行 protocol 注入：`@~/.claude/skills/better-test/protocol-base.md`（skill 级通用原则，自动跟随 skill 升级）+ `@.better-work/test/protocol.md`（项目级安全纪律 + 项目纪律）。其他文件按需 Read。
 
 ## Red Lines
 

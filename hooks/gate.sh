@@ -12,8 +12,7 @@
 # Non-better-test projects: exits immediately (~10ms overhead).
 # Future: when better-work introduces a skill-dispatcher, gate.sh becomes
 # one skill's dispatch function within the universal dispatcher.
-set -e
-
+# NOTE: no `set -e` — we must survive sub-hook exit 2 (block) without dying
 EVENT="$1"
 if [[ -z "$EVENT" ]]; then
   exit 0
@@ -62,16 +61,18 @@ dispatch_hook() {
     return
   fi
 
-  local result
-  local exit_code
-  result=$(echo "$INPUT" | "$script" 2>/tmp/gate-hook-stderr-$$)
+  local stderr_file="/tmp/gate-hook-stderr-$$-$(basename "$script")"
+  local result exit_code
+
+  # Run sub-hook, capture stdout and stderr separately.
+  # No set -e, so non-zero exits don't kill gate. Capture exit code explicitly.
+  result=$(echo "$INPUT" | "$script" 2>"$stderr_file")
   exit_code=$?
 
   if [[ $exit_code -eq 2 ]]; then
     BLOCK=true
-    BLOCK_MSG=$(cat /tmp/gate-hook-stderr-$$ 2>/dev/null)
+    BLOCK_MSG=$(cat "$stderr_file" 2>/dev/null)
   elif [[ -n "$result" ]]; then
-    # Collect additionalContext from PostToolUse hooks
     local ctx
     ctx=$(echo "$result" | jq -r '.hookSpecificOutput.additionalContext // empty' 2>/dev/null)
     if [[ -n "$ctx" ]]; then
@@ -79,7 +80,7 @@ dispatch_hook() {
     fi
   fi
 
-  rm -f /tmp/gate-hook-stderr-$$
+  rm -f "$stderr_file"
 }
 
 case "$EVENT" in
