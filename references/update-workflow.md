@@ -145,7 +145,31 @@ Q4（对所有进 protocol 的）: 具体到 agent 能对照自检吗？
 
 ---
 
-## Step 5：报告
+## Step 5.5：Skill 升级排队（通用经验向上流）
+
+分流决策树中判定为"通用"的经验，除了写入项目文件（当前项目立即受益），**同时追加到 skill 的升级队列**。
+
+```
+对 Step 2 中判定为 Q2="通用" 的每条经验：
+
+1. 已经写入项目文件（Step 3a/3b）→ 当前项目立即受益 ✓
+
+2. 同时追加到 skill 的 references/pending-skill-upgrades.md：
+   - 标题 + 来源项目 + 建议目标文件 + 风险等级 + 内容 + 证据
+   - 状态: pending
+
+3. 低风险目标（design-rationale.md）→ 直接写入，不排队
+   中/高风险目标 → 排队，报告中提醒用户
+```
+
+**Agent 可以做的**：追加到 pending-skill-upgrades.md + 直接写入 design-rationale.md
+**Agent 不能做的**：自行修改 protocol-base.md / SKILL.md red lines / workflow 步骤
+
+队列中的候选由人审核后执行。审批规则见 `references/pending-skill-upgrades.md`。
+
+---
+
+## Step 6：报告
 
 向用户展示所有变更，按分流目标分组：
 
@@ -166,9 +190,15 @@ Protocol 项目纪律：
   → "开测前检查 C++ baseline 端口类型" — 不进 protocol（执行步骤），已加入 env-config 注意事项
   → "results.json 应该检查非标 ID" — 不进 protocol（Hook 职责），已有 results-validation hook
 
+Skill 升级排队：
+  → pending-skill-upgrades.md: +N 条候选
+    "单次观测不定论" → 建议目标: strategy-workflow accuracy rules (medium)
+    "全绿=漏测信号" → 建议目标: strategy-workflow Step 0 (medium)
+  → design-rationale.md: +N 条直接写入（low risk）
+
 未写入（需确认）：
   ? "frozen_cash 暂态值不能单次采样下结论" — 通用还是项目特有？
-    → 如果通用：加 protocol 项目纪律
+    → 如果通用：排队到 pending-skill-upgrades + 加 protocol 项目纪律
     → 如果特有：加 known-issues lessons
 ```
 
@@ -195,4 +225,6 @@ Protocol 项目纪律：
 - ❌ 不要直接修 feedback-rules.json —— 走 feedback 命令
 - ❌ 不要把推测写成 verified —— 标 `[未验证]`
 - ❌ 不要收到材料只存着不分析 —— 立刻检查对所有相关文件的影响
-- ❌ 不要自行修改 skill 级 templates.md —— 通用原则升级必须人操作
+- ❌ 不要自行修改 skill 的 protocol-base.md / SKILL.md / workflow 文件 —— 排队到 pending-skill-upgrades.md，由人审核
+- ✅ 可以追加到 pending-skill-upgrades.md（排队提议）
+- ✅ 可以直接写入 design-rationale.md（Tier 3 参考文档，零风险）

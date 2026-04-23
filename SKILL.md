@@ -145,6 +145,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 | `references/feedback-workflow.md` | `/better-test feedback` | 反馈录入 + 规则提炼 + suppress。内嵌：回归 canary 提示 |
 | `references/l2-audit-prompts.md` | 测试完成后（full/targeted/compare/bug-retest） | L2 子 Agent 审查 prompt：执行审计 + 覆盖率对账 + 证据审计 + l2-findings.md 格式 |
 | `references/protocol-update-workflow.md` | `/better-test protocol-update` | 认知约束升级 + changelog |
+| `references/pending-skill-upgrades.md` | `/better-test update` Step 5.5 | 通用经验升级队列（agent 追加，人审核） |
 | `references/reflect-workflow.md` | `/better-test reflect` | 历史经验提取：6 类分析 + 增量/全量两层机制 |
 | `references/merge-workflow.md` | `/better-test merge` | 多 tester 结果合并：扫描 run → 冲突检测 → bug 校验 → 生成聚合文件 |
 | `references/progress-workflow.md` | `/better-test checkpoint` 或 `resume` | 断点续传 |
