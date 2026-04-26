@@ -164,6 +164,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 | `procedures/mutation-testing.md` | strategy | full/targeted **且** 有代码变更 **且** 项目有变异测试工具 | 增量变异测试 |
 | `procedures/flakiness-scoring.md` | update / strategy | update 检测到 flaky 信号；或推荐组含 known-issues Flaky 项 | 稳定性评分 |
 | `procedures/bug-report.md` | test-execution | 发现 bug 需要写报告 | 7 节标准格式 + yaml 元数据 |
+| `procedures/longrun-testing.md` | strategy | strategy 包含 24h+ 长跑；或用户要求稳定性/耐久性测试 | 长跑监控：canary/采样器/三层健康验证/daemon 身份 6 元组 |
 
 ### Tier 3: 设计文档（面向人类，agent 不加载）
 

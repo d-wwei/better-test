@@ -87,6 +87,39 @@ IF 没有未合并 run：
      → 记录但不阻断
 ```
 
+### Bug 粒度对齐（merge 前必做）
+
+```
+Merge 前两方必须显式同步"一个 bug 的定义"：
+  → 4 sub-items 算 1 个 bug 还是 4 个？CLI 字段缺失和 REST 字段缺失是同一个还是两个？
+  → 不对齐就 merge = 计数永远不一致（12 vs 13 真实案例）
+  → 定义对齐后再进入冲突检测
+```
+
+### Cross-Verify 覆盖率分类
+
+```
+Cross-verify 覆盖率必须按 3 类报告，不允许把 trust_based 算成 bidirectional：
+
+  bidirectional_strict: 双方独立、各自 daemon、独立复现
+  trust_based_accepted: 单方有 direct/proven 证据，另一方逻辑接受
+  indirect_single_tester: 单方推断，非稳定
+
+  报告时："8/20 strict + 11 trust + 1 indirect" 不是 "75% bidirectional"
+```
+
+### Cross-Verify 流程
+
+```
+1. 列 claims: 对方报告的每条结论逐一列出
+2. 独立工具复现: 自己跑命令验证，不看对方的 curl/output
+3. 发现差异先查自己: peer 结果不同 → 优先假设自己 env 有问题（配置/端口/账号/flag）
+   → 列环境差异 → 1:1 重跑 → 单一 factor 切换
+4. Steelman peer: peer challenge 时先假设对方全对自己有盲区
+   → 先接受再查精度。不用"reviewer context 不全"当挡箭牌
+   → peer 比我更准是正常现象（不在我的假设链里）
+```
+
 ## Step 5: 冲突检测（conflict_detection）
 
 ```

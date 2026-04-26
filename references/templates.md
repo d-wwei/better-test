@@ -1040,11 +1040,19 @@ history/ **只放测试运行产出和版本级材料**。以下不属于 histor
 ```
 
 写作原则：
-- **大白话**："daemon 把错误码包了一层，用户看到的不是真正的错误"比术语好
+- **大白话 = 零技术术语**：不是"加几句解释"，是完整词汇替换。"完全修好了 / 主体修了但留了尾巴 / 测不完还等着 / 吹牛说修了其实没修"比"8 fully + 6 main-met-with-side-gap"好。测试方法：读给非技术朋友听，听不懂就改
 - **只讲结论不讲过程**（过程在 process-log）
 - **证据只放最关键一条**（不是"我做了 5 步调查"，是"log 里看到 code=-1001"）
 - **影响用"谁受影响"表达**（"量化策略用户"比"option_chain API consumers"好）
 - **2 分钟能读完**——超过就砍
+
+**报告分层标准**（不同读者需要不同深度）：
+
+| 层级 | 字数上限 | 受众 | 内容 |
+|------|---------|------|------|
+| L0 极简 | ≤500 字 | 决策者（30 秒扫）| 一句话结论 + bug 数 + 是否可发布 |
+| L1 速览 | ≤1500 字 | 项目经理（2 分钟）| summary.md = 这一层 |
+| L2 完整 | ≤8000 字 | 开发者（深究）| bugs/ 目录每个 bug 独立文件 |
 
 ### 质量标准（三份文件）
 
@@ -1060,6 +1068,21 @@ history/ **只放测试运行产出和版本级材料**。以下不属于 histor
 - **外部自包含**：给开发者的报告不能引用本地路径。复现步骤、证据、对照全部在一个文件内
 - **编号统一**：bug 编号使用单一连续序列（#1, #2, #3...），不区分旧/新来源。术语自解释——如果一个词需要额外解释，用解释替换该词
 - **先列表再数**：写"一共 X 个"之前，先输出编号列表逐个确认状态（active/推翻/合并），从列表机械地数。不凭记忆报数字
+- **Denominator clarity**：每个 X/Y 比率先显式定义分子分母 universe（"14 项 in Leaf 20 scope" vs "10 个 in 我们 13 bugs"）。多 universe 数学必须分开
+- **精确数字可溯源**："精确数字"不等于"可信数字"——每个数字必须能溯源到具体数据行或命令输出。"4.3x 提升"如果基于错误记忆的时间 = 伪精确
+- **非权威文件标 DEMOTED**：多版本共存时，非权威版本标 `[DEMOTED — 权威版本: <path>]` header。保留历史但引导读者
+- **版本演化声明**：大更正打 v2 标，TL;DR 开头标"v2 更正后"，显式列修正项。"supersedes vN" 让读者立刻知道改过
+- **Roundtrip 透明记录**：错误→修正→撤回的透明记录比完美叙事更可信。Leaf 采用了 reconcile table 而非 polished summary
+- **并发 tester 文件含 tester-id**：`BUG-<tester-id>-NNN.md`，避免多 tester 文件名冲突
+
+**Deliverables 4 tier**（Leaf/上游默认收 Tier 1）：
+
+| Tier | 内容 | 何时交付 |
+|------|------|---------|
+| 1 mandatory | 主报告 + 核心 bug files + daemon log 证据 | 默认交付 |
+| 2 support | 证据目录（curl output、log grep、screenshot）| 深究时 |
+| 3 history | cross-verify 产物、roundtrip 记录 | 审计时 |
+| 4 prohibited | 密码、token、API key | 永不交付 |
 
 ### 归档
 
@@ -1181,6 +1204,9 @@ RESULT_FILE: <子 Agent 写入的文件路径>
 - **pre-existing 标注**：found_in 字段标注首次出现版本。不标注 → 开发者误判为回归，排查方向错误
 - **changelog 声称修复**：实测未变的 bug 醒目标注 `[CHANGELOG 声称修复但未确认]`，对开发者调试方向有重要影响
 - **severity**：用最坏场景下谁受影响定，pre-existing 记在 fix_note 不降 severity
+- **三句话格式**：每个 bug 先写 scene（什么操作触发）+ symptom（看到什么现象）+ impact（谁受影响）。防止"something broke"式模糊描述
+- **P0 门槛**：severity 想标 P0 → 必须附"证否此 finding 的实验设计"。写不出 = 证据不足 → 降级
+- **证据文件命名**：`BUG-001-scenario-artifact.txt`（按 bug-id 命名），不按 phase 命名。方便最终 bug report 组装
 
 底部附 yaml 元数据管理 bug 生命周期：
 

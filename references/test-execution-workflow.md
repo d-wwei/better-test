@@ -34,7 +34,8 @@
 
 ## 环境确认（从 env-config.md 生成）
 - [ ] 服务状态: [PROJECT: 从 env-config.md 服务表提取，逐项检查健康状态]
-- [ ] 端口清场: lsof -iTCP:<port> -sTCP:LISTEN → 只有目标进程
+- [ ] 端口清场: 启动前 `nc -z 127.0.0.1 <port>` 确认空闲；启动后 `lsof -nP -iTCP:<port> -sTCP:LISTEN` 确认是自己 PID（daemon 可能静默 bind 失败但继续跑 → curl 打到别人的 daemon）
+- [ ] 进程识别: pgrep 模式精确到 port+account（不只 binary name），多 daemon 环境 PID+name 不够
 - [ ] 测试账号: [PROJECT: 从 env-config.md 账号表提取，确认状态=可用]
 - [ ] 环境变量: [PROJECT: 从 env-config.md 环境变量表提取，确认已设置]
 - [ ] 时间依赖: [PROJECT: 从 env-config.md 时间依赖表，当前是否在窗口内]
@@ -88,6 +89,25 @@
 关键规则：compare 模式下，没做基准对照的不能标 ✅，只能标 🟡。
 ```
 
+### Pass 判定 4 件套（标 ✅ 前必须全部满足）
+
+```
+1. 下游效应真发生: ret_type=0 只是前提条件，不是充分条件
+   → 状态改动类（subscribe/place-order/unlock）：follow-up 查询验证状态确实变了
+   → 查询类（funds/orders/quote）：验证字段值语义正确，不只看 shape 非空
+
+2. Silent empty 排除: 看到 ret=0 + 空/默认数据 → 不能直接标 pass
+   → 用已知有数据的参数对照（如 US.AAPL rehab 应非空）
+   → 传 garbage 参数看是否也返空/返同样数据 → endpoint 可能没真正 parse 参数
+   → 合法空（新账户无持仓）vs 没 parse 参数（任何输入都返空）是完全不同的情况
+
+3. 跨 surface 一致: 如果同 endpoint 在另一 surface（MCP/CLI）有不同行为 → 不能标 pass
+   → 同 daemon 同 backend 不同 surface 行为不一致 = surface translator 层 bug
+
+4. 基准对照（compare 模式下）: 被测结果必须和基准一致
+   → 详见 Compare 模式四色标记规则
+```
+
 ### 结构化测试记录（每个测试项必填）
 
 每标记一个测试项结果时，必须填写以下结构化记录。此记录同时写入 process-log.md 和 results.json。
@@ -128,6 +148,18 @@ grep daemon/service log 查 error code
 有 error code → 🔴（附 code）
 无 error code → ✅（确认真空）
 模糊 hint   → 错误解读三问（见下方）
+```
+
+### 错误消息先读——不 blind retry
+
+```
+不同错误码是不同根因，blind retry → 可能触发 anti-flood / rate-limit：
+  ret_type=-1  → 通用错误，看 daemon log 详情
+  ret_type=-8  → 需要 OTP 二次验证
+  ret_type=-15 → 重试间隔过短或 session 冲突
+  ret_type=-20011 → 功能不支持（如 moomoo 端 unlock）
+  
+  先读 hint/error_code → 判断根因 → 针对性处理。不要看到 error 就重试。
 ```
 
 ### 错误解读三问
@@ -195,6 +227,23 @@ API 返回错误码不一定是 bug。区分三种情况：
 
 4. 覆盖声明: 声称"X surface 一致"必须附验证数量占总数比例
    → "4 项验证一致"不能说成"三 surface 一致"（实际有 184 个接口）
+
+5. "推断"标签必须附升级步骤: indirect/inferred 不是终态
+   → 每个推断标签需说明"做什么能升级为 direct/confirmed"
+   → 如"推断未修" → 具体升级步骤："启 daemon + 用 X 参数跑 Y 命令 → 看 Z 字段"
+
+6. Before/After diff 是判定 fix 生效的最强证据类型
+   → 同账号同数据，v1.4.N vs v1.4.N+1 对比
+   → 15 分钟下载多版本 binary 可以把 direct 升到 proven（4 版本一致 = 非偶然）
+
+7. 每个数据点需附 timestamp + 环境状态
+   → 无时间戳的数据无法交叉对账，异时数据无法对比
+   → 环境状态（如 market session open/closed）影响结论有效性
+
+8. 时间计算必须用工具
+   → Epoch 转换用 `date -r <epoch>` 或 Python `datetime.fromtimestamp()`，不手算
+   → 手算错 8 小时的真实案例（UTC vs local 混淆）
+   → `ls -la` 用 local time，daemon log 用 UTC——时间戳一律转 UTC 作 SoT
 ```
 
 ### 每个接口的测试深度（happy path 只是起点）
@@ -241,15 +290,25 @@ happy path 通过后，对每个接口主动尝试 break——silent failure 最
 
 对照组不能只用完整参数。如果 happy path 对照和 happy path 测试都传完整参数，对照失去了揭示 default-filling 差异的价值。对照时也用新手姿态 / 缺字段版本，才能发现"一个实现填了默认值另一个没填"的差异。
 
-### 终态规则
+### 终态规则（4-state verdict）
 
 ```
-每个测试项必须到达终态之一：✅ / 🔴 / ⏭️
+每个测试项必须到达终态之一：✅ / 🟡→PARTIAL / 🔴 / ⏭️
+
+  ✅ PASS      = 功能完全按预期工作（field-level 证据）
+  🟡 PARTIAL   = 部分工作但范围有限 / 环境依赖 / caveat 存在
+                  例：V5 G6 field 正确 parse 但 doctrine 语义错
+                  PARTIAL 是合法终态（不同于需升级的初始 🟡）
+  🔴 FAIL      = 失败（有错误码或 log 证据）
+  ⏭️ SKIP      = 显式跳过（必须写原因，视觉必须醒目）
+
 不允许：
   "暂时跳过"（无原因）
   "下次再看"（不会有下次）
   "应该没问题"（是 guess，不是 evidence）
-  🟡 停留（必须升级）
+  初始 🟡 停留（必须升级为上述 4 态之一）
+
+二元 ✅/❌ 丢失 nuance。PARTIAL 防止强行标 ✅ 掩盖 caveat。
 ```
 
 ### 安全守则
@@ -258,6 +317,18 @@ happy path 通过后，对每个接口主动尝试 break——silent failure 最
 - 不把账号/密码/token 写入任何 .better-work/ 文件
 - 不可逆操作按用户在"环境确认"中选择的策略执行
 - 即使用户允许全执行，也优先用安全方式（sim 账户 + 远离市价 + 立即撤单）
+```
+
+### 清理纪律（session 结束 checklist）
+
+```
+测试完成或 session 结束前：
+1. kill 所有测试进程（daemon、采样器、monitor）→ `kill $(cat /tmp/daemon-<tester-id>.pid)`
+2. 删 /tmp 含凭据的文件 → `rm -f /tmp/futu-pwd-*`（trap EXIT 更好）
+3. cancel orphan orders → 先尝试 `/api/cancel-all-order`，不行则标注"需用户清理"
+4. 副作用作为 bug 的"外部性成本"显式列出 → 如"测试消耗了 $X margin"
+
+敏感文件最佳实践：trap "rm -f $TMPFILE" EXIT 在启动时设置，不依赖手动清理。
 ```
 
 ---
