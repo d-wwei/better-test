@@ -9,16 +9,22 @@
 - 与 better-code 的注入并存：注入逻辑应**追加**而非覆盖现有引用
 - 团队成员各用不同 agent 平台时，从同一套文件读取
 
-## 两层架构
+## 分层架构
 
-支持原生 skill 系统的平台（Claude Code、Codex）采用两层安装：
+所有平台至少有两层：
 
 | 层 | 作用 | 机制 |
 |----|------|------|
 | **Layer 1: Skill 注册** | 让 agent 能执行 skill 命令（init/strategy/feedback 等） | symlink 到平台 skills 目录 |
 | **Layer 2: Protocol 注入** | 让测试纪律在非 skill 触发时也生效（always-on 认知约束） | 在项目配置中引用/嵌入 protocol.md |
 
-不支持 skill 系统的平台（Cursor、Gemini、OpenCode、OpenClaw）只做 Layer 2。
+Codex 额外有可选的第三层：
+
+| 层 | 作用 | 机制 |
+|----|------|------|
+| **Layer 3: Hooks 安装** | 在工具生命周期里自动执行 L1 约束 | 项目 `.codex/hooks.json` |
+
+不支持 skill 系统的平台（Cursor、Gemini、OpenCode、OpenClaw）只做 Layer 2。Claude 当前仍是 Layer 1 + Layer 2；Codex 是 Layer 1 + Layer 2 + 可选 Layer 3。
 
 ---
 
@@ -37,7 +43,7 @@
 ./install.sh uninstall
 ```
 
-安装器**只做 skill 注册**（symlink），不修改任何项目配置文件（CLAUDE.md / AGENTS.md / GEMINI.md）。项目级 protocol 注入由 `/better-test init` 的 Step 4 完成。
+安装器**只做 skill 注册**（symlink），不修改任何项目配置文件（CLAUDE.md / AGENTS.md / GEMINI.md），也不安装 hooks。项目级 protocol 注入由 `/better-test init` 的 Step 4 完成；Codex Layer 3 hooks 由 `hooks/install-codex-hooks.sh` 单独处理。
 
 ---
 
@@ -118,7 +124,13 @@ alwaysApply: true
 
 ## Codex CLI
 
-Codex 支持原生 skill 系统（SKILL.md 格式与 Claude Code 兼容），采用两层架构。
+Codex 支持原生 skill 系统，但 better-test 在 Codex 上现在是**三层安装**：
+
+1. Layer 1: skill 注册
+2. Layer 2: AGENTS.md protocol 注入
+3. Layer 3: `.codex/hooks.json` 的 L1 hooks 安装
+
+注意：Layer 3 当前安装 8 条 Codex-active hooks：`execution-log`、`credential-scan`、`feedback-rules-guard`、`derived-view-guard`、`session-write-guard`、`post-test-checklist`、`results-validation`、`registration-gate`。其中 `execution-log` 通过 `PostToolUse/Bash` 记录执行日志；`credential-scan` 与三个 guard 通过 `PreToolUse/Bash` 拦截 Bash 写命令对受保护 `.better-work/test/` 路径或其他 tester 的 `run-*` 目录的修改；后三条 advisory hook 通过 `PostToolUse/Bash` + Bash 写目标提取，在写入 `results.json` 或 `strategy-plan.md` 后把 `additionalContext` 注入给模型。`credential-scan` 只覆盖命令文本里显式嵌入的 secret，不覆盖外部文件搬运。当前 payload 还没有暴露 shell exit code，所以 Codex 日志会写 `EXIT: ?`。本地 spike 仍未观察到 `matcher: "Write"` 对 `file_change` 生效，因此这三条 advisory 是 Bash fallback，不要把 Claude 的原生 Write/Edit 路径等同成 Codex 已支持。
 
 ### Layer 1: Skill 注册
 
@@ -171,10 +183,35 @@ Skill 注册让 Codex 能执行命令，但 protocol.md 的认知约束需要 al
 
 Codex 旁载文件，已包含在 skill 目录中（`agents/openai.yaml`）。提供 UI metadata 和调用策略。Claude Code 忽略此文件。
 
+### Layer 3: Codex hooks 安装（项目级）
+
+`install.sh` 不负责 Codex hooks。需要单独运行：
+
+```bash
+# 安装到当前项目的 .codex/hooks.json
+./hooks/install-codex-hooks.sh install
+
+# 查看状态
+./hooks/install-codex-hooks.sh status
+
+# 卸载 better-test 自己管理的 Codex hooks
+./hooks/install-codex-hooks.sh uninstall
+```
+
+行为约束：
+
+- 默认安装到项目 `.codex/hooks.json`
+- 默认只检查 `~/.codex/config.toml` 里的 `codex_hooks = true`
+- 若未启用，会报错退出
+- 只有显式传 `--enable-feature-flag` 时，才会修改用户 `~/.codex/config.toml`
+- 安装器只读取 `hooks/registry.json` 中 `platforms.codex.status == active` 的条目
+- 真实运行时链路可用 `./hooks/test-codex-runtime.sh` 复验
+
 ### 注意事项
 
 - **AGENTS.md 大小限制**：Codex 默认 32 KiB 组合上限（`project_doc_max_bytes`）。protocol.md（≤15 行）远在限制内。如项目 AGENTS.md 已很大，可通过 `~/.codex/config.toml` 调高上限。
 - **无 `@file` 引用**：AGENTS.md 不支持 Claude Code 的 `@` 语法，必须嵌入内容。但 skill 的 references/ 可以在运行时通过 `cat` 按需读取（Codex 的 shell_tool 支持）。
+- **Hooks 现状**：当前 better-test 在 Codex 上原生落地的是完整 8 条 L1 hooks，其中 5 条走直接 `PreToolUse/Bash` / `PostToolUse/Bash` 约束，3 条 post-write advisory 走 `PostToolUse/Bash` fallback。如果后续 registry 新增 active Codex hook，重新跑安装器即可；不需要整套 skill 重新适配。若未来 `matcher: "Write"` 被 runtime spike 重新证实，再把这 3 条从 Bash fallback 升级到原生 Write 即可。
 
 ---
 

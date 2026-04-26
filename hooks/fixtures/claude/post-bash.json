@@ -1,0 +1,11 @@
+{
+  "tool_name": "Bash",
+  "cwd": "/tmp/better-test-example",
+  "tool_input": {
+    "command": "printf \"hello from codex\""
+  },
+  "tool_response": {
+    "stdout": "hello from codex",
+    "exitCode": 0
+  }
+}

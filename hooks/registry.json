@@ -17,8 +17,9 @@
         "codex": {
           "status": "active",
           "event": "PreToolUse",
-          "matcher": "Edit|Write",
-          "entrypoint": "hooks/codex/credential-scan.sh"
+          "matcher": "Bash",
+          "entrypoint": "hooks/codex/credential-scan.sh",
+          "note": "Active for Bash commands that explicitly embed credential-like literals while writing into .better-work/test/; external file copies remain outside this guard."
         }
       }
     },
@@ -38,8 +39,9 @@
         "codex": {
           "status": "active",
           "event": "PreToolUse",
-          "matcher": "Edit|Write",
-          "entrypoint": "hooks/codex/feedback-rules-guard.sh"
+          "matcher": "Bash",
+          "entrypoint": "hooks/codex/feedback-rules-guard.sh",
+          "note": "Active for Bash write-intent patterns only; built-in file_change/Edit/Write remains unobserved on codex-cli 0.122.0."
         }
       }
     },
@@ -80,8 +82,9 @@
         "codex": {
           "status": "active",
           "event": "PostToolUse",
-          "matcher": "Write",
-          "entrypoint": "hooks/codex/post-test-checklist.sh"
+          "matcher": "Bash",
+          "entrypoint": "hooks/codex/post-test-checklist.sh",
+          "note": "Active for Bash write-intent patterns only; emits checklist additionalContext after commands that write results.json under .better-work/test/."
         }
       }
     },
@@ -101,8 +104,9 @@
         "codex": {
           "status": "active",
           "event": "PostToolUse",
-          "matcher": "Write",
-          "entrypoint": "hooks/codex/results-validation.sh"
+          "matcher": "Bash",
+          "entrypoint": "hooks/codex/results-validation.sh",
+          "note": "Active for Bash write-intent patterns only; re-reads results.json after Bash commands and emits validation warnings via additionalContext."
         }
       }
     },
@@ -120,10 +124,11 @@
           "entrypoint": "hooks/derived-view-guard.sh"
         },
         "codex": {
-          "status": "planned",
+          "status": "active",
           "event": "PreToolUse",
-          "matcher": "Edit|Write",
-          "entrypoint": "hooks/codex/derived-view-guard.sh"
+          "matcher": "Bash",
+          "entrypoint": "hooks/codex/derived-view-guard.sh",
+          "note": "Active for Bash write-intent patterns only; built-in file_change/Edit/Write remains unobserved on codex-cli 0.122.0."
         }
       }
     },
@@ -141,10 +146,11 @@
           "entrypoint": "hooks/registration-gate.sh"
         },
         "codex": {
-          "status": "planned",
+          "status": "active",
           "event": "PostToolUse",
-          "matcher": "Write",
-          "entrypoint": "hooks/codex/registration-gate.sh"
+          "matcher": "Bash",
+          "entrypoint": "hooks/codex/registration-gate.sh",
+          "note": "Active for Bash write-intent patterns only; checks strategy-plan.md writes after Bash commands and emits registration warnings via additionalContext."
         }
       }
     },
@@ -162,10 +168,11 @@
           "entrypoint": "hooks/session-write-guard.sh"
         },
         "codex": {
-          "status": "planned",
+          "status": "active",
           "event": "PreToolUse",
-          "matcher": "Edit|Write",
-          "entrypoint": "hooks/codex/session-write-guard.sh"
+          "matcher": "Bash",
+          "entrypoint": "hooks/codex/session-write-guard.sh",
+          "note": "Active for Bash write-intent patterns only; enforcement depends on a session file keyed to the current Codex Bash parent PID."
         }
       }
     }

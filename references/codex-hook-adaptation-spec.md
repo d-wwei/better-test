@@ -1,716 +1,469 @@
-# Codex L1 Hook 适配开发 Spec
+# Codex L1 Hook Adaptation Spec
 
 > 关联文档：`references/codex-hook-adaptation-brief.md`
 >
-> 本 spec 解决“怎么做”。目标是把 better-test 的 L1 Hook 从 Claude 单平台实现，升级为“共享规则层 + 平台入口层”的结构，并在不破坏 Claude Code 的前提下，为 Codex 增加原生 Hook 支持。
+> 这份 spec 定义当前仓库已经落地并需要持续维护的 Codex L1：8 条 runtime-verified active hooks、共享 rule 层、项目级安装器、回归样例和 runtime smoke。
 
 ---
 
-## 1. 范围
+## 1. 交付范围
 
-### 本次 in scope
+### 1.1 当前必须存在的交付物
 
-本次只对 **L1 Core Discipline** 做跨平台抽象和 Codex 落地：
+1. `hooks/codex/execution-log.sh`
+2. `hooks/codex/credential-scan.sh`
+3. `hooks/codex/feedback-rules-guard.sh`
+4. `hooks/codex/post-test-checklist.sh`
+5. `hooks/codex/results-validation.sh`
+6. `hooks/codex/derived-view-guard.sh`
+7. `hooks/codex/registration-gate.sh`
+8. `hooks/codex/session-write-guard.sh`
+9. `hooks/lib/common.sh`
+10. `hooks/lib/rules/execution-log.sh`
+11. `hooks/lib/rules/credential-scan.sh`
+12. `hooks/lib/rules/feedback-rules-guard.sh`
+13. `hooks/lib/rules/post-test-checklist.sh`
+14. `hooks/lib/rules/results-validation.sh`
+15. `hooks/lib/rules/derived-view-guard.sh`
+16. `hooks/lib/rules/registration-gate.sh`
+17. `hooks/lib/rules/session-write-guard.sh`
+18. `hooks/install-codex-hooks.sh`
+19. `hooks/fixtures/codex/post-bash.json`
+20. `hooks/fixtures/claude/post-bash.json`
+21. `hooks/test-codex-hooks.sh`
+22. `hooks/test-codex-bash-guards.sh`
+23. `hooks/test-codex-post-bash-advisories.sh`
+24. `hooks/test-execution-log-parity.sh`
+25. `hooks/test-codex-runtime.sh`
+26. `hooks/README.md`、`references/adapters.md`、本 spec / brief 的同步更新
 
-1. `hooks/credential-scan.sh`
-2. `hooks/feedback-rules-guard.sh`
-3. `hooks/execution-log.sh`
-4. `hooks/post-test-checklist.sh`
-5. `hooks/results-validation.sh`
+### 1.2 当前 active 基线
 
-### 本次 out of scope
+当前 Codex active：
 
-以下 Hook 仍保持 Claude 现状，不要求这次同步迁到 Codex，但实现结构必须为它们留好扩展位：
+- `execution-log`
+- `credential-scan`
+- `feedback-rules-guard`
+- `post-test-checklist`
+- `results-validation`
+- `derived-view-guard`
+- `registration-gate`
+- `session-write-guard`
 
-1. `hooks/derived-view-guard.sh`
-2. `hooks/registration-gate.sh`
-3. `hooks/session-write-guard.sh`
+要求：
 
-理由：
-
-- brief 的核心目标是先补齐 Codex 在执行审计、凭证防护、结果提醒上的 L1 缺口
-- 后 3 个 Hook 已进入 Phase B / 并发 tester 隔离问题域，迁移复杂度更高
-- 如果这次同时迁 8 个 Hook，会把“抽象共享规则层”和“扩平台”两个任务耦合过深
-
----
-
-## 2. 不可破坏的约束
-
-### Claude 兼容性
-
-1. 现有 `hooks/*.sh` 路径继续存在
-2. Claude 的 `.claude/settings.json` 安装方式继续可用
-3. Claude 用户不需要切换到新命令、新目录或新 workflow
-4. Claude 下现有行为只允许“等价重构”，不允许功能回退
-
-### 分层约束
-
-1. `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` 仍只负责 L0 protocol 注入
-2. Codex Hook 配置不允许塞进 `AGENTS.md`
-3. 技术设计必须把“规则逻辑”和“平台 I/O 适配”拆开
-
-### 多平台扩展约束
-
-1. 同一条业务规则只维护一份语义
-2. 新平台接入时，只新增平台入口和安装文档，不重写规则逻辑
-3. Hook 清单和事件绑定不能在多个文档/脚本里长期漂移
-
----
-
-## 3. 现状基线
-
-### 当前已存在的能力
-
-- Claude Hook 安装与说明：`hooks/README.md`
-- Claude Hook 脚本：`hooks/*.sh`
-- Codex skill 注册和 L0 protocol 注入：`references/adapters.md`
-- Codex skill sidecar：`agents/openai.yaml`
-
-### 当前缺口
-
-1. Codex 没有接入 better-test L1 Hook
-2. `references/adapters.md` 当前只有 Codex 的 skill 注册 + protocol 注入，没有 L1 Hook 章节
-3. `hooks/README.md` 当前文案主体仍是 Claude 导向
-4. 现有 Hook 脚本默认耦合 Claude 风格的输入/输出 JSON
+1. `registry.json` 中 active 状态必须与真实实现一致
+2. 安装器只安装 `platforms.codex.status == "active"` 的条目
+3. 文档必须明确写出四个 guard 仅覆盖 Bash 写意图，不等于通用 `Write/Edit`
+4. 文档必须明确写出三个 post-write advisory 当前通过 `PostToolUse/Bash` fallback 落地，而不是原生 `Write`
+5. `matcher: "Write"` 尚未在 `file_change` 上观测到，这一事实必须由 runtime spike 持续验证
 
 ---
 
-## 4. 目标产物
+## 2. 官方边界
 
-本次完成后，仓库应新增或修改为以下结构：
+可以直接依赖的官方事实：
+
+1. Hooks 是实验能力，需要 `codex_hooks` feature flag
+2. `hooks.json` 可以跟随配置层被发现，常用位置是 `~/.codex/hooks.json` 和 `<repo>/.codex/hooks.json`
+3. 多个 `hooks.json` 会叠加执行，不是互相覆盖
+4. AGENTS.md、skills、hooks 是不同的定制层
+5. CLI 支持 `--enable` 和 `--config` 做单次配置覆盖
+
+来源：
+
+- <https://developers.openai.com/codex/hooks>
+- <https://developers.openai.com/codex/skills>
+- <https://developers.openai.com/codex/guides/agents-md>
+- <https://developers.openai.com/codex/config-basic>
+- <https://developers.openai.com/codex/config-advanced>
+
+不能直接从官方文档推出、必须靠 runtime spike 证明的内容：
+
+1. 哪些 `matcher` 在当前 `codex-cli` 版本上真的会触发
+2. `file_change` 与 `Write/Edit` 的映射关系
+3. `tool_response` payload 里是否包含 shell exit code
+
+本 spec 同时声明一条仓库内约束：
+
+- better-test 的 Codex L1 默认安装到项目 `.codex/hooks.json`
+
+这是仓库设计选择，不是官方默认行为。
+
+---
+
+## 3. 文件结构
+
+本次实现后，最小结构应为：
 
 ```text
 hooks/
-├── credential-scan.sh                  # 保留：Claude 稳定入口
-├── feedback-rules-guard.sh             # 保留：Claude 稳定入口
-├── execution-log.sh                    # 保留：Claude 稳定入口
-├── post-test-checklist.sh              # 保留：Claude 稳定入口
-├── results-validation.sh               # 保留：Claude 稳定入口
-├── registry.json                       # 新增：Hook 元数据单一信源
-├── codex/                              # 新增：Codex 平台入口层
+├── execution-log.sh
+├── credential-scan.sh
+├── feedback-rules-guard.sh
+├── post-test-checklist.sh
+├── results-validation.sh
+├── derived-view-guard.sh
+├── registration-gate.sh
+├── session-write-guard.sh
+├── registry.json
+├── codex/
+│   ├── execution-log.sh
 │   ├── credential-scan.sh
 │   ├── feedback-rules-guard.sh
-│   ├── execution-log.sh
 │   ├── post-test-checklist.sh
-│   └── results-validation.sh
-├── lib/                                # 新增：共享规则和统一返回协议
-│   ├── contract.sh
-│   ├── io-claude.sh
-│   ├── io-codex.sh
-│   ├── response-claude.sh
-│   ├── response-codex.sh
+│   ├── results-validation.sh
+│   ├── derived-view-guard.sh
+│   ├── registration-gate.sh
+│   └── session-write-guard.sh
+├── lib/
+│   ├── common.sh
 │   └── rules/
+│       ├── execution-log.sh
 │       ├── credential-scan.sh
 │       ├── feedback-rules-guard.sh
-│       ├── execution-log.sh
 │       ├── post-test-checklist.sh
-│       └── results-validation.sh
-├── fixtures/                           # 新增：输入/输出夹具
+│       ├── results-validation.sh
+│       ├── derived-view-guard.sh
+│       ├── registration-gate.sh
+│       └── session-write-guard.sh
+├── fixtures/
 │   ├── claude/
 │   └── codex/
-└── test.sh                             # 新增：本地回归脚本
-
-references/
-├── codex-hook-adaptation-brief.md
-├── codex-hook-adaptation-spec.md       # 本文件
-└── adapters.md                         # 更新：新增 Codex L1 Hooks 章节
-
-hooks/
-├── README.md                           # 更新：Claude + Codex 双平台安装/测试
-└── install-codex-hooks.sh              # 新增：Codex Hook 安装/状态/卸载脚本
+├── install-codex-hooks.sh
+├── test-codex-bash-guards.sh
+├── test-codex-post-bash-advisories.sh
+├── test-codex-hooks.sh
+├── test-codex-runtime.sh
+└── test-execution-log-parity.sh
 ```
 
 说明：
 
-- `hooks/*.sh` 保持为 Claude 入口，避免破坏现有引用
-- `hooks/codex/*.sh` 是 Codex 入口，负责把 Codex Hook I/O 映射到共享契约
-- `hooks/lib/rules/*.sh` 是规则层，只处理规范化后的字段，不关心 Claude/Codex 差异
-- `hooks/registry.json` 是 Hook 元数据唯一信源，后续新增/下线/分平台支持状态都先改这里
-
-`hooks/install-codex-hooks.sh` 是本次明确产物。重点是：
-
-- **不要**把“安装 Codex hooks”的副作用塞进默认 `install.sh install`
-- 安装、状态、卸载都走独立脚本，避免和现有 skill 注册器职责混淆
+- `hooks/*.sh` 继续是 Claude 稳定入口
+- `hooks/codex/*.sh` 只负责 Codex 输入解析
+- 真正的业务逻辑只保留一份，在 `hooks/lib/rules/*.sh`
 
 ---
 
-## 5. 统一 Hook 契约
+## 4. 注册表约束
 
-### 5.0 Hook 注册表
+`hooks/registry.json` 是安装器唯一的数据源。
 
-`hooks/registry.json` 是 Hook 元数据的单一信源（SSOT）。
+安装器读取规则：
 
-它至少服务 4 个用途：
+1. 只读取 `platforms.codex.status == "active"` 的条目
+2. 对每个 active 条目同时校验：
+   - `rule_path`
+   - `platforms.codex.entrypoint`
+3. 任一 active 条目缺文件时，安装器必须 fail-closed：
+   - 不写入新的 hooks 配置
+   - 返回非 0
+   - 明确列出缺失项
 
-1. 定义仓库当前有哪些 Hook
-2. 定义每个 Hook 的 phase、优先级、规则文件、平台入口、平台支持状态
-3. 供 `hooks/install-codex-hooks.sh` 读取，生成/合并 Codex Hook 配置
-4. 供 `hooks/README.md` 与 `references/adapters.md` 更新时核对支持矩阵，避免文档漂移
+以后新增 Codex hook 的固定顺序：
 
-注册表不是可选优化，而是本次结构的一部分。后续新增 Hook 时，**先改注册表，再补实现**。
+1. 先改 `hooks/registry.json`
+2. 再补 shared rule / entrypoint
+3. 再让安装器自然读到它
+4. 再补 fixture / 测试
+5. 最后更新文档
 
-#### 注册表字段
-
-顶层字段：
-
-| 字段 | 含义 |
-|------|------|
-| `schema_version` | 注册表 schema 版本 |
-| `hooks` | Hook 列表 |
-
-每个 Hook 条目至少包含：
-
-| 字段 | 含义 |
-|------|------|
-| `id` | 稳定 ID，建议 kebab-case |
-| `phase` | `core` / `phase-b` 等 |
-| `priority` | `P0` / `P1` / `P2` |
-| `rule_path` | 共享规则文件路径 |
-| `summary` | 单行说明 |
-| `platforms.claude` | Claude 入口和事件绑定 |
-| `platforms.codex` | Codex 入口和事件绑定 |
-
-平台字段至少包含：
-
-| 字段 | 含义 |
-|------|------|
-| `status` | `active` / `planned` / `disabled` |
-| `event` | `PreToolUse` / `PostToolUse` |
-| `matcher` | 工具匹配器 |
-| `entrypoint` | 平台入口脚本 |
-
-#### 注册表消费规则
-
-1. `hooks/install-codex-hooks.sh` 只读取 `platforms.codex.status == "active"` 的条目
-2. Claude 现有 `hooks/README.md` 中的 Hook 列表需要与注册表一致
-3. `phase-b` Hook 即使暂未迁到 Codex，也应在注册表中出现，并标为 `planned`
-4. 不允许在安装脚本里硬编码“5 个 Hook 名单”
-
-#### 新增 Hook 的升级流程
-
-以后每次新增 Hook，按固定顺序做：
-
-1. 在 `hooks/registry.json` 新增条目
-2. 增加 `hooks/lib/rules/<hook>.sh`
-3. 增加 Claude 入口 `hooks/<hook>.sh`
-4. 若 Codex 本次支持，则增加 `hooks/codex/<hook>.sh`
-5. 运行安装/测试脚本验证
-6. 再更新 README / adapters 文档
-
-这样以后 skill 升级时，只有“新增/变更 Hook”才需要做 Hook 适配；纯 workflow、protocol、references 升级不需要动 Codex Hook 层。
-
-### 5.1 共享规则层读取的规范化字段
-
-所有 `hooks/lib/rules/*.sh` 只依赖以下规范化字段：
-
-| 变量 | 含义 |
-|------|------|
-| `BT_HOOK_PLATFORM` | `claude` / `codex` |
-| `BT_HOOK_EVENT` | `PreToolUse` / `PostToolUse` |
-| `BT_TOOL_NAME` | `Write` / `Edit` / `Bash` 等 |
-| `BT_FILE_PATH` | 被写入/编辑的目标路径 |
-| `BT_CONTENT` | Write 内容或 Edit 新内容 |
-| `BT_COMMAND` | shell 命令文本 |
-| `BT_CWD` | 命令执行目录 |
-| `BT_STDOUT` | 命令输出（可截断） |
-| `BT_EXIT_CODE` | shell 退出码 |
-| `BT_PROJECT_ROOT` | 当前项目根，用于定位 `.better-work/` |
-
-### 5.2 共享规则层可调用的统一返回函数
-
-`hooks/lib/contract.sh` 提供：
-
-1. `bt_allow`
-2. `bt_block "<message>"`
-3. `bt_warn "<message>"`
-4. `bt_append_context "<message>"`
-
-返回策略：
-
-- Claude 入口通过 `response-claude.sh` 转换成 Claude Hook 需要的 stdout / exit code
-- Codex 入口通过 `response-codex.sh` 转换成 Codex Hook 需要的 stdout / exit code
-
-### 5.3 入口层职责
-
-`hooks/*.sh` 和 `hooks/codex/*.sh` 只能做三件事：
-
-1. 解析平台 Hook 输入 JSON
-2. 写入规范化字段
-3. 调用对应规则脚本并输出平台格式结果
-
-禁止入口层做业务判断，避免将来平台越多、逻辑越分叉。
+只要 hook 列表和语义没变，就不需要“重新做一轮 Codex 适配”；只需要按注册表增量扩展。
 
 ---
 
-## 6. 每个 Hook 的具体设计
+## 5. 执行契约
 
-### 6.1 `credential-scan`
+### 5.1 `hooks/lib/common.sh`
 
-共享规则文件：
+至少提供：
 
-- `hooks/lib/rules/credential-scan.sh`
-
-平台入口：
-
-- Claude: `hooks/credential-scan.sh`
-- Codex: `hooks/codex/credential-scan.sh`
-
-行为：
-
-1. 仅检查 `.better-work/test/` 路径写入
-2. `Write` 读取全文内容，`Edit` 读取新内容
-3. 命中凭证模式时直接 block
-4. block message 必须说明命中的近似片段，不输出完整凭证
-
-Codex 验收：
-
-- 写入含假 token 内容时被拦截
-- 写入普通 markdown 时允许
-
-### 6.2 `feedback-rules-guard`
-
-共享规则文件：
-
-- `hooks/lib/rules/feedback-rules-guard.sh`
-
-行为：
-
-1. 命中 `feedback-rules.json` 直接 block
-2. block message 统一引导使用 `/better-test feedback` 或 merge 流程
-
-Codex 验收：
-
-- `Write` / `Edit` 都阻止
-- 非该文件写入不误伤
-
-### 6.3 `execution-log`
-
-共享规则文件：
-
-- `hooks/lib/rules/execution-log.sh`
-
-行为：
-
-1. 仅处理 shell / bash 类型工具
-2. 自动定位 `.better-work/test/`
-3. 如果存在 `.better-work/test/testers/<tester-id>/` 等新路径结构，优先遵守当前 workflow 约定
-4. 若找不到 `.better-work/test/`，静默放行，不报错
-5. 自动创建 `execution-log.md` 头部
-6. 记录时间、命令、exit code、截断输出
-
-实现要求：
-
-1. 共享规则层只做“写日志”逻辑
-2. Claude/Codex 的 shell 输出字段差异在入口层消化
-3. 输出截断策略在 Claude/Codex 上保持一致
-
-Codex 验收：
-
-- 任意执行一条 shell 命令后，`execution-log.md` 自动追加
-- exit code 和 stdout 能被正确记录
-- 不要求人工通过 wrapper 命令触发
-
-### 6.4 `post-test-checklist`
-
-共享规则文件：
-
-- `hooks/lib/rules/post-test-checklist.sh`
-
-行为：
-
-1. 仅在 `.better-work` 范围内写入 `results.json` 时触发
-2. 输出 additional context / warning，不阻塞写入
-3. 提醒内容保持与 Claude 现有语义等价
-
-Codex 验收：
-
-- 写入合规 `results.json` 后仍能看到 checklist 提醒
-
-### 6.5 `results-validation`
-
-共享规则文件：
-
-- `hooks/lib/rules/results-validation.sh`
-
-行为：
-
-1. 仅在 `.better-work` 范围内写入 `results.json` 时触发
-2. 非 JSON 内容直接跳过
-3. 缺顶层字段、空 items、非标 ID、indirect pass 等问题给 warning
-4. 不阻塞写入，除非平台行为强制且已明确接受该变化
-
-Codex 验收：
-
-- 故意构造缺字段 `results.json`，能收到 warning
-- 合规文件不会误报
-
----
-
-## 7. Codex 安装方案
-
-### 7.1 目标
-
-Codex Hook 安装要满足：
-
-1. 可脚本化
-2. 幂等
-3. 不干扰现有 `AGENTS.md` 注入逻辑
-4. 不覆盖用户已有其他 Hook 配置
-
-### 7.2 支持的安装范围
-
-支持两种 scope：
-
-1. `project`
-   - 写入 `<repo>/.codex/hooks.json`
-   - 适合团队共享、项目内提交配置
-2. `user`
-   - 写入 `~/.codex/hooks.json`
-   - 适合个人全局安装
-
-默认推荐：
-
-- 先支持 `project`
-- `user` 作为可选模式
-
-原因：
-
-- better-test 是项目工作流型 skill，项目级 Hook 更容易和团队共享
-- 不会把 better-test 的 Hook 默认施加到用户所有无关仓库
-
-### 7.3 安装脚本职责
-
-新增脚本：`install-codex-hooks.sh`
-
-子命令：
-
-1. `install`
-2. `status`
-3. `uninstall`
-
-核心职责：
-
-1. 检测 skill 实际路径
-2. 从 `hooks/registry.json` 读取 `platforms.codex.status == "active"` 的 Hook 条目
-3. 生成这些 Codex 入口脚本对应的 Hook 配置
-4. 合并写入目标 `hooks.json`
-5. 检查并启用 `~/.codex/config.toml` 中的 `features.codex_hooks = true`
-6. `status` 输出当前 scope、配置文件路径、feature flag、注册表中 active Codex Hook 是否都已注册
-7. `uninstall` 只删除 better-test 自己写入的 Hook 项
-
-### 7.4 合并策略
-
-`hooks.json` 的合并策略必须是“移除旧 better-test 项，再插入新项”：
-
-识别方式：
-
-- 以 command 路径是否指向 `<skill>/hooks/codex/` 作为 better-test 管理项识别条件
-
-禁止：
-
-- 覆盖整个 `hooks.json`
-- 假定文件里只有 better-test 自己的项
-- 在安装器里手写 Hook 列表而不读注册表
-
-### 7.5 feature flag 策略
-
-安装脚本对 `~/.codex/config.toml` 的处理要求：
-
-1. 若未开启 `features.codex_hooks = true`，安装时补齐
-2. 若用户已有 `[features]` 段，则只做增量修改
-3. `uninstall` 不自动关闭该 flag，避免误伤其他 Hook 用户
-
-### 7.6 Windows
-
-本期不承诺 Windows 支持。文档中明确标注：
-
-- v1 目标平台：macOS / Linux
-- Windows 待 Codex Hook 能力和脚本运行方式稳定后再单独评估
-
----
-
-## 8. Claude 兼容实现策略
-
-### 8.1 保持稳定入口
-
-以下路径在本次实现后仍必须可执行：
-
-1. `hooks/credential-scan.sh`
-2. `hooks/feedback-rules-guard.sh`
-3. `hooks/execution-log.sh`
-4. `hooks/post-test-checklist.sh`
-5. `hooks/results-validation.sh`
-
-这些脚本的重构方式：
-
-1. 只做 wrapper
-2. Claude JSON 解析放到 `hooks/lib/io-claude.sh`
-3. 实际业务逻辑落到 `hooks/lib/rules/*.sh`
-
-### 8.2 不触碰的范围
-
-本次不修改以下逻辑语义，只允许做 import/调用重构：
-
-1. Claude block 条件
-2. Claude warning 文案的大意
-3. Claude execution log 的基本格式
-
-### 8.3 回归底线
-
-如果某次抽象后 Claude 行为和旧脚本不一致，以 Claude 现状为准回调。
-
----
-
-## 9. 对未来平台的扩展位
-
-### 9.1 目录扩展方式
-
-未来新平台统一按以下方式扩展：
-
-```text
-hooks/
-├── <existing wrappers>
-├── codex/
-├── cursor/              # 未来如平台支持 lifecycle hooks
-├── gemini/              # 未来如平台支持 lifecycle hooks
-└── lib/
-    ├── io-<platform>.sh
-    ├── response-<platform>.sh
-    └── rules/
-```
-
-### 9.2 扩展原则
-
-1. 新平台只新增 `io-<platform>.sh`、`response-<platform>.sh` 和入口脚本
-2. 不修改已有规则语义，除非所有平台一并受益
-3. 若某平台只能支持部分 Hook，在 `references/adapters.md` 明确列出支持矩阵和降级步骤
-
-### 9.3 本次必须预留的能力
-
-本次抽象时必须保证：
-
-1. 一个规则脚本可被多个平台入口复用
-2. 返回“block / warn / additional context”不是写死在 Claude 语法上
-3. fixture 测试目录可继续增加新平台样本
-4. Hook 新增时，平台安装器通过注册表自动感知，而不是手工加名单
-
----
-
-## 10. 测试与验证设计
-
-### 10.1 夹具
-
-新增：
-
-```text
-hooks/fixtures/
-├── claude/
-│   ├── pre-write-credential.json
-│   ├── post-bash-success.json
-│   └── post-write-results-invalid.json
-└── codex/
-    ├── pre-write-credential.json
-    ├── post-bash-success.json
-    └── post-write-results-invalid.json
-```
+1. `.better-work/test/` 根目录解析
+2. `.better-work` symlink 解析
+3. `.active-sessions/<pid>.json` 查找
+4. `execution-log.md` 目标路径解析
+5. Bash 写目标提取辅助函数
 
 要求：
 
-1. 夹具来自真实平台 payload 脱敏样本
-2. 夹具命名按“事件 + 场景”组织
-3. 先用真实样本锁定协议，再做代码抽象
+- 复用 Claude 当前项目检测语义
+- Codex 入口不要复制一份检测逻辑
+- Bash 写目标提取仅做静态、保守识别；宁可少拦截，也不允许凭空扩张语义
 
-### 10.2 回归脚本
+### 5.2 `hooks/lib/rules/execution-log.sh`
 
-新增：
+只负责共享业务逻辑：
 
-- `hooks/test.sh`
+1. 创建 `execution-log.md` 头部
+2. 追加 Bash 命令和 exit code
+3. 按当前行为截断 stdout
+4. 优先写 run 目录；找不到 run 时退回共享 `test/execution-log.md`
 
-职责：
+当前共享 rule 契约是 shell 函数参数调用，不要求 `BT_*` 环境变量。
+当前 `codex-cli 0.122.0` runtime payload 不提供 shell exit code；Codex 入口在该字段缺失时应记录 `EXIT: ?`，而不是报错。
 
-1. 跑 Claude fixtures
-2. 跑 Codex fixtures
-3. 检查 block / allow / warn 输出
-4. 检查 execution-log 文件生成和追加
-5. 失败时返回非 0
+### 5.3 `hooks/lib/rules/feedback-rules-guard.sh`
 
-### 10.3 必测清单
+共享规则只接受“已解析出的目标路径”，并按下面语义返回：
 
-Claude：
+1. 非受保护 `feedback-rules.json` 路径：返回 0
+2. `run-*` / `merge-*` 目录下的路径：返回 0
+3. merge lock 存在：返回 0
+4. 项目级受保护路径且检测到活跃 tester session：stderr 提示并返回 2
 
-1. 凭证写入被拦截
-2. `feedback-rules.json` 写入被拦截
-3. `results.json` 缺字段有 warning
-4. `results.json` 写入后 checklist 有提醒
-5. Bash 后 execution log 追加
+### 5.4 `hooks/lib/rules/credential-scan.sh`
 
-Codex：
+共享规则只接受“要写入的文本内容”，并按下面语义返回：
 
-1. 重复以上 5 条
-2. feature flag 未开启时，`status` 能明确报未启用
-3. 安装脚本重复执行保持幂等
-4. 卸载只移除 better-test 项
+1. 内容为空：返回 0
+2. 内容中未命中 credential-like pattern：返回 0
+3. 内容中命中 credential-like pattern：stderr 提示并返回 2
 
-### 10.4 手工烟测
+Codex 侧当前只把“Bash 命令文本里的显式 literal”传给此规则，因此它不覆盖：
 
-至少做两轮：
+1. 从外部文件 `cp` / `mv` / `cat secret.txt > ...` 搬运 secret
+2. 子解释器运行时生成的 secret
+3. 其他不在命令文本中的动态值
 
-1. Claude 项目里真实安装并触发一次
-2. Codex 项目里真实安装并触发一次
+### 5.5 `hooks/lib/rules/derived-view-guard.sh`
 
----
+共享规则只接受“已解析出的目标路径”，并按下面语义返回：
 
-## 11. 实施拆分
+1. 非派生视图路径：返回 0
+2. `run-*` / `merge-*` 目录下的路径：返回 0
+3. merge lock 存在：返回 0
+4. 项目级受保护派生视图且检测到活跃 tester session：stderr 提示并返回 2
 
-### Slice 1: 协议 Spike
+### 5.6 `hooks/lib/rules/post-test-checklist.sh`
 
-输出：
+共享规则只接受“已解析出的目标路径”，并按下面语义返回：
 
-1. 确认 Codex Hook payload 与返回协议
-2. 产出脱敏 fixture
-3. 形成最小字段映射表
+1. 非 `results.json` 路径：返回 0
+2. 不在 `.better-work/test/` / `history/` 范围内：返回 0
+3. 命中目标路径：stdout 输出 hook JSON，向模型注入 post-completion checklist advisory
 
-完成标准：
+此规则是 advisory，不阻断写入。
 
-- 能用一句话说明 Claude/Codex 的差异点
-- `hooks/fixtures/codex/` 已有至少 3 个样本
+### 5.7 `hooks/lib/rules/results-validation.sh`
 
-### Slice 2: 共享契约层
+共享规则接受“已解析出的目标路径 + 目标文件内容”，并按下面语义返回：
 
-输出：
+1. 非 `results.json` 路径：返回 0
+2. 路径不在 `.better-work/test/` / `history/` 范围内：返回 0
+3. 文件内容为空或不是合法 JSON：返回 0
+4. 字段完整且无明显语义错误：返回 0
+5. 命中缺字段 / 弱证据 / 非标准 ID 等问题：stdout 输出 hook JSON，向模型注入 validation advisory
 
-1. `hooks/registry.json`
-2. `hooks/lib/contract.sh`
-3. `hooks/lib/io-claude.sh`
-4. `hooks/lib/io-codex.sh`
-5. `hooks/lib/response-claude.sh`
-6. `hooks/lib/response-codex.sh`
+此规则是 advisory，不阻断写入。
 
-完成标准：
+### 5.8 `hooks/lib/rules/registration-gate.sh`
 
-- Claude 和 Codex 的入口脚本都能拿到同一套规范化变量
-- 安装器后续可以只靠注册表发现 Codex active Hook
+共享规则只接受“已解析出的目标路径”，并按下面语义返回：
 
-### Slice 3: P0 Hook 迁移
+1. 非 `strategy-plan.md` 路径：返回 0
+2. 不在 `run-*` 目录：返回 0
+3. `bio.md` 与对应 `testers/<tester-id>/registry.md` 都存在：返回 0
+4. 任一注册材料缺失：stdout 输出 hook JSON，向模型注入 registration advisory
 
-输出：
+此规则是 advisory，不阻断写入。
 
-1. `credential-scan`
-2. `feedback-rules-guard`
-3. `execution-log`
+### 5.9 平台入口职责
 
-完成标准：
+`hooks/*.sh` 与 `hooks/codex/*.sh` 只做：
 
-- Claude 回归通过
-- Codex P0 三项通过
+1. 读平台输入 JSON
+2. 提取路径 / command / stdout / exit code
+3. 调用共享 rule
+4. 自己保持静默成功退出，或按共享 rule 返回 2 阻断
 
-### Slice 4: P1 Hook 迁移
+入口层不允许承载业务判断分叉。
 
-输出：
+### 5.10 `hooks/lib/rules/session-write-guard.sh`
 
-1. `post-test-checklist`
-2. `results-validation`
+共享规则只接受“已解析出的目标路径”，并按下面语义返回：
 
-完成标准：
-
-- 能在 Codex 下看到 warning / additional context
-- 若某项受平台限制，文档中有明确降级说明
-
-### Slice 5: 安装器 + 文档
-
-输出：
-
-1. `install-codex-hooks.sh`
-2. `references/adapters.md` 更新
-3. `hooks/README.md` 更新
-4. `hooks/test.sh`
-
-完成标准：
-
-- 新用户按文档可完成 Codex Hook 安装
-- 旧 Claude 用户无需调整原配置仍可继续使用
-- 新增 Hook 时不需要去安装脚本里手改另一份名单
+1. 非 `run-*` 目录路径：返回 0
+2. 未找到当前 tester 的 session 文件：返回 0
+3. 当前 session 无 `run_dir`：返回 0
+4. 目标 run 与当前 run 相同：返回 0
+5. 目标 run 属于其他 tester：stderr 提示并返回 2
 
 ---
 
-## 12. 文档改动要求
+## 6. 安装器
 
-### `references/adapters.md`
+`hooks/install-codex-hooks.sh` 必须支持：
 
-新增独立章节：
+```bash
+hooks/install-codex-hooks.sh install [--project <path>] [--enable-feature-flag]
+hooks/install-codex-hooks.sh status [--project <path>]
+hooks/install-codex-hooks.sh uninstall [--project <path>]
+```
 
-- `## Codex L1 Hooks`
+### 6.1 默认安装位置
 
-必须包含：
+默认写入：
 
-1. Hook 能力说明
-2. project / user 两种安装方式
-3. feature flag 前提
-4. 已支持的 Hook 列表
-5. 未支持的 Hook 列表和后续计划
-6. 与 `AGENTS.md` protocol 注入的区别
+```text
+<project-root>/.codex/hooks.json
+```
 
-### `hooks/README.md`
+不默认写入：
 
-改成双平台文档结构：
+```text
+~/.codex/hooks.json
+```
 
-1. Claude Code
-2. Codex
-3. Hook 列表
-4. 本地测试
-5. 限制与降级说明
+### 6.2 feature flag 处理
 
----
+1. 安装前检查 `~/.codex/config.toml` 或 `$CODEX_HOME/config.toml`
+2. 若未启用 `codex_hooks`：
+   - 默认报错退出
+   - 不修改全局配置
+3. 仅当显式传 `--enable-feature-flag` 时：
+   - 备份原文件
+   - 原地开启 `codex_hooks = true`
 
-## 13. 风险和决策
+### 6.3 合并策略
 
-### 风险 1：Codex 返回协议与 Claude 差异过大
+安装器不能覆盖项目已有 `.codex/hooks.json`。
 
-处理：
+必须做到：
 
-- 通过 `response-codex.sh` 收敛
-- 不在规则层写平台条件分支
+1. 安装前先删除 existing better-test 管理项
+2. 保留非 better-test 的 hook 组和 hook handler
+3. 再把 registry 里 active 的 better-test 条目写回去
+4. uninstall 只删除 better-test 自己的条目
 
-### 风险 2：安装器误覆盖用户已有 Hook
+当前实现约束：
 
-处理：
+- 若目标 `matcher` 组已存在，better-test 条目追加到该组 `hooks` 数组末尾，不重排外部条目
 
-- 仅按 command path 清理 better-test 自己的项
-- 所有写回使用 `jq` 做结构化 merge
-- 安装项来源固定读 `hooks/registry.json`
+better-test 管理项识别条件：
 
-### 风险 3：execution-log 的路径约定和新版 workflow 漂移
-
-处理：
-
-- 以当前 `references/test-execution-workflow.md` 和模板结构为准
-- 如果发现路径已变化，先修正文档/模板，再实现 Hook
-
-### 风险 4：本次只迁 5 个 Hook，README 当前却展示 8 个 Hook
-
-处理：
-
-- 文档明确区分 “Codex 已支持 Core 5” 和 “Claude-only Phase B 3”
-- 不制造“Codex 已完全等价 Claude”的误导
-
-### 风险 5：以后新增 Hook 时，注册表和实际实现脱节
-
-处理：
-
-- `hooks/test.sh` 增加注册表完整性检查
-- 检查每个 active Hook 的 `rule_path` 和 `entrypoint` 文件都存在
-- README / adapters 更新时先对照注册表
+- `statusMessage` 以 `better-test:` 开头
+- 或 `command` 落在当前 skill 的 `hooks/codex/` 路径下
 
 ---
 
-## 14. Definition of Done
+## 7. 回归
 
-以下条件同时满足才算完成：
+### 7.1 `hooks/fixtures/codex/post-bash.json` / `hooks/fixtures/claude/post-bash.json`
 
-1. Claude 原有 5 个 Core Hook 安装方式和行为保持可用
-2. Codex 可通过原生 Hook 自动触发 5 个 Core Hook 中的 P0 三项
-3. P1 两项在 Codex 上实现，或有清晰、已文档化的降级方案
-4. `references/adapters.md` 和 `hooks/README.md` 已更新
-5. `hooks/test.sh` 能同时回归 Claude fixtures 和 Codex fixtures
-6. `hooks/registry.json` 已成为 Hook 名单和平台支持状态的单一信源
-7. 结构上已经为未来迁移 `derived-view-guard` / `registration-gate` / `session-write-guard` 留好入口
+提供一组语义等价的最小 Bash post-hook 样例，用于本地单元级验证和 parity 比较。
+
+### 7.2 `hooks/test-execution-log-parity.sh`
+
+至少覆盖：
+
+1. Claude direct `hooks/execution-log.sh` 会写出 `execution-log.md`
+2. Claude `hooks/gate.sh post-bash` 的文件副作用与 direct path 一致
+3. Codex `hooks/codex/execution-log.sh` 的文件副作用与 Claude direct path 一致
+
+### 7.3 `hooks/test-codex-hooks.sh`
+
+至少覆盖：
+
+1. `hooks/codex/execution-log.sh` 能创建并追加 `execution-log.md`
+2. `install-codex-hooks.sh install` 会把所有 active Codex hook 写入项目 `.codex/hooks.json`
+3. install 不会删除无关第三方 hook 条目
+4. `uninstall` 只移除 better-test 自己的条目
+
+### 7.4 `hooks/test-codex-bash-guards.sh`
+
+至少覆盖：
+
+1. `credential-scan` 会阻断显式嵌入 secret 的 Bash 写命令
+2. `feedback-rules-guard` 会阻断命中的 Bash 写目标
+3. `derived-view-guard` 会阻断命中的 Bash 写目标
+4. `session-write-guard` 会放行 own run、阻断 cross-tester run
+5. 非写命令或允许路径不会误阻断
+6. 安装器会把四个 guard 作为 `PreToolUse/Bash` active 条目写入 `.codex/hooks.json`
+
+### 7.5 `hooks/test-codex-post-bash-advisories.sh`
+
+至少覆盖：
+
+1. `post-test-checklist` 会在 Bash 写入 `results.json` 时输出 advisory JSON
+2. `results-validation` 会在 Bash 写入坏的 `results.json` 时输出 advisory JSON
+3. `registration-gate` 会在 Bash 写入 `strategy-plan.md` 且注册材料缺失时输出 advisory JSON
+4. 非目标 Bash 命令不会误输出 advisory
+5. 安装器会把三条 advisory hook 作为 `PostToolUse/Bash` active 条目写入 `.codex/hooks.json`
+
+### 7.6 `hooks/test-codex-runtime.sh`
+
+这是当前 schema spike 的落地脚本，至少覆盖：
+
+1. 用安装器生成项目 `.codex/hooks.json`
+2. 在真实 `codex exec` 会话里触发 `PostToolUse/Bash`
+3. 验证 `execution-log.md` 真正写入，并锁定当前 `EXIT: ?` 行为
+4. 在真实 `codex exec` 会话里验证 `credential-scan` 的 `PreToolUse/Bash` 阻断
+5. 在真实 `codex exec` 会话里验证 `feedback-rules-guard` 的 `PreToolUse/Bash` 阻断
+6. 在真实 `codex exec` 会话里验证 `derived-view-guard` 的 `PreToolUse/Bash` 阻断
+7. 在真实 `codex exec` 会话里验证 `session-write-guard` 的 own-run 放行和 cross-tester 阻断
+8. 在真实 `codex exec` 会话里验证 `post-test-checklist` advisory 对模型可见
+9. 在真实 `codex exec` 会话里验证 `results-validation` advisory 对模型可见
+10. 在真实 `codex exec` 会话里验证 `registration-gate` advisory 对模型可见
+11. 用 side effect probe 锁定“`PostToolUse/Bash` 非零 hook 仍执行，但不让命令路径失败”的当前行为
+12. 对 built-in 文件写入再跑一个 probe，记录当前 `matcher: "Write"` 的可观察行为
+
+### 7.7 仍需保留的运行时验证边界
+
+本地 fixture 回归不等于真实 Codex 生命周期已验证；但 `hooks/test-codex-runtime.sh` 通过后，可以把当前 8 条 active hook 视为“当前版本已实测”。
+
+后续仍需要在版本升级时复验：
+
+1. 升级 `codex-cli` 后再跑一次 runtime smoke
+2. 若 `matcher: "Write"` 开始生效，重新评估 3 个 advisory hook 是否应从 Bash fallback 升级到原生 `Write`
+3. 若 runtime payload 暴露 exit code，更新 Codex `execution-log` 记录语义和 fixture
+4. 若 `PostToolUse/Bash` 非零 hook 的 stderr / failure 语义再次漂移，更新 runtime smoke 的 side-effect probe 口径
+5. 若 `file_change` / `Write` 回调模型变化，先更新 registry，再推进对应 hook 入口
+6. 若 advisory runtime smoke 失败，先区分是 hook 没触发、模型复述文案漂移，还是 Codex 回调协议变化；先看本地 advisory fixture，再看 runtime JSONL，最后才调整 smoke 断言
+
+---
+
+## 8. 文档同步要求
+
+### 8.1 `hooks/README.md`
+
+必须写清楚：
+
+1. Claude 侧仍是完整 8 hook
+2. Codex 侧当前有 8 条 active hook，且都做过 runtime smoke
+3. `execution-log` 是 `PostToolUse/Bash`
+4. `credential-scan`、`feedback-rules-guard`、`derived-view-guard` 与 `session-write-guard` 是 `PreToolUse/Bash`，且只覆盖 Bash 写意图
+5. `post-test-checklist`、`results-validation` 与 `registration-gate` 当前通过 `PostToolUse/Bash` fallback 生效，而不是原生 `Write`
+6. Codex hooks 需单独用 `hooks/install-codex-hooks.sh` 安装
+7. `install.sh` 不负责 hooks
+
+### 8.2 `references/adapters.md`
+
+Codex 小节必须明确三层：
+
+1. Layer 1: skill 注册
+2. Layer 2: AGENTS.md / protocol 注入
+3. Layer 3: `.codex/hooks.json` 的 L1 hooks 安装
+
+并明确 Layer 3 当前安装 8 条 active hook，其中 3 条 post-write advisory 仍是 Bash fallback，而非 runtime 已证实的原生 `Write`。
+
+---
+
+## 9. 验收标准
+
+必须满足：
+
+1. Claude `hooks/execution-log.sh` 路径仍可用
+2. Claude `hooks/credential-scan.sh` 路径仍可用
+3. Claude `hooks/feedback-rules-guard.sh` / `hooks/derived-view-guard.sh` 路径仍可用
+4. Claude `hooks/session-write-guard.sh` 路径仍可用
+5. Codex 8 条 active 入口都存在，且走共享 rule
+6. `install-codex-hooks.sh` 只读 `registry.json`
+7. 默认安装到项目 `.codex/hooks.json`
+8. 默认不改用户 `~/.codex/config.toml`
+9. 文档中不再出现“Codex 当前 active 仅 execution-log”的旧口径
+10. `hooks/test-execution-log-parity.sh` 通过
+11. `hooks/test-codex-hooks.sh` 通过
+12. `hooks/test-codex-bash-guards.sh` 通过
+13. `hooks/test-codex-post-bash-advisories.sh` 通过
+14. `hooks/test-codex-runtime.sh` 通过
