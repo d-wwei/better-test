@@ -222,8 +222,25 @@ L7: known-issues lessons      — strategy Step 0 提取（最弱但仍有价值
 
 ---
 
-## 八、下一步
+## 八、Hook 候选（L1 层升级路线）
+
+本次升级没有新增任何 hook。以下经验如果用 hook 自动拦截，执行力会从"文档里写了希望 agent 看到"升级到"不合规就阻断"：
+
+| Hook 候选 | 触发时机 | 拦截什么 | 当前落在哪一层 | 预期效果 |
+|-----------|---------|---------|--------------|---------|
+| **cleanup-guard** | session 退出时 / UserPromptSubmit idle 检测 | 检查 /tmp 是否有 `futu-pwd-*` 等凭据残留；检查是否有 orphan daemon 进程 | L2 test-execution-workflow 清理纪律段 | 从"agent 记得清理"→"忘了就提醒" |
+| **pass-evidence-check** | results.json Write 时（扩展现有 results-validation） | 检查标 ✅ 的 item 是否有 `assertion_field` 非空 + `evidence_level` ≥ direct；检查 `comparison_baseline` 在 compare 模式下是否非 null | L2 test-execution-workflow Pass 4 件套 | 从"应该验证下游效应"→"没验证就不让标 pass" |
+| **port-bind-verify** | Bash 执行 daemon 启动命令后 | 自动跑 `lsof -nP -iTCP:<port> -sTCP:LISTEN` 确认 PID 匹配 | L2 test-execution-workflow 环境确认段 | 从"记得检查端口"→"启动后自动检查" |
+| **number-traceability** | summary.md / FINAL-REPORT Write 时 | 扫描数字声明（"X 个 bug""Y% 覆盖率"），检查是否有对应的 source 引用 | L4 templates 精确数字可溯源规则 | 从"数字应该可溯源"→"没标来源就警告" |
+| **longrun-heartbeat** | Cron 定期触发（5min interval） | 检查 canary 是否还在写 heartbeat；检查采样器 CSV 是否有新数据 | L6 procedures/longrun-testing.md | 从"手动检查采样器"→"自动监控采样器健康" |
+
+**实施建议**：优先做 pass-evidence-check（扩展现有 results-validation hook，改动最小、收益最大），其次 cleanup-guard。
+
+---
+
+## 九、下一步
 
 1. 审核 `pending-skill-upgrades.md` 中 18 条候选 → promote 到 skill 文件
 2. 下次 24h 长跑测试中验证 `procedures/longrun-testing.md` 是否生效
 3. 考虑将 #67-#69（4 阶段测试法 / 5 级成熟度 / 覆盖率上限表）升级到 strategy-workflow 或 design-rationale（当前在 L7 层偏弱）
+4. 实施 Hook 候选（优先 pass-evidence-check → cleanup-guard → port-bind-verify）
