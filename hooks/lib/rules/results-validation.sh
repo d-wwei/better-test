@@ -67,6 +67,48 @@ bt_results_validation_output() {
     if [[ -n "$weak_evidence" ]]; then
       warnings="${warnings}\n- 以下 pass 项证据级别为 indirect（pass 至少需要 direct）: $weak_evidence"
     fi
+
+    # --- pass-evidence-check: v3.1.0 新增 3 项 ---
+
+    # 7. compare 模式下 pass 项必须有 comparison_baseline
+    local mode_val
+    mode_val=$(printf '%s\n' "$content" | jq -r '.mode // ""' 2>/dev/null)
+    if printf '%s\n' "$mode_val" | grep -qi 'compare'; then
+      local no_baseline
+      no_baseline=$(printf '%s\n' "$content" | jq -r '
+        [.items[] | select(
+          .status == "pass" and
+          (.comparison_baseline == null or .comparison_baseline == "")
+        ) | .id] | join(", ")' 2>/dev/null)
+
+      if [[ -n "$no_baseline" ]]; then
+        warnings="${warnings}\n- Compare 模式下以下 ✅ 项缺少 comparison_baseline: $no_baseline"
+      fi
+    fi
+
+    # 8. pass 项必须有 assertion_value（有字段名但没实际值 = 没真验证）
+    local no_value
+    no_value=$(printf '%s\n' "$content" | jq -r '
+      [.items[] | select(
+        .status == "pass" and
+        .assertion_field != null and .assertion_field != "" and
+        (.assertion_value == null or .assertion_value == "")
+      ) | .id] | join(", ")' 2>/dev/null)
+
+    if [[ -n "$no_value" ]]; then
+      warnings="${warnings}\n- 以下 ✅ 项有 assertion_field 但缺少 assertion_value（只有字段名没实际值）: $no_value"
+    fi
+
+    # 9. pre_existing=true 的项不应标 pass（Red Line #18）
+    local pre_existing_pass
+    pre_existing_pass=$(printf '%s\n' "$content" | jq -r '
+      [.items[] | select(
+        .status == "pass" and .pre_existing == true
+      ) | .id] | join(", ")' 2>/dev/null)
+
+    if [[ -n "$pre_existing_pass" ]]; then
+      warnings="${warnings}\n- 以下 pre_existing=true 的项标了 ✅（Red Line #18: 已知有 bug 的功能不应标 pass）: $pre_existing_pass"
+    fi
   fi
 
   if [[ -z "$warnings" ]]; then

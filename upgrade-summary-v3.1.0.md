@@ -226,15 +226,13 @@ L7: known-issues lessons      — strategy Step 0 提取（最弱但仍有价值
 
 本次升级没有新增任何 hook。以下经验如果用 hook 自动拦截，执行力会从"文档里写了希望 agent 看到"升级到"不合规就阻断"：
 
-| Hook 候选 | 触发时机 | 拦截什么 | 当前落在哪一层 | 预期效果 |
-|-----------|---------|---------|--------------|---------|
-| **cleanup-guard** | session 退出时 / UserPromptSubmit idle 检测 | 检查 /tmp 是否有 `futu-pwd-*` 等凭据残留；检查是否有 orphan daemon 进程 | L2 test-execution-workflow 清理纪律段 | 从"agent 记得清理"→"忘了就提醒" |
-| **pass-evidence-check** | results.json Write 时（扩展现有 results-validation） | 检查标 ✅ 的 item 是否有 `assertion_field` 非空 + `evidence_level` ≥ direct；检查 `comparison_baseline` 在 compare 模式下是否非 null | L2 test-execution-workflow Pass 4 件套 | 从"应该验证下游效应"→"没验证就不让标 pass" |
-| **port-bind-verify** | Bash 执行 daemon 启动命令后 | 自动跑 `lsof -nP -iTCP:<port> -sTCP:LISTEN` 确认 PID 匹配 | L2 test-execution-workflow 环境确认段 | 从"记得检查端口"→"启动后自动检查" |
-| **number-traceability** | summary.md / FINAL-REPORT Write 时 | 扫描数字声明（"X 个 bug""Y% 覆盖率"），检查是否有对应的 source 引用 | L4 templates 精确数字可溯源规则 | 从"数字应该可溯源"→"没标来源就警告" |
-| **longrun-heartbeat** | Cron 定期触发（5min interval） | 检查 canary 是否还在写 heartbeat；检查采样器 CSV 是否有新数据 | L6 procedures/longrun-testing.md | 从"手动检查采样器"→"自动监控采样器健康" |
-
-**实施建议**：优先做 pass-evidence-check（扩展现有 results-validation hook，改动最小、收益最大），其次 cleanup-guard。
+| Hook 候选 | 状态 | Claude | Codex | 实现方式 |
+|-----------|------|--------|-------|---------|
+| **pass-evidence-check** | **已实现** | active (PostToolUse/Write) | active (PostToolUse/Bash fallback) | 扩展 results-validation 共享规则 +3 检查：compare baseline / assertion_value / pre_existing 矛盾 |
+| **cleanup-guard** | **部分实现** | active (advisory) | active (advisory) | 扩展 post-test-checklist 追加清理提醒段（/tmp 凭据 / orphan 进程 / orphan orders / 副作用） |
+| port-bind-verify | planned | — | — | 过于项目特定（daemon 二进制名/端口参数），不适合 skill 级 hook |
+| number-traceability | planned | — | — | 数字声明 vs 普通数字区分需 NLP 级分析，误报率太高。由 L4 templates 标准执行 |
+| longrun-heartbeat | planned | — | — | 无 Cron/周期触发生命周期事件。由 L6 procedures/longrun-testing.md 通过 agent 指令处理 |
 
 ---
 

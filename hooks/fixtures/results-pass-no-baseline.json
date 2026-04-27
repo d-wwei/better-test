@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "version": "1.0.0",
+  "run_id": "run-test-001-20260426T000000",
+  "mode": "compare",
+  "summary": { "total": 1, "passed": 1, "failed": 0, "skipped": 0 },
+  "coverage": { "manifest_total": 10, "reachable": 10, "tested": 1, "reachable_coverage_pct": 10.0 },
+  "items": [
+    {
+      "id": "A-01",
+      "name": "test item",
+      "group": "A",
+      "type": "functional",
+      "status": "pass",
+      "color": "green",
+      "assertion_field": "power",
+      "assertion_value": "153.2",
+      "evidence_level": "direct",
+      "comparison_baseline": null,
+      "pre_existing": false,
+      "stability_score": 1.0,
+      "bug_ids": []
+    }
+  ]
+}
