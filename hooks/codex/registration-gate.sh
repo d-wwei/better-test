@@ -1,6 +1,7 @@
 #!/bin/bash
 # better-test L1 Hook: Codex registration-gate
-# PostToolUse on Bash for commands that write strategy-plan.md.
+# PostToolUse on Bash and Write(apply_patch) for commands that write
+# strategy-plan.md.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -11,7 +12,7 @@ HOOKS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 INPUT=$(cat)
 TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // .toolName // empty' 2>/dev/null)
 
-if [[ -n "$TOOL_NAME" && "$TOOL_NAME" != "Bash" ]]; then
+if [[ -n "$TOOL_NAME" && "$TOOL_NAME" != "Bash" && "$TOOL_NAME" != "apply_patch" ]]; then
   exit 0
 fi
 
@@ -26,6 +27,6 @@ while IFS= read -r target; do
     printf '%s\n' "$OUTPUT"
     exit 0
   fi
-done < <(bt_extract_bash_write_targets "$COMMAND" "$CWD")
+done < <(bt_extract_codex_write_targets "$TOOL_NAME" "$COMMAND" "$CWD")
 
 exit 0

@@ -1,6 +1,7 @@
 #!/bin/bash
 # better-test L1 Hook: Codex credential-scan
-# PreToolUse on Bash for explicit credential-like literals written into .better-work/test/.
+# PreToolUse on Bash and Write(apply_patch) for credential-like literals
+# written into .better-work/test/.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -11,27 +12,33 @@ HOOKS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 INPUT=$(cat)
 TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // .toolName // empty' 2>/dev/null)
 
-if [[ -n "$TOOL_NAME" && "$TOOL_NAME" != "Bash" ]]; then
+if [[ -n "$TOOL_NAME" && "$TOOL_NAME" != "Bash" && "$TOOL_NAME" != "apply_patch" ]]; then
   exit 0
 fi
 
 CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // .working_directory // .tool_input.cwd // empty' 2>/dev/null)
 COMMAND=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // .tool_input.cmd // .command // empty' 2>/dev/null)
 PROTECTED_TARGET=""
+CONTENT=""
 
 while IFS= read -r target; do
   [[ -n "$target" ]] || continue
   case "$target" in
     *"/.better-work/test/"* | *".better-work/test/"*)
       PROTECTED_TARGET="$target"
+      CONTENT="$(bt_extract_codex_write_added_content "$TOOL_NAME" "$COMMAND" "$CWD" "$target")"
       break
       ;;
   esac
-done < <(bt_extract_bash_write_targets "$COMMAND" "$CWD")
+done < <(bt_extract_codex_write_targets "$TOOL_NAME" "$COMMAND" "$CWD")
 
 if [[ -z "$PROTECTED_TARGET" ]]; then
   exit 0
 fi
 
-bt_credential_scan_content "$COMMAND" "Bash command targeting $PROTECTED_TARGET"
+if [[ "$TOOL_NAME" == "Bash" ]]; then
+  bt_credential_scan_content "$CONTENT" "Bash command targeting $PROTECTED_TARGET"
+else
+  bt_credential_scan_content "$CONTENT" "apply_patch targeting $PROTECTED_TARGET"
+fi
 exit $?

@@ -53,13 +53,11 @@ Codex hooks are installed per project and managed separately from `install.sh`.
 ```
 
 Current Codex-active hook set: `execution-log`, `credential-scan`, `feedback-rules-guard`, `derived-view-guard`, `session-write-guard`, `post-test-checklist`, `results-validation`, and `registration-gate`.
-These are runtime-verified on `codex-cli 0.122.0`.
+These are runtime-verified on `codex-cli 0.125.0`.
 `execution-log` runs on `PostToolUse/Bash`.
-`credential-scan` runs on `PreToolUse/Bash` and blocks commands that explicitly embed credential-like literals while writing into `.better-work/test/`.
-`feedback-rules-guard` and `derived-view-guard` run on `PreToolUse/Bash` and block Bash commands whose write target resolves into protected `.better-work/test/` paths.
-`session-write-guard` runs on `PreToolUse/Bash` and blocks Bash writes into another tester's `run-*` directory once the current tester has registered a matching `.active-sessions/<pid>.json`.
-`post-test-checklist`, `results-validation`, and `registration-gate` are also active on `PostToolUse/Bash`: they infer Bash write targets, then emit advisory `additionalContext` after commands that write `results.json` or `strategy-plan.md`.
-Native `matcher: "Write"` still has not been observed firing on `file_change`, so these three Codex hooks currently use a Bash write-intent fallback rather than Codex-native `Write`.
+`credential-scan`, `feedback-rules-guard`, `derived-view-guard`, and `session-write-guard` each run on both `PreToolUse/Bash` and `PreToolUse/Write`.
+`post-test-checklist`, `results-validation`, and `registration-gate` each run on both `PostToolUse/Bash` and `PostToolUse/Write`.
+On current Codex runtime, built-in file edits surface as `matcher: "Write"` with `tool_name: "apply_patch"`, not Claude-style `tool_name: "Write"` plus `file_path/content`.
 Current runtime payloads also omit shell exit code, so Codex-generated `execution-log.md` entries record `EXIT: ?`.
 `PostToolUse/Bash` hook commands that exit nonzero still run, but they do not fail the Codex command path; stderr surfacing from those post hooks is not treated as stable.
 
@@ -69,8 +67,8 @@ Notes:
 - it checks `~/.codex/config.toml` for `codex_hooks = true`
 - it does not touch the feature flag unless you pass `--enable-feature-flag`
 - install / uninstall preserve unrelated hook entries already present in `.codex/hooks.json`
-- Bash path guards currently cover shell write-intent only, not built-in `file_change` / `Write` / `Edit`
-- Codex post-write advisories currently cover Bash writes only, not built-in `file_change`
+- Codex now covers both shell write-intent and built-in `apply_patch`/`file_change` for all active guards and advisories except `execution-log`, which remains `PostToolUse/Bash` only
+- The Bash path still matters: shell writes and built-in `apply_patch` writes are separate runtime surfaces, and both stay installed
 - `hooks/test-codex-runtime.sh` is the manual runtime smoke for current Codex behavior
 
 ## Alternative: Per-project installation (legacy)
@@ -145,13 +143,13 @@ Replace `<SKILL_PATH>` with the actual path to the better-test skill directory.
 - **Type**: PreToolUse on Edit|Write
 - **What it does**: Scans content being written to `.better-work/test/` for credential patterns (password, token, api_key, secret, Bearer tokens)
 - **Action on match**: Blocks the write (exit 2)
-- **Codex note**: Codex currently maps this guard to `PreToolUse/Bash` only. It scans the Bash command text for explicit credential-like literals when the command writes into `.better-work/test/`, so it does not cover secrets copied from external files such as `cp leaked-creds.txt ...` or values generated inside child interpreters.
+- **Codex note**: Codex now runs this on both `PreToolUse/Bash` and `PreToolUse/Write`. The Bash path scans command text for explicit credential-like literals; the native Write path scans added `apply_patch` lines. External file copies such as `cp leaked-creds.txt ...` remain outside this guard on the Bash path.
 
 #### feedback-rules-guard.sh
 - **Type**: PreToolUse on Edit|Write
 - **What it does**: Blocks any direct edit to `feedback-rules.json`
 - **Why**: feedback-rules.json is a derived view, rebuilt by `/better-test merge` or single-tester completion
-- **Codex note**: Codex currently maps this guard to `PreToolUse/Bash` only. It inspects extracted Bash write targets, so coverage is intentionally narrower than Claude's native `Edit|Write` path.
+- **Codex note**: Codex now runs this on both `PreToolUse/Bash` and `PreToolUse/Write`. Built-in file edits are covered through `matcher: "Write"` with `tool_name: "apply_patch"`, while Bash writes still rely on extracted shell targets.
 
 #### execution-log.sh
 - **Type**: PostToolUse on Bash
@@ -161,7 +159,7 @@ Replace `<SKILL_PATH>` with the actual path to the better-test skill directory.
 - **Type**: PostToolUse on Write
 - **Trigger**: When results.json is written
 - **What it does**: Injects post-completion checklist reminder + **cleanup checklist** (v3.1.0: /tmp 凭据残留检查、orphan daemon/sampler 进程 kill、orphan orders cancel、测试副作用记入 process-log)
-- **Codex note**: Codex currently maps this hook to `PostToolUse/Bash` only. It triggers when a Bash command's extracted write target resolves to `results.json`, then injects advisory `additionalContext`; it does not currently observe built-in `Write`.
+- **Codex note**: Codex now runs this on both `PostToolUse/Bash` and `PostToolUse/Write`. The Bash path infers shell write targets; the native Write path observes built-in `apply_patch` writes to `results.json`.
 
 #### results-validation.sh
 - **Type**: PostToolUse on Write
@@ -176,7 +174,7 @@ Replace `<SKILL_PATH>` with the actual path to the better-test skill directory.
   - **(v3.1.0)** Compare mode: pass items must have comparison_baseline non-null
   - **(v3.1.0)** Pass items must have assertion_value non-empty (field name alone insufficient)
   - **(v3.1.0)** pre_existing=true items cannot be marked pass (Red Line #18)
-- **Codex note**: Codex currently maps this hook to `PostToolUse/Bash` only. It re-reads `results.json` after a Bash write and injects validation warnings via `additionalContext`; it does not currently observe built-in `Write`.
+- **Codex note**: Codex now runs this on both `PostToolUse/Bash` and `PostToolUse/Write`. Both paths re-read `results.json` after the write completes and inject validation warnings via `additionalContext`.
 
 ### Phase B: Tester/Coordinator Isolation (v3.0)
 
@@ -185,14 +183,14 @@ Replace `<SKILL_PATH>` with the actual path to the better-test skill directory.
 - **What it does**: Blocks writes to project-level derived view files (`test/status.md`, `test/known-issues.md`, `history/bugs-index.md`, `history/feedback-rules.json`) unless a merge lockfile (`.merge-in-progress`) exists
 - **Merge bypass**: `/better-test merge` creates `.better-work/test/.merge-in-progress` at start, deletes at end. While the lockfile exists, derived view writes are allowed
 - **Run/merge directory writes**: Always allowed (tester writes to `run-*/`, coordinator writes to `merge-*/`)
-- **Codex note**: Codex currently maps this guard to `PreToolUse/Bash` only. It matches paths extracted from Bash write commands, not the full Claude `Edit|Write` surface.
+- **Codex note**: Codex now runs this on both `PreToolUse/Bash` and `PreToolUse/Write`. Bash writes still use extracted shell targets; built-in edits are covered via `apply_patch` target extraction.
 
 #### registration-gate.sh
 - **Type**: PostToolUse on Write
 - **Trigger**: When `strategy-plan.md` is written to a `run-*/` directory
 - **What it does**: Verifies that `bio.md` exists in the same run directory AND `registry.md` exists for the tester. **Warns if missing** (PostToolUse cannot block an already-completed write — it injects a warning via additionalContext urging the agent to create the missing files before proceeding)
 - **Why**: Catches agents that start test execution without completing registration
-- **Codex note**: Codex currently maps this hook to `PostToolUse/Bash` only. It watches Bash write targets for `strategy-plan.md` and injects registration warnings via `additionalContext`; it does not currently observe built-in `Write`.
+- **Codex note**: Codex now runs this on both `PostToolUse/Bash` and `PostToolUse/Write`. It watches either Bash-inferred write targets or built-in `apply_patch` targets for `strategy-plan.md` and injects registration warnings via `additionalContext`.
 
 #### session-write-guard.sh
 - **Type**: PreToolUse on Edit|Write
@@ -201,7 +199,7 @@ Replace `<SKILL_PATH>` with the actual path to the better-test skill directory.
 - **PID detection**: Tries `$PPID` (direct parent), then grandparent PID (handles intermediate shell processes)
 - **Graceful fallback**: If no session file found, allows write (doesn't block unregistered agents, e.g., during init)
 - **PPID caveat**: Hook assumes `$PPID` = Claude Code process PID. This matches Bash tool behavior but **must be verified on first deployment** to a target project. If Claude Code spawns hooks via an intermediate shell, the grandparent fallback handles it. Run `/better-test strategy` once and check `.active-sessions/` matches hook detection.
-- **Codex note**: Codex currently maps this guard to `PreToolUse/Bash` only. It protects run directories that can be resolved from extracted Bash write targets, using the same PID-keyed session file contract as Claude.
+- **Codex note**: Codex now runs this on both `PreToolUse/Bash` and `PreToolUse/Write`. Both paths use the same PID-keyed session file contract; only the write-target extraction differs.
 
 ## Session File Lifecycle
 
@@ -260,6 +258,12 @@ If `.better-work/` is NOT gitignored on the target project, add:
 
 # local Bash write-intent guard coverage
 ./hooks/test-codex-bash-guards.sh
+
+# local PostToolUse/Bash advisory coverage
+./hooks/test-codex-post-bash-advisories.sh
+
+# local native Write(apply_patch) guard + advisory coverage
+./hooks/test-codex-write-hooks.sh
 
 # local Codex fixture + installer smoke
 ./hooks/test-codex-hooks.sh

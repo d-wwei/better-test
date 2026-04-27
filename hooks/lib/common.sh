@@ -234,3 +234,136 @@ for item in results:
     print(item)
 PY
 }
+
+_bt_parse_apply_patch() {
+  local mode="$1"
+  local command="$2"
+  local cwd="$3"
+  local target="${4:-}"
+
+  BT_APPLY_PATCH_MODE="$mode" \
+  BT_APPLY_PATCH_COMMAND="$command" \
+  BT_APPLY_PATCH_CWD="$cwd" \
+  BT_APPLY_PATCH_TARGET="$target" \
+  python3 - <<'PY'
+import os
+import sys
+
+mode = os.environ.get("BT_APPLY_PATCH_MODE", "")
+command = os.environ.get("BT_APPLY_PATCH_COMMAND", "")
+cwd = os.environ.get("BT_APPLY_PATCH_CWD", "")
+target = os.environ.get("BT_APPLY_PATCH_TARGET", "")
+
+
+def resolve(path):
+    if not path:
+        return None
+    if os.path.isabs(path):
+        return os.path.normpath(path)
+    if not cwd:
+        return None
+    return os.path.normpath(os.path.abspath(os.path.join(cwd, path)))
+
+
+changes = []
+current = None
+
+for raw_line in command.splitlines():
+    if raw_line.startswith("*** Add File: "):
+        path = resolve(raw_line[len("*** Add File: "):].strip())
+        current = {"paths": [], "added": []}
+        if path:
+            current["paths"].append(path)
+        changes.append(current)
+        continue
+
+    if raw_line.startswith("*** Update File: "):
+        path = resolve(raw_line[len("*** Update File: "):].strip())
+        current = {"paths": [], "added": []}
+        if path:
+            current["paths"].append(path)
+        changes.append(current)
+        continue
+
+    if raw_line.startswith("*** Delete File: "):
+        path = resolve(raw_line[len("*** Delete File: "):].strip())
+        current = {"paths": [], "added": []}
+        if path:
+            current["paths"].append(path)
+        changes.append(current)
+        continue
+
+    if raw_line.startswith("*** Move to: ") and current is not None:
+        path = resolve(raw_line[len("*** Move to: "):].strip())
+        if path and path not in current["paths"]:
+            current["paths"].append(path)
+        continue
+
+    if raw_line.startswith("+") and not raw_line.startswith("+++"):
+        if current is not None:
+            current["added"].append(raw_line[1:])
+
+
+if mode == "targets":
+    seen = set()
+    for change in changes:
+        for path in change["paths"]:
+            if path and path not in seen:
+                seen.add(path)
+                print(path)
+    sys.exit(0)
+
+if mode == "added":
+    for change in changes:
+        if target and target in change["paths"]:
+            for line in change["added"]:
+                print(line)
+    sys.exit(0)
+
+sys.exit(1)
+PY
+}
+
+bt_extract_apply_patch_targets() {
+  local command="$1"
+  local cwd="$2"
+  _bt_parse_apply_patch "targets" "$command" "$cwd"
+}
+
+bt_extract_apply_patch_added_content() {
+  local command="$1"
+  local cwd="$2"
+  local target="$3"
+  _bt_parse_apply_patch "added" "$command" "$cwd" "$target"
+}
+
+bt_extract_codex_write_targets() {
+  local tool_name="$1"
+  local command="$2"
+  local cwd="$3"
+
+  case "$tool_name" in
+    Bash)
+      bt_extract_bash_write_targets "$command" "$cwd"
+      ;;
+    apply_patch)
+      bt_extract_apply_patch_targets "$command" "$cwd"
+      ;;
+  esac
+}
+
+bt_extract_codex_write_added_content() {
+  local tool_name="$1"
+  local command="$2"
+  local cwd="$3"
+  local target="$4"
+
+  case "$tool_name" in
+    Bash)
+      printf '%s\n' "$command"
+      ;;
+    apply_patch)
+      bt_extract_apply_patch_added_content "$command" "$cwd" "$target"
+      ;;
+  esac
+}

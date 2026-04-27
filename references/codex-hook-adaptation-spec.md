@@ -33,9 +33,10 @@
 21. `hooks/test-codex-hooks.sh`
 22. `hooks/test-codex-bash-guards.sh`
 23. `hooks/test-codex-post-bash-advisories.sh`
-24. `hooks/test-execution-log-parity.sh`
-25. `hooks/test-codex-runtime.sh`
-26. `hooks/README.md`、`references/adapters.md`、本 spec / brief 的同步更新
+24. `hooks/test-codex-write-hooks.sh`
+25. `hooks/test-execution-log-parity.sh`
+26. `hooks/test-codex-runtime.sh`
+27. `hooks/README.md`、`references/adapters.md`、本 spec / brief 的同步更新
 
 ### 1.2 当前 active 基线
 
@@ -54,9 +55,9 @@
 
 1. `registry.json` 中 active 状态必须与真实实现一致
 2. 安装器只安装 `platforms.codex.status == "active"` 的条目
-3. 文档必须明确写出四个 guard 仅覆盖 Bash 写意图，不等于通用 `Write/Edit`
-4. 文档必须明确写出三个 post-write advisory 当前通过 `PostToolUse/Bash` fallback 落地，而不是原生 `Write`
-5. `matcher: "Write"` 尚未在 `file_change` 上观测到，这一事实必须由 runtime spike 持续验证
+3. 文档必须明确写出四个 guard 在 Codex 上同时覆盖 Bash 写意图和 native `Write(apply_patch)` 两条路径
+4. 文档必须明确写出三个 post-write advisory 在 Codex 上同时覆盖 `PostToolUse/Bash` 和 `PostToolUse/Write`
+5. runtime spike 必须持续验证 native `Write` 的真实 payload 形状，而不是把 Claude 的 `file_path/content` 契约直接套到 Codex 上
 
 ---
 
@@ -83,6 +84,7 @@
 1. 哪些 `matcher` 在当前 `codex-cli` 版本上真的会触发
 2. `file_change` 与 `Write/Edit` 的映射关系
 3. `tool_response` payload 里是否包含 shell exit code
+4. built-in 文件编辑触发 `Write` 后，hook payload 是否继续保持 `tool_name: "apply_patch"` + patch command 这一形状
 
 本 spec 同时声明一条仓库内约束：
 
@@ -201,7 +203,7 @@ hooks/
 4. 优先写 run 目录；找不到 run 时退回共享 `test/execution-log.md`
 
 当前共享 rule 契约是 shell 函数参数调用，不要求 `BT_*` 环境变量。
-当前 `codex-cli 0.122.0` runtime payload 不提供 shell exit code；Codex 入口在该字段缺失时应记录 `EXIT: ?`，而不是报错。
+当前 `codex-cli 0.125.0` runtime payload 仍不提供 shell exit code；Codex 入口在该字段缺失时应记录 `EXIT: ?`，而不是报错。
 
 ### 5.3 `hooks/lib/rules/feedback-rules-guard.sh`
 
@@ -415,7 +417,7 @@ better-test 管理项识别条件：
 后续仍需要在版本升级时复验：
 
 1. 升级 `codex-cli` 后再跑一次 runtime smoke
-2. 若 `matcher: "Write"` 开始生效，重新评估 3 个 advisory hook 是否应从 Bash fallback 升级到原生 `Write`
+2. 若 native `Write` payload 不再是 `tool_name: "apply_patch"` + patch command，先更新 registry/spec，再推进对应 Codex 入口
 3. 若 runtime payload 暴露 exit code，更新 Codex `execution-log` 记录语义和 fixture
 4. 若 `PostToolUse/Bash` 非零 hook 的 stderr / failure 语义再次漂移，更新 runtime smoke 的 side-effect probe 口径
 5. 若 `file_change` / `Write` 回调模型变化，先更新 registry，再推进对应 hook 入口
@@ -432,8 +434,8 @@ better-test 管理项识别条件：
 1. Claude 侧仍是完整 8 hook
 2. Codex 侧当前有 8 条 active hook，且都做过 runtime smoke
 3. `execution-log` 是 `PostToolUse/Bash`
-4. `credential-scan`、`feedback-rules-guard`、`derived-view-guard` 与 `session-write-guard` 是 `PreToolUse/Bash`，且只覆盖 Bash 写意图
-5. `post-test-checklist`、`results-validation` 与 `registration-gate` 当前通过 `PostToolUse/Bash` fallback 生效，而不是原生 `Write`
+4. `credential-scan`、`feedback-rules-guard`、`derived-view-guard` 与 `session-write-guard` 同时覆盖 `PreToolUse/Bash` 和 `PreToolUse/Write`
+5. `post-test-checklist`、`results-validation` 与 `registration-gate` 同时覆盖 `PostToolUse/Bash` 和 `PostToolUse/Write`
 6. Codex hooks 需单独用 `hooks/install-codex-hooks.sh` 安装
 7. `install.sh` 不负责 hooks
 
@@ -445,7 +447,8 @@ Codex 小节必须明确三层：
 2. Layer 2: AGENTS.md / protocol 注入
 3. Layer 3: `.codex/hooks.json` 的 L1 hooks 安装
 
-并明确 Layer 3 当前安装 8 条 active hook，其中 3 条 post-write advisory 仍是 Bash fallback，而非 runtime 已证实的原生 `Write`。
+并明确 Layer 3 当前安装 8 条 active hook，其中 `execution-log` 仍是 `PostToolUse/Bash` 专用，其余 7 条同时覆盖 Bash 写路径和 native `Write`。
+并明确 native Write 虽已实测可用，但真实 payload 是 `apply_patch`，所以 Codex 入口仍需要适配层。
 
 ---
 

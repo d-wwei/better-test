@@ -69,6 +69,18 @@ jq -e '
 ' "$PROJECT_DIR/.codex/hooks.json" >/dev/null
 
 jq -e '
+  any(.hooks.PostToolUse[]?; .matcher == "Write" and any(.hooks[]?; (.statusMessage // "") == "better-test: post-test-checklist"))
+' "$PROJECT_DIR/.codex/hooks.json" >/dev/null
+
+jq -e '
+  any(.hooks.PostToolUse[]?; .matcher == "Write" and any(.hooks[]?; (.statusMessage // "") == "better-test: results-validation"))
+' "$PROJECT_DIR/.codex/hooks.json" >/dev/null
+
+jq -e '
+  any(.hooks.PostToolUse[]?; .matcher == "Write" and any(.hooks[]?; (.statusMessage // "") == "better-test: registration-gate"))
+' "$PROJECT_DIR/.codex/hooks.json" >/dev/null
+
+jq -e '
   any(.hooks.PreToolUse[]?; .matcher == "Bash" and any(.hooks[]?; (.statusMessage // "") == "better-test: credential-scan"))
 ' "$PROJECT_DIR/.codex/hooks.json" >/dev/null
 
@@ -82,6 +94,22 @@ jq -e '
 
 jq -e '
   any(.hooks.PreToolUse[]?; .matcher == "Bash" and any(.hooks[]?; (.statusMessage // "") == "better-test: session-write-guard"))
+' "$PROJECT_DIR/.codex/hooks.json" >/dev/null
+
+jq -e '
+  any(.hooks.PreToolUse[]?; .matcher == "Write" and any(.hooks[]?; (.statusMessage // "") == "better-test: credential-scan"))
+' "$PROJECT_DIR/.codex/hooks.json" >/dev/null
+
+jq -e '
+  any(.hooks.PreToolUse[]?; .matcher == "Write" and any(.hooks[]?; (.statusMessage // "") == "better-test: feedback-rules-guard"))
+' "$PROJECT_DIR/.codex/hooks.json" >/dev/null
+
+jq -e '
+  any(.hooks.PreToolUse[]?; .matcher == "Write" and any(.hooks[]?; (.statusMessage // "") == "better-test: derived-view-guard"))
+' "$PROJECT_DIR/.codex/hooks.json" >/dev/null
+
+jq -e '
+  any(.hooks.PreToolUse[]?; .matcher == "Write" and any(.hooks[]?; (.statusMessage // "") == "better-test: session-write-guard"))
 ' "$PROJECT_DIR/.codex/hooks.json" >/dev/null
 
 jq -e '

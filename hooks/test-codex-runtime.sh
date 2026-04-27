@@ -441,42 +441,19 @@ if [[ "$registration_advisory_msg" != *"Registration"* && "$registration_advisor
 fi
 
 WRITE_PROJ="$TMP_DIR/write-probe"
-mkdir -p "$WRITE_PROJ/.codex" "$WRITE_PROJ/bin"
+mkdir -p \
+  "$WRITE_PROJ/.codex" \
+  "$WRITE_PROJ/.better-work/test/reference" \
+  "$WRITE_PROJ/.better-work/test/history/v1/run-codex-a3f2-001-1234"
 (
   cd "$WRITE_PROJ"
   git init -q
 )
 
-cat > "$WRITE_PROJ/bin/write-probe.sh" <<'EOF'
-#!/bin/bash
-set -euo pipefail
-out="${HOOK_PROBE_OUT:?}"
-printf 'write-observed\n' > "$out"
-cat > "${out}.stdin"
-EOF
-chmod +x "$WRITE_PROJ/bin/write-probe.sh"
+HOME="$INSTALL_HOME" CODEX_HOME="$INSTALL_CODEX_HOME_DIR" "$SCRIPT_DIR/install-codex-hooks.sh" install --project "$WRITE_PROJ" >/dev/null
 
-cat > "$WRITE_PROJ/.codex/hooks.json" <<EOF
-{
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "$WRITE_PROJ/bin/write-probe.sh",
-            "statusMessage": "probe write"
-          }
-        ]
-      }
-    ]
-  }
-}
-EOF
-
-write_probe_rc=0
-printf '%s\n' 'Create a file named sample.txt containing exactly hello-write. You must not execute any shell command or Bash command. Use only the built-in file editing capability. After it is done, reply with exactly OK.' | HOOK_PROBE_OUT="$TMP_DIR/write-probe.log" codex exec \
+write_block_rc=0
+printf '%s\n' 'Create the file .better-work/test/reference/notes.md containing exactly token=supersecrettoken123456. You must not execute any shell command or Bash command. Use only the built-in file editing capability. If it is blocked by a hook, stop immediately and reply with exactly BLOCKED.' | codex exec \
   --skip-git-repo-check \
   --enable codex_hooks \
   --ephemeral \
@@ -484,26 +461,92 @@ printf '%s\n' 'Create a file named sample.txt containing exactly hello-write. Yo
   --json \
   -C "$WRITE_PROJ" \
   - \
-  > "$TMP_DIR/codex-write.jsonl" \
-  2> "$TMP_DIR/codex-write.stderr" || write_probe_rc=$?
+  > "$TMP_DIR/codex-write-block.jsonl" \
+  2> "$TMP_DIR/codex-write-block.stderr" || write_block_rc=$?
 
-if [[ "$write_probe_rc" -ne 0 ]]; then
-  echo "runtime smoke failed: write probe codex exec exited with $write_probe_rc" >&2
-  cat "$TMP_DIR/codex-write.stderr" >&2 || true
+if [[ "$write_block_rc" -ne 0 ]]; then
+  echo "runtime smoke failed: native Write credential block probe codex exec exited with $write_block_rc" >&2
+  cat "$TMP_DIR/codex-write-block.stderr" >&2 || true
+  exit 1
+fi
+
+if [[ -f "$WRITE_PROJ/.better-work/test/reference/notes.md" ]]; then
+  echo "runtime smoke failed: native Write credential probe wrote protected file despite embedded secret" >&2
+  cat "$WRITE_PROJ/.better-work/test/reference/notes.md" >&2
+  exit 1
+fi
+
+if jq -s -e '
+  any(
+    .[];
+    .type == "item.completed"
+    and .item.type == "file_change"
+    and any(.item.changes[]?; (.path // "") | contains("/.better-work/test/reference/notes.md"))
+  )
+' "$TMP_DIR/codex-write-block.jsonl" >/dev/null 2>&1; then
+  echo "runtime smoke failed: native Write credential probe still emitted a file_change for the blocked edit" >&2
+  cat "$TMP_DIR/codex-write-block.jsonl" >&2
+  exit 1
+fi
+
+grep -q 'Command blocked by PreToolUse hook' "$TMP_DIR/codex-write-block.stderr" || {
+  echo "runtime smoke failed: missing PreToolUse block evidence for native Write credential-scan" >&2
+  cat "$TMP_DIR/codex-write-block.stderr" >&2
+  exit 1
+}
+
+if [[ "$(final_agent_message "$TMP_DIR/codex-write-block.jsonl")" != "BLOCKED" ]]; then
+  echo "runtime smoke failed: native Write credential block probe did not terminate with BLOCKED" >&2
+  cat "$TMP_DIR/codex-write-block.jsonl" >&2
+  exit 1
+fi
+
+write_results_content="$(jq -c . "$SCRIPT_DIR/fixtures/results-pass-no-baseline.json")"
+write_advisory_rc=0
+cat <<EOF | codex exec \
+  --skip-git-repo-check \
+  --enable codex_hooks \
+  --ephemeral \
+  --sandbox workspace-write \
+  --json \
+  -C "$WRITE_PROJ" \
+  - \
+  > "$TMP_DIR/codex-write-advisory.jsonl" \
+  2> "$TMP_DIR/codex-write-advisory.stderr" || write_advisory_rc=$?
+Create the file .better-work/test/history/v1/run-codex-a3f2-001-1234/results.json containing exactly:
+$write_results_content
+You must not execute any shell command or Bash command. Use only the built-in file editing capability.
+After it finishes, if you received any repository-hook advisory containing the substring comparison_baseline, reply with exactly BASELINE; otherwise reply with exactly NONE.
+EOF
+
+if [[ "$write_advisory_rc" -ne 0 ]]; then
+  echo "runtime smoke failed: native Write results-validation probe codex exec exited with $write_advisory_rc" >&2
+  cat "$TMP_DIR/codex-write-advisory.stderr" >&2 || true
+  exit 1
+fi
+
+if [[ ! -f "$WRITE_PROJ/.better-work/test/history/v1/run-codex-a3f2-001-1234/results.json" ]]; then
+  echo "runtime smoke failed: native Write advisory probe did not create results.json" >&2
+  cat "$TMP_DIR/codex-write-advisory.jsonl" >&2
   exit 1
 fi
 
 if ! jq -s -e '
-  any(.[]; .type == "item.completed" and .item.type == "file_change")
-' "$TMP_DIR/codex-write.jsonl" >/dev/null 2>&1; then
-  echo "runtime smoke failed: Codex did not emit a file_change item in write probe" >&2
-  cat "$TMP_DIR/codex-write.jsonl" >&2
+  any(
+    .[];
+    .type == "item.completed"
+    and .item.type == "file_change"
+    and any(.item.changes[]?; (.path // "") | contains("/.better-work/test/history/v1/run-codex-a3f2-001-1234/results.json"))
+  )
+' "$TMP_DIR/codex-write-advisory.jsonl" >/dev/null 2>&1; then
+  echo "runtime smoke failed: native Write advisory probe did not emit a results.json file_change item" >&2
+  cat "$TMP_DIR/codex-write-advisory.jsonl" >&2
   exit 1
 fi
 
-if [[ -f "$TMP_DIR/write-probe.log" ]]; then
-  echo "runtime smoke changed: matcher=Write now triggers on file_change; revisit registry/spec" >&2
-  cat "$TMP_DIR/write-probe.log" >&2
+if [[ "$(final_agent_message "$TMP_DIR/codex-write-advisory.jsonl")" != "BASELINE" ]]; then
+  echo "runtime smoke failed: native Write results-validation advisory was not model-visible" >&2
+  cat "$TMP_DIR/codex-write-advisory.jsonl" >&2
   exit 1
 fi
 
@@ -578,4 +621,4 @@ if [[ "$(final_agent_message "$TMP_DIR/codex-post-fail.jsonl")" != "OK" ]]; then
 fi
 
 echo "codex runtime smoke passed"
-echo "observed baseline: project hooks.json + PostToolUse/Bash works; PostToolUse/Bash exit 2 still runs the hook command but does not fail the command path, and stderr surfacing is not treated as stable; PostToolUse/Bash additionalContext is model-visible for post-test-checklist/results-validation/registration-gate; PreToolUse/Bash blocks landed for inline credentials, feedback-rules, derived views, and cross-tester run writes; current runtime omits exit code; Write matcher not observed on file_change"
+echo "observed baseline: project hooks.json + PostToolUse/Bash works; PostToolUse/Bash exit 2 still runs the hook command but does not fail the command path, and stderr surfacing is not treated as stable; PostToolUse/Bash additionalContext is model-visible for post-test-checklist/results-validation/registration-gate; PreToolUse/Bash blocks landed for inline credentials, feedback-rules, derived views, and cross-tester run writes; current runtime omits exit code; matcher=Write is runtime-verified on codex-cli 0.125.0 for built-in file_change/apply_patch, including PreToolUse blocking and PostToolUse advisory visibility"

@@ -92,10 +92,11 @@ OpenAI 官方文档已给出会直接约束实现的边界：
 3. `PreToolUse/Bash` 的 `exit 2` 会阻断命令
 4. `PostToolUse/Bash` 的 advisory `additionalContext` 当前对模型可见
 5. `PostToolUse/Bash` 的非零 hook 仍会执行，但不会让 Codex 命令路径失败；stderr 暴露也不应视作稳定契约
-6. 当前 `codex-cli 0.122.0` payload 未暴露 shell exit code，所以 Codex 日志里的 `EXIT` 只能记成 `?`
-7. 本地 `file_change` probe 仍未观察到 `matcher: "Write"` 对 built-in 写文件生效
+6. 当前 `codex-cli 0.125.0` payload 仍未暴露 shell exit code，所以 Codex 日志里的 `EXIT` 只能记成 `?`
+7. `matcher: "Write"` 已在 built-in `file_change` / `apply_patch` 上被 runtime spike 证实会触发
+8. 但 Codex native Write payload 不是 Claude 风格的 `tool_name: "Write"` + `file_path/content`，而是 `tool_name: "apply_patch"` + patch command
 
-因此，当前方案不是把 Claude 的 `Write/Edit` 语义硬套给 Codex，而是让 3 条 post-write advisory 先以 `PostToolUse/Bash` fallback 落地，并明确保留 native `Write` 尚未证实的口径。
+因此，当前方案不是把 Claude 的 `Write/Edit` 语义硬套给 Codex，而是在 Codex 侧保留一层 `apply_patch` 适配：7 条非 execution-log hooks 同时覆盖 Bash 写路径和 native Write 路径。
 
 ---
 
@@ -182,9 +183,9 @@ Codex L1 当前采用项目级安装：
 2. Codex 当前 active 8 hook 都能通过安装器落到项目 `.codex/hooks.json`
 3. `registry.json` 是安装器唯一来源
 4. 文档明确写出 8 条 active hook 的真实触发条件
-5. `credential-scan`、`feedback-rules-guard`、`derived-view-guard` 和 `session-write-guard` 必须明确标注为“Bash 写意图限定”，不是通用 `Write/Edit`
-6. `post-test-checklist`、`results-validation` 与 `registration-gate` 必须明确标注为“`PostToolUse/Bash` fallback + advisory additionalContext”，不是原生 `Write`
-7. `matcher: "Write"` 尚未观测到这一事实必须写进文档和 runtime smoke
+5. `credential-scan`、`feedback-rules-guard`、`derived-view-guard` 和 `session-write-guard` 必须明确标注为“Bash + native Write 双路径覆盖”，且说明 Codex native Write 的真实 payload 是 `apply_patch`
+6. `post-test-checklist`、`results-validation` 与 `registration-gate` 必须明确标注为“`PostToolUse/Bash` + `PostToolUse/Write` 双路径 advisory”，而不是 Bash fallback only
+7. runtime smoke 必须锁定 native `Write` 已生效这一事实，而不是继续把它当成未验证能力
 
 不允许出现：
 
@@ -208,17 +209,21 @@ Codex L1 当前采用项目级安装：
    - 校验四个 Bash guard 的本地写目标提取与阻断语义
 4. `hooks/test-codex-post-bash-advisories.sh`
    - 校验三条 `PostToolUse/Bash` advisory hook 的本地输出语义和安装器落点
-5. `hooks/test-codex-runtime.sh`
+5. `hooks/test-codex-write-hooks.sh`
+   - 校验 Codex native `Write` (`tool_name: apply_patch`) 路径下 4 个 guard + 3 个 advisory 的本地输出语义和安装器落点
+6. `hooks/test-codex-runtime.sh`
    - 用真实 `codex exec` 锁定当前运行时基线：
    - 项目 hooks.json 生效
    - `PostToolUse/Bash` 生效
    - `PreToolUse/Bash` 阻断生效
    - `PostToolUse/Bash` additionalContext 对模型可见
+   - native `PreToolUse/Write` 阻断生效
+   - native `PostToolUse/Write` advisory 对模型可见
    - `credential-scan` 能拦截显式嵌入的 inline secret
    - `post-test-checklist` / `results-validation` / `registration-gate` 的 advisory 可被模型感知
    - `session-write-guard` 能放行 own run、阻断 cross-tester run
    - `PostToolUse/Bash` 非零 hook 仍执行，但不让命令路径失败
-   - `matcher: "Write"` 仍未在 `file_change` 上观察到
+   - Codex native Write 仍以 `tool_name: apply_patch` 暴露，而不是 Claude 风格 `file_path/content`
 
 只要 `codex-cli` 升级，上面第 5 条就必须重跑一次。
 
@@ -229,7 +234,7 @@ Codex L1 当前采用项目级安装：
 当前 Codex 适配已经从“只做 execution-log 的一期”推进到“8 条 runtime-verified hook 的可维护基线”：
 
 1. `execution-log` 已在 Codex 上真实落地
-2. `credential-scan`、`feedback-rules-guard`、`derived-view-guard` 与 `session-write-guard` 已以 Bash 写意图阻断的形式真实落地
-3. `post-test-checklist`、`results-validation` 与 `registration-gate` 已以 `PostToolUse/Bash` advisory fallback 真实落地
-4. native `Write` matcher 仍未被本地 runtime 观测到，所以这 3 条 hook 目前不是原生 Write 适配
+2. `credential-scan`、`feedback-rules-guard`、`derived-view-guard` 与 `session-write-guard` 已以 Bash + native Write 双路径阻断的形式真实落地
+3. `post-test-checklist`、`results-validation` 与 `registration-gate` 已以 `PostToolUse/Bash` + `PostToolUse/Write` 双路径 advisory 真实落地
+4. native `Write` matcher 已被本地 runtime 观测到，但需要 Codex 专用 `apply_patch` 适配层，不能把 Claude 原始入口直接照搬
 5. 以后扩展优先走“注册表增量 + shared rule + runtime spike”，而不是重做整套适配

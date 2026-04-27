@@ -27,9 +27,9 @@ L0 协议    L1 Hook   L2 执行流程  L3 规划流程  L4 模板  L5 合并  L
 
 ### 技术细节
 
-**注入方式**：项目 CLAUDE.md 中 `@.better-work/test/protocol.md`，每次对话自动加载到 system context。
+**注入方式**：项目 `CLAUDE.md` 中注入两行：skill 级 `@~/.claude/skills/better-test/protocol-base.md` + 项目级 `@.better-work/test/protocol.md`，每次对话自动加载到 system context。
 
-**当前内容**（25/30 行）：
+**当前内容**（拆分后合计，典型项目约 25/30 行）：
 
 | 段落 | 行数 | 内容 |
 |------|------|------|
@@ -60,7 +60,7 @@ CLAUDE.md 注入两行：
 
 ### 技术细节
 
-**当前 8 个 hook**（全部跨平台 Claude + Codex）：
+**当前 8 个 hook**（Claude 原生 8 条；Codex 当前也有 8 条，其中 3 条 post-write advisory 通过 `PostToolUse/Bash` fallback 落地）：
 
 | Hook | 优先级 | 触发时机 | 拦截什么 | 效果 |
 |------|--------|---------|---------|------|
@@ -73,9 +73,9 @@ CLAUDE.md 注入两行：
 | **registration-gate** | P1 | 写 strategy-plan.md 后（PostToolUse） | 检查 tester 是否完成注册（registry.md + bio.md 存在）| 未注册 → 警告 |
 | **session-write-guard** | P1 | 写文件前（PreToolUse） | tester 尝试写其他 tester 的 run 目录或 registry | 跨 tester 写入 → 阻断 |
 
-**效果**：8 个 hook 覆盖了"凭据泄露""文件权限""执行审计""注册门控""结果校验"五大安全面。这是 skill 中执行力最强的层——agent 犯错直接被拦，不依赖 agent 自觉。
+**效果**：8 个 hook 覆盖了"凭据泄露""文件权限""执行审计""注册门控""结果校验"五大安全面。这是 skill 中执行力最强的层——agent 犯错直接被拦，或至少在动作完成后立刻收到 advisory，不依赖 agent 自觉。
 
-**局限**：当前 hook 主要保护"安全"和"隔离"，还没覆盖"测试质量"（如 pass 判定是否有下游证据、数字是否可溯源）。这些是 Hook 候选，见 upgrade-summary-v3.1.0.md 第八段。
+**局限**：当前 hook 主要保护"安全"和"隔离"，还没覆盖全部"测试质量"维度（如数字是否可溯源、long-run 心跳等）。另外，Codex 侧虽然已经在 `codex-cli 0.125.0` 上观测到 `matcher: "Write"` 对 built-in `apply_patch` 生效，但它的 payload 形状仍不同于 Claude 的原生 `Write`；Codex 入口必须继续保留适配层，不能直接把 Claude 的 `file_path/content` 入口照搬过去。更多候选见 `upgrade-summary-v3.1.0.md` 第八段。
 
 ---
 

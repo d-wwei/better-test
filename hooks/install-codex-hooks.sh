@@ -126,17 +126,33 @@ EOF
   printf '\n'
 }
 
-list_registry_rows() {
+list_registry_bindings() {
   jq -r '
     .hooks[]
+    | . as $hook
+    | (
+        if (($hook.platforms.codex.bindings // []) | length) > 0 then
+          $hook.platforms.codex.bindings[]
+        elif ($hook.platforms.codex.status // empty) != "" then
+          {
+            status: $hook.platforms.codex.status,
+            event: $hook.platforms.codex.event,
+            matcher: $hook.platforms.codex.matcher,
+            entrypoint: $hook.platforms.codex.entrypoint,
+            note: ($hook.platforms.codex.note // "")
+          }
+        else
+          empty
+        end
+      )
     | [
-        .id,
-        .platforms.codex.status,
-        .platforms.codex.event,
-        .platforms.codex.matcher,
-        .platforms.codex.entrypoint,
-        .rule_path,
-        (.platforms.codex.note // "")
+        $hook.id,
+        (.status // $hook.platforms.codex.status // ""),
+        (.event // ""),
+        (.matcher // ""),
+        (.entrypoint // ""),
+        ($hook.rule_path // ""),
+        (.note // $hook.platforms.codex.note // "")
       ]
     | @tsv
   ' "$REGISTRY_FILE"
@@ -158,7 +174,7 @@ validate_active_entries() {
       printf 'missing active entrypoint: %s -> %s\n' "$id" "$entrypoint" >&2
       missing=1
     fi
-  done < <(list_registry_rows)
+  done < <(list_registry_bindings)
 
   return "$missing"
 }
@@ -237,7 +253,7 @@ build_desired_groups() {
           .[$event] += [$group]
         end
       ' <<< "$desired")
-  done < <(list_registry_rows)
+  done < <(list_registry_bindings)
 
   printf '%s\n' "$desired"
 }
@@ -323,7 +339,7 @@ uninstall_hooks() {
 
 status_hooks() {
   local target_file="$PROJECT_ROOT/.codex/hooks.json"
-  local id status event matcher entrypoint rule_path note
+  local id status
   local installed=false
 
   echo "project: $PROJECT_ROOT"
@@ -341,7 +357,7 @@ status_hooks() {
     echo "hooks.json: missing"
   fi
 
-  while IFS=$'\t' read -r id status event matcher entrypoint rule_path note; do
+  while IFS=$'\t' read -r id status; do
     if [[ -f "$target_file" ]] && jq -e --arg msg "better-test: $id" '
       any(.hooks[]?[]?.hooks[]?; (.statusMessage // "") == $msg)
     ' "$target_file" >/dev/null 2>&1; then
@@ -350,7 +366,7 @@ status_hooks() {
     else
       printf '%s\t%s\tnot-installed\n' "$id" "$status"
     fi
-  done < <(list_registry_rows)
+  done < <(jq -r '.hooks[] | [.id, .platforms.codex.status] | @tsv' "$REGISTRY_FILE")
 
   if [[ "$installed" == "false" ]]; then
     echo "no better-test Codex hook entries installed"

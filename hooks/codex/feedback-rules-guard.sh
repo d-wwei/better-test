@@ -1,6 +1,7 @@
 #!/bin/bash
 # better-test L1 Hook: Codex feedback-rules guard
-# PreToolUse on Bash for shell write paths that target feedback-rules.json.
+# PreToolUse on Bash and Write(apply_patch) for write paths that target
+# feedback-rules.json.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -11,7 +12,7 @@ HOOKS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 INPUT=$(cat)
 TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // .toolName // empty' 2>/dev/null)
 
-if [[ -n "$TOOL_NAME" && "$TOOL_NAME" != "Bash" ]]; then
+if [[ -n "$TOOL_NAME" && "$TOOL_NAME" != "Bash" && "$TOOL_NAME" != "apply_patch" ]]; then
   exit 0
 fi
 
@@ -21,6 +22,6 @@ COMMAND=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // .tool_input.cmd /
 while IFS= read -r target; do
   [[ -n "$target" ]] || continue
   bt_feedback_rules_guard_path "$target" || exit $?
-done < <(bt_extract_bash_write_targets "$COMMAND" "$CWD")
+done < <(bt_extract_codex_write_targets "$TOOL_NAME" "$COMMAND" "$CWD")
 
 exit 0
