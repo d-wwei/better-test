@@ -56,6 +56,16 @@ if [[ -n "$EMPTY_OUT" ]]; then
   exit 1
 fi
 
+# --- pass-evidence-check: compare mode pass without baseline ---
+cp "$SCRIPT_DIR/fixtures/results-pass-no-baseline.json" "$RUN_DIR/results.json"
+COMPARE_OUT=$(run_post_bash "$SCRIPT_DIR/codex/results-validation.sh" "printf '%s' '$(cat "$SCRIPT_DIR/fixtures/results-pass-no-baseline.json")' > .better-work/test/history/v1/run-codex-a3f2-001-1234/results.json")
+printf '%s\n' "$COMPARE_OUT" | jq -e '.hookSpecificOutput.additionalContext | contains("comparison_baseline")' >/dev/null
+
+# --- pass-evidence-check: pre_existing=true marked pass ---
+cp "$SCRIPT_DIR/fixtures/results-pre-existing-pass.json" "$RUN_DIR/results.json"
+PREEXIST_OUT=$(run_post_bash "$SCRIPT_DIR/codex/results-validation.sh" "printf '%s' '$(cat "$SCRIPT_DIR/fixtures/results-pre-existing-pass.json")' > .better-work/test/history/v1/run-codex-a3f2-001-1234/results.json")
+printf '%s\n' "$PREEXIST_OUT" | jq -e '.hookSpecificOutput.additionalContext | contains("pre_existing")' >/dev/null
+
 cat > "$HOME_DIR/.codex/config.toml" <<'EOF'
 [features]
 codex_hooks = true

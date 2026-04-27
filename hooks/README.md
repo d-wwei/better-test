@@ -160,13 +160,22 @@ Replace `<SKILL_PATH>` with the actual path to the better-test skill directory.
 #### post-test-checklist.sh
 - **Type**: PostToolUse on Write
 - **Trigger**: When results.json is written
-- **What it does**: Injects post-completion checklist reminder
+- **What it does**: Injects post-completion checklist reminder + **cleanup checklist** (v3.1.0: /tmp 凭据残留检查、orphan daemon/sampler 进程 kill、orphan orders cancel、测试副作用记入 process-log)
 - **Codex note**: Codex currently maps this hook to `PostToolUse/Bash` only. It triggers when a Bash command's extracted write target resolves to `results.json`, then injects advisory `additionalContext`; it does not currently observe built-in `Write`.
 
 #### results-validation.sh
 - **Type**: PostToolUse on Write
 - **Trigger**: When results.json is written
-- **What it does**: Validates required fields in results.json
+- **What it does**: Validates results.json structure and **pass-evidence quality** (v3.1.0):
+  - Required top-level fields (version, run_id, mode, summary)
+  - Coverage section exists
+  - Items array non-empty
+  - Pass items have non-empty assertion_field
+  - Item ID format (Letter-NN)
+  - Pass items evidence_level >= direct
+  - **(v3.1.0)** Compare mode: pass items must have comparison_baseline non-null
+  - **(v3.1.0)** Pass items must have assertion_value non-empty (field name alone insufficient)
+  - **(v3.1.0)** pre_existing=true items cannot be marked pass (Red Line #18)
 - **Codex note**: Codex currently maps this hook to `PostToolUse/Bash` only. It re-reads `results.json` after a Bash write and injects validation warnings via `additionalContext`; it does not currently observe built-in `Write`.
 
 ### Phase B: Tester/Coordinator Isolation (v3.0)

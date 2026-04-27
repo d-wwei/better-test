@@ -1126,7 +1126,7 @@ lessons 的 `evidence_level` 字段——只有 proven 级的洞察才能写入 
   "version": "<X.Y.Z>",
   "tester_id": "<tester-id>",
   "run_id": "run-<tester-id>-<NNN>-<timestamp>",
-  "mode": "smoke | full | targeted | bug-retest",
+  "mode": "smoke | full | targeted | bug-retest | compare",
   "started_at": "<YYYY-MM-DDTHH:MM:SS±HH:MM>",
   "finished_at": "<YYYY-MM-DDTHH:MM:SS±HH:MM>",
   "summary": {
