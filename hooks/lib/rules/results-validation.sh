@@ -100,14 +100,17 @@ bt_results_validation_output() {
     fi
 
     # 9. pre_existing=true 的项不应标 pass（Red Line #18）
-    local pre_existing_pass
-    pre_existing_pass=$(printf '%s\n' "$content" | jq -r '
-      [.items[] | select(
-        .status == "pass" and .pre_existing == true
-      ) | .id] | join(", ")' 2>/dev/null)
+    #    例外：bug-retest mode 下合法——"历史 bug 修好了，验证通过"
+    if ! printf '%s\n' "$mode_val" | grep -qi 'bug-retest'; then
+      local pre_existing_pass
+      pre_existing_pass=$(printf '%s\n' "$content" | jq -r '
+        [.items[] | select(
+          .status == "pass" and .pre_existing == true
+        ) | .id] | join(", ")' 2>/dev/null)
 
-    if [[ -n "$pre_existing_pass" ]]; then
-      warnings="${warnings}\n- 以下 pre_existing=true 的项标了 ✅（Red Line #18: 已知有 bug 的功能不应标 pass）: $pre_existing_pass"
+      if [[ -n "$pre_existing_pass" ]]; then
+        warnings="${warnings}\n- 以下 pre_existing=true 的项标了 ✅（Red Line #18: 已知有 bug 的功能不应标 pass。如果是 bug-retest 验证通过，请将 mode 设为 bug-retest）: $pre_existing_pass"
+      fi
     fi
   fi
 

@@ -61,10 +61,18 @@ cp "$SCRIPT_DIR/fixtures/results-pass-no-baseline.json" "$RUN_DIR/results.json"
 COMPARE_OUT=$(run_post_bash "$SCRIPT_DIR/codex/results-validation.sh" "printf '%s' '$(cat "$SCRIPT_DIR/fixtures/results-pass-no-baseline.json")' > .better-work/test/history/v1/run-codex-a3f2-001-1234/results.json")
 printf '%s\n' "$COMPARE_OUT" | jq -e '.hookSpecificOutput.additionalContext | contains("comparison_baseline")' >/dev/null
 
-# --- pass-evidence-check: pre_existing=true marked pass ---
+# --- pass-evidence-check: pre_existing=true marked pass (non-retest mode → warn) ---
 cp "$SCRIPT_DIR/fixtures/results-pre-existing-pass.json" "$RUN_DIR/results.json"
 PREEXIST_OUT=$(run_post_bash "$SCRIPT_DIR/codex/results-validation.sh" "printf '%s' '$(cat "$SCRIPT_DIR/fixtures/results-pre-existing-pass.json")' > .better-work/test/history/v1/run-codex-a3f2-001-1234/results.json")
 printf '%s\n' "$PREEXIST_OUT" | jq -e '.hookSpecificOutput.additionalContext | contains("pre_existing")' >/dev/null
+
+# --- pass-evidence-check: pre_existing=true in bug-retest mode → NO warn (legitimate fix verification) ---
+cp "$SCRIPT_DIR/fixtures/results-pre-existing-pass-bugretest.json" "$RUN_DIR/results.json"
+RETEST_OUT=$(run_post_bash "$SCRIPT_DIR/codex/results-validation.sh" "printf '%s' '$(cat "$SCRIPT_DIR/fixtures/results-pre-existing-pass-bugretest.json")' > .better-work/test/history/v1/run-codex-a3f2-001-1234/results.json")
+if printf '%s\n' "$RETEST_OUT" | jq -e '.hookSpecificOutput.additionalContext | contains("pre_existing")' >/dev/null 2>&1; then
+  echo "FAIL: bug-retest mode should NOT warn on pre_existing pass" >&2
+  exit 1
+fi
 
 cat > "$HOME_DIR/.codex/config.toml" <<'EOF'
 [features]
