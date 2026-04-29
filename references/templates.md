@@ -800,6 +800,9 @@ Strategy workflow Step 4-5 的输出持久化。存放于 `run-<tester-id>-NNN-<
 tester_id: <tester-id>
 version: v<X.Y.Z>
 mode: <smoke | full | targeted | bug-retest | compare>
+coordination_mode: <solo | preset | custom>
+team_preset: <release-4way | api-3way | single-plus-l2 | custom | null>
+team_role: <role_name | null>
 status: <draft | confirmed | in-progress | completed | superseded>
 created: <YYYY-MM-DDTHH:MM:SS±HH:MM>
 confirmed_at: <YYYY-MM-DDTHH:MM:SS±HH:MM | null>
@@ -829,6 +832,25 @@ total_items: <N>
 - Affected items: <具体测试 ID（如有函数级分析）>
 - Active failures: <N>（suppress 后）
 - Bug retest candidates: <BUG-xxx-NNN 列表>
+
+## Team Contract
+
+- Coordination mode: <solo | preset | custom>
+- Preset: <release-4way | api-3way | single-plus-l2 | custom | none>
+- Coordinator: <tester-id | pending | none>
+- Shared blind-spot guard:
+  - <如"不同账号 + 不同 surface + 不同 oracle">
+
+### My Slot
+- Role: <role_name | "solo">
+- Goal: <一句话>
+- Coverage axis: <一句话>
+- Primary targets: <...>
+- Preferred evidence: <...>
+- Anti-overlap: <...>
+- Must verify: <...>
+- Must not do: <...>
+- Handoff to: <...>
 
 ## Phased Plan
 
@@ -894,6 +916,7 @@ strategy-plan.md 直接在 run 目录内创建，无需归档复制。
 | 项目 | 必须满足 |
 |------|---------|
 | YAML frontmatter | 所有字段已填；status 来自有效枚举值；时间戳遵循三档规范 |
+| Team Contract | 多 tester 时必须填写；solo 场景写 `Coordination mode: solo` |
 | Stages | 编号 1-5（简化路径可少于 5）；每阶段有 groups + items |
 | Hypotheses | Stage 2 每个受影响组至少 1 条；IF-THEN-BECAUSE 格式 |
 | User Adjustments | 有修改必填；无修改写"Accepted as-is" |
@@ -1153,7 +1176,7 @@ lessons 的 `evidence_level` 字段——只有 proven 级的洞察才能写入 
       "color": "green | yellow | red | skip",
       "assertion_field": "<验证的字段名>",
       "assertion_value": "<实际值>",
-      "evidence_level": "direct | indirect | confirmed",
+      "evidence_level": "indirect | direct | binary | confirmed | proven",
       "skip_reason": "<如果 skip，原因>",
       "error_code": "<如果 fail，错误码>",
       "error_detail": "<错误详情，不含凭证>",
@@ -1204,6 +1227,9 @@ RESULT_FILE: <子 Agent 写入的文件路径>
 - **pre-existing 标注**：found_in 字段标注首次出现版本。不标注 → 开发者误判为回归，排查方向错误
 - **changelog 声称修复**：实测未变的 bug 醒目标注 `[CHANGELOG 声称修复但未确认]`，对开发者调试方向有重要影响
 - **severity**：用最坏场景下谁受影响定，pre-existing 记在 fix_note 不降 severity
+- **Observation / Interpretation / Impact 分离**：先写观测事实，再写你的解释，最后写谁受影响。不要把三层混成一句
+- **scope 限定**：只在某个 mode / surface / state 复现或修复的 finding，标题和正文都要写明限定词
+- **peer 证据类型**：如果没有 live repro，只做了 evidence audit / accepted peer evidence / binary corroboration，要在正文显式写出
 - **三句话格式**：每个 bug 先写 scene（什么操作触发）+ symptom（看到什么现象）+ impact（谁受影响）。防止"something broke"式模糊描述
 - **P0 门槛**：severity 想标 P0 → 必须附"证否此 finding 的实验设计"。写不出 = 证据不足 → 降级
 - **证据文件命名**：`BUG-001-scenario-artifact.txt`（按 bug-id 命名），不按 phase 命名。方便最终 bug report 组装
@@ -1386,9 +1412,18 @@ created: <YYYY-MM-DDTHH:MM:SS±HH:MM>
 ✅ N | 🔴 N | ⏭️ N
 冲突: N 项（详见 conflict-log.md）
 
+## Cross-Verify 采信类型
+- live_repro: N
+- evidence_audit: N
+- accepted_peer_evidence: N
+- binary_corroboration: N
+
 ## Bug 列表（项目级编号）
 🔴 BUG-v1.4.28-001: <标题> (来源: run-claude-a3f2-002)
 🔴 BUG-v1.4.28-002: <标题> (来源: run-claude-a3f2-002)
+
+## Minor Findings Bucket
+- <P3 / consistency / schema 小问题；本轮不单独立 bug，但下轮优先复查>
 
 ## 详细信息
 - 冲突记录: conflict-log.md
@@ -1431,7 +1466,7 @@ created: <YYYY-MM-DDTHH:MM:SS±HH:MM>
 | 项目 | 必须满足 |
 |------|---------|
 | conflict-log.md | 每个冲突有 Analysis + Resolution；Coverage Gaps 逐项列出 |
-| merged-summary.md | ≤ 30 行；每个 bug 标注来源 run |
+| merged-summary.md | ≤ 35 行；每个 bug 标注来源 run；含 Cross-Verify 采信统计和 Minor Findings Bucket |
 | merged-results.json | items 去重（同 test_id 取 fail 优先）；conflicts 计数正确 |
 | bugs/ 目录 | 项目级编号（BUG-\<version\>-NNN）；每个 bug 有 source 字段指向原始 run |
 | 不含凭证 | 同其他文件规则 |

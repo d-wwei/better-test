@@ -16,12 +16,14 @@ The agent doesn't know which tests cover which changes. It doesn't know which te
 
 v3.0: Multi-agent parallel testing + tester/coordinator two-role architecture.
 v3.1: Hook enforcement, protocol split, skill upgrade pipeline.
+v3.1.2: Extensible team-role presets for multi-tester planning and merge.
 
 Key capabilities:
 
 - **8 L1 hooks + gate.sh universal entry** — credential scan, derived-view guard, session isolation, execution logging, post-test checklist, results validation. gate.sh auto-detects better-test projects from global config (no per-project setup)
 - **Protocol split** — `protocol-base.md` (skill-level, auto-propagates) + project `protocol.md` (safety + project discipline). Skill upgrades reach all projects automatically
 - **Tester isolation** — parallel agents write to separate `run-<tester-id>-NNN/` directories. `/better-test merge` produces unified results
+- **Extensible team-role presets** — stable role schema, replaceable presets (`release-4way`, `api-3way`, `single-plus-l2`, custom)
 - **4-layer constraint framework** (L0 goal calibration, L1 hooks, L2 independent sub-agent verification, L3 human audit panel)
 - **49 field-tested lessons** integrated from real project testing (futu-opend-rs v1.4.26-v1.4.59)
 - **Skill upgrade pipeline** — universal lessons queue to `pending-skill-upgrades.md`, reviewed and promoted to skill files
@@ -142,6 +144,7 @@ references/
 ├── Tier 1: Workflows (always loaded per command)
 │   ├── init-workflow.md              exploration + material collection + code reading
 │   ├── strategy-workflow.md          change detection + impact analysis + decision tree + compare mode
+│   ├── team-role-presets.md          extensible team schema + preset library + coordinator protocol
 │   ├── test-execution-workflow.md    framework + template for per-project execution plans
 │   ├── feedback-workflow.md          verdict recording + rule extraction + regression canary
 │   ├── reflect-workflow.md           6-type historical analysis (incremental + full)

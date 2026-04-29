@@ -150,6 +150,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 | `references/merge-workflow.md` | `/better-test merge` | 多 tester 结果合并：扫描 run → 冲突检测 → bug 校验 → 生成聚合文件 |
 | `references/progress-workflow.md` | `/better-test checkpoint` 或 `resume` | 断点续传 |
 | `references/templates.md` | 生成输出文件时 | 核心文件的模板 + 质量标准 |
+| `references/team-role-presets.md` | strategy / merge 遇到多 tester 组队时 | 可扩展 role schema + preset 库 + coordinator dispatch / merge protocol |
 | `references/adapters.md` | 多平台注入 | Claude / Cursor / Gemini / Codex 适配 |
 
 ### Tier 2: 扩展流程（条件触发加载）

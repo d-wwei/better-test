@@ -34,7 +34,7 @@ Smoke 模式不触发（覆盖率审计对 smoke 无意义）。
 2. {path_to_results_json} — 主 Agent 声称的测试结果
 3. {path_to_test_groups} — 测试组定义（每组应该跑什么命令）
 
-检查以下 5 项：
+检查以下 8 项：
 
 1. **命令覆盖**：results.json 中每个标 ✅ 的测试项，execution-log 中有没有对应的命令记录？
    - 声称测了但 log 中没有对应命令 → ⚠ 标记
@@ -132,6 +132,17 @@ Smoke 模式不触发（覆盖率审计对 smoke 无意义）。
 
 5. **推测 vs 实锤**：results 或 bug report 中有没有"可能"、"应该是"、"大概"这种措辞用在结论中？
    - 结论用推测语气但 evidence_level 标了 direct 或更高 → ⚠ 证据级别虚标
+
+6. **binary-only 修复宣称**：
+   - 如果结论是"fixed / verified"，但证据只有 binary / strings / literal presence，没有 runtime hit → ⚠
+
+7. **scope 限定是否缺失**：
+   - 报告写"已修"、"三 surface 一致"、"全部通过"时，是否写清 mode / surface / 分母？
+   - 只测 auth mode 却写成"已修" → ⚠
+
+8. **观测和解读是否混写**：
+   - bug report 是否把 observation（看到什么）和 interpretation / impact（怎么理解、影响谁）混成一句
+   - impact 没独立证据支撑 → ⚠
 
 输出格式见下方"l2-findings.md 格式"段的"证据审计"部分。
 ```

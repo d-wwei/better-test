@@ -2,6 +2,41 @@
 
 All notable changes to **better-test** (Better-Work series testing subskill) are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project uses [Semantic Versioning](https://semver.org/).
 
+## [3.1.2] - 2026-04-28
+
+### Extensible team-role presets for multi-tester planning
+
+**背景**: 固定 4 个 tester 名字很容易过时，但完全不固化又会让组队分工每次从头发明。需要固化的是 schema 和 coordinator protocol，而不是唯一编制。
+
+### Added
+- `references/team-role-presets.md`: 可扩展 role schema、Team Contract、preset 库（`release-4way` / `api-3way` / `single-plus-l2` / `custom`）以及 coordinator dispatch / merge protocol
+
+### Changed
+- `references/strategy-workflow.md`: 多 tester 时显式加载 role preset，写入 `Team Contract`
+- `references/merge-workflow.md`: merge 读取 Team Contract，按角色边界审计职责完成度和共享盲区
+- `references/templates.md`: `strategy-plan.md` 新增 `coordination_mode` / `team_preset` / `team_role` frontmatter 和 `Team Contract` 段
+- `SKILL.md`、`README.md`、`README.zh-CN.md`: 引用和架构说明补充 team-role preset 能力
+
+## [3.1.1] - 2026-04-28
+
+### Cross-verify hardening + release-test planning refinements
+
+**背景**: v1.4.102 的 4-tester + Codex cross-verify 复盘证明，现有 better-test 已有第一代证据纪律，但还缺几块关键硬约束：release 测试起手顺序、destructive 授权分级、binary-only claim 限制、以及 merge/L2 对 peer 证据类型的区分。
+
+### Added
+- `strategy-workflow.md`: release/fix 测试默认三条线（changelog fix matrix / old-bug retest / adversarial input matrix）和 peer cross-verify 追加纪律
+- `strategy-workflow.md`: destructive D0-D4 分级、offline negative harness 预留、control experiment、CHANGELOG 原子化分解、字段四态枚举、scope 五问
+- `test-execution-workflow.md`: binary 落地 vs runtime 生效、claim scope 五问、same-state contrast、functional/timing/result 三层验证
+- `merge-workflow.md`: cross-verify 采信四分类、severity 3-anchor 复核、minor findings bucket
+- `reflect-workflow.md`: retrospectives / merge summaries / cross-verify 文档作为高价值 reflect 输入源
+- `pending-skill-upgrades.md`: 新增 3 条高风险待晋升经验（origin attribution、role boundary redesign、daemon borrowing fallback）
+
+### Changed
+- `templates.md`: `results.json` 的 `evidence_level` 枚举与 execution workflow 对齐，支持 `binary` / `proven`
+- `templates.md`: bug report 质量标准新增 Observation / Interpretation / Impact 分离、scope 限定、peer 证据类型显式标注
+- `templates.md`: merged summary 模板新增 Cross-Verify 采信类型统计和 Minor Findings Bucket
+- `l2-audit-prompts.md`: 证据审计扩展到 binary-only 修复宣称、scope 限定缺失、观测与解读混写
+
 ## [3.1.0] - 2026-04-22
 
 ### Hook enforcement + protocol split + skill upgrade pipeline

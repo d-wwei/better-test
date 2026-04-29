@@ -151,6 +151,19 @@ Tester 测试期间不可写：
     → "0 bug 是红灯不是绿灯"——全绿时第一反应应是"漏了什么"
 ```
 
+### 发布/修复版本的默认起手式
+
+```
+对于 release / fix / ship decision 类测试，默认先建自己的最小完整矩阵，再读 peer 结论：
+
+  1. changelog fix matrix：逐条 claimed fix
+  2. old-bug retest matrix：上一版所有 S / P1 / P2
+  3. adversarial input matrix：invalid / missing / alias / wrong-enum / mode split
+
+Cross-verify 是第二拍，不是第一拍。
+先读 peer summary 再测，会把视野锁死在对方已发现的问题上。
+```
+
 ## Step 0.5: 与用户对齐（align_with_user）
 
 带着初步判断向用户呈现并提问。不是空手问"你想测什么"——是"我研究了一下，我觉得重点是这些，你看对不对"。
@@ -373,7 +386,16 @@ IF 旧版本仍可用且未保存过基线：
    → 需要交易密码但没有？需要特定账号类型但没有？需要 real 市场但今天周末？
    → 不是测到一半才发现不可能——Setup 阶段就排除不可执行的项
 
-6. 声称"做不到"前先尝试 subagent 分担
+6. destructive 分级 + 授权
+   → D0 无损 read-only；D1 低成本负向；D2 消耗性；D3 账号状态风险；D4 高风险 lockout / quota 风险
+   → D3 需要明确说明代价，D4 必须用户显式授权
+   → 有内部可重置账号时，不要沿用生产账号的保守 skip 逻辑
+
+7. negative harness 可用性
+   → 如果能起 offline-only daemon（不 login / 不烧 SMS），优先保留给 negative test
+   → silent-drop / loud-fail 对照在 offline state 往往是最低成本的实锤路径
+
+8. 声称"做不到"前先尝试 subagent 分担
    → 3 个"不可能"在 25min 内被 subagent 解决的真实案例
    → "做不到"是 90% 的借口，除非穷尽了 subagent 方案
 ```
@@ -395,9 +417,19 @@ IF 旧版本仍可用且未保存过基线：
     a. 依赖链排序（被依赖的先跑）
     b. 同级按历史风险排序（bug 多的先跑）
   负向测试: 对每个 ✅ pass 的接口，选 1-2 个负向场景（错误参数 / 权限边界 / 边界值）
+  Control experiment: 为每个 silent / contract / parser 疑似项配一个同 daemon 同 state 的已知 loud/正确 endpoint 当基准
+    → 同 state 下 treatment loud / suspect silent = 最强 control 证据
   三种用户姿态: 每个关键接口列出三种请求体——完整参数(熟悉者) / 只传 required(新手) / 核心字段(LLM agent)
-  字段三态枚举: 每个可选字段至少测 3 种状态——key 缺失 / null / 合法值
+  CHANGELOG 原子化分解: 每条 fix claim 先拆成原子 sub-claims，再逐条验证；完成度 = true_claims / total
+  字段四态枚举: 每个可选字段至少测 4 种状态——key 缺失 / explicit null / false(或 0、空串) / 合法非空值
+    → `false` / `0` / `""` 是有效值，不能和 absent 或 null 混为一类
   error path 显式列出: 计划中为每个接口显式列出 error path 测试项，与 happy path 同等权重。静默失败（ret=0 但无效果）比报错更危险
+  Scope 五问: 每条 claimed fix 都问
+    1. 只修了 happy path 吗？
+    2. 只修了一个 mode 吗？
+    3. 只修了一个 surface 吗？
+    4. 只证明了 binary literal 落地吗？
+    5. error path / missing field / wrong enum 是否仍然 silent？
   穷举边界标准（agent 边际成本 ≈ 0，穷举优于采样）:
     数值: 7 点（min-1 / 0 / 1 / 合理值 / 上限 / 上限+1 / INT_MAX）
     枚举: 全扫 0-100（或 binary 中已知的全部 variant）
@@ -412,6 +444,8 @@ IF 旧版本仍可用且未保存过基线：
   sim≠real: 涉及 backend 交互的 bug retest 必须选 real 账号。sim 错误码可能与 real 不同，同一 bug 在 sim 上可能不可见
   全路径覆盖: bug 标 VERIFIED 前必须覆盖所有已知 failure paths。changelog 提到"补修某路径"时该路径必须单独验证
   跨 tester 复现: 采信其他 tester 的 bug 前必须亲自复现——复现不只是确认，还能帮自己排查问题
+  复现标签: 最终必须区分 live repro / evidence audit / accepted peer evidence / binary corroboration
+    → 不能把 evidence audit 或 accepted peer evidence 写成"已独立复现"
 
 阶段 4: 边界扩展
   输入: 与阶段 2 组相邻的组（共享依赖 / 调用链上下游）
@@ -451,6 +485,17 @@ IF 旧版本仍可用且未保存过基线：
 11. 覆盖声明必须附验证数量占总数比例（"4 项验证一致"不等于"184 个接口一致"）
 12. 🟡 产生时就地解决——"先全部跑完再处理"导致 🟡 永远不会被处理
 13. "Inferred not fixed" ≠ "proven not fixed"：未复现 ≠ fixed，归 INCONCLUSIVE。没做混沌注入就不能说"已修"
+14. Cross-verify 顺序固定：先跑自己的最小完整矩阵，再读 peer 报告。反过来做 = 视野被锚定
+15. Binary-only 只能证明代码/字面存在，不能单独判 `fixed`
+    → 安全 / 状态机 / cooldown / retry / wiring 修复必须命中 runtime 路径
+16. Mode-scoped claim 必须写清限定词：fixed in auth mode ≠ fixed in legacy mode
+17. 分歧先查环境差异，再做 isolation matrix
+    → 优先列配置 / 端口 / 账号 / 时序 / body shape 差异；环境未对齐时不判断谁对谁错
+18. Self-correct 触发信号：
+    → 结论只基于 binary evidence
+    → 只测了单一 mode / 单一姿态
+    → CHANGELOG claim 含多个 sub-claim 但只验了一部分
+    → verdict 只基于单一 signal
 ```
 
 ### 特殊情况的简化路径
@@ -518,6 +563,7 @@ Step 4 + 5 完成后，将完整计划（含假设）写入当前 run 目录的 
    - Context Summary ← Step 0 摘要
    - Change Analysis ← Step 1 变更检测结果
    - Impact Scope ← Step 2 影响分析
+   - Team Contract ← 多 tester 时记录 preset / slot / role boundary
    - Phased Plan ← Step 4 分阶段计划
    - Hypotheses 嵌入 Stage 2 ← Step 5 假设
    - Known Risks ← 从 Step 3 提取
@@ -549,6 +595,31 @@ Step 4 + 5 完成后，将完整计划（含假设）写入当前 run 目录的 
     → 如果只有同型 tester，至少确保用不同账号 + 不同 surface 测试路径
 ```
 
+### Team Preset 选择（多 tester 时）
+
+```
+IF 同时有 2+ 个活跃 tester，或用户明确要求 team/parallel/multi-agent：
+  → 加载 references/team-role-presets.md
+  → 先选 Coordination mode：
+      solo / preset / custom
+  → preset 模式下，优先从以下预设选：
+      release-4way / api-3way / single-plus-l2
+
+组装规则：
+  1. 先选 preset，再把 tester-id 映射到 slot
+  2. 角色名不是权威，coverage axis 才是权威
+  3. tester 少于 preset 槽位数：
+     → 合并低优先槽位，但必须写 merged coverage axis
+  4. tester 多于 preset 槽位数：
+     → 拆更细的 coverage axis，不复制同一角色的同一路径
+
+写入当前 tester 的 strategy-plan.md：
+  → `## Team Contract`
+  → preset 名
+  → coordinator 是谁（如已知）
+  → 本 tester 对应的 slot / goal / coverage axis / must_not_do / handoff_to
+```
+
 ## Step 6: 展示计划 + 假设给用户确认（present_to_user）
 
 ```
@@ -564,6 +635,8 @@ Step 4 + 5 完成后，将完整计划（含假设）写入当前 run 目录的 
   [Step 2 的 affected_groups + affected_items]
 
 分阶段计划:
+  Team preset: release-4way
+  My slot: adversarial（invalid input + parity）
   阶段 1: 基础验证 — A 组（auth），预计 3 min
   阶段 2: 直接影响 — B, C 组 + 负向测试，预计 15 min
     假设: [列出关键假设 2-3 个]
@@ -589,6 +662,7 @@ Step 4 + 5 完成后，将完整计划（含假设）写入当前 run 目录的 
 ## Step 7: 交给 test-execution-workflow（emit_to_execution）
 
 用户确认后，test-execution-workflow 从当前 run 目录的 `strategy-plan.md` 读取计划：
+- Team Contract（preset / slot / role boundary）
 - 分阶段计划（Phased Plan 段）
 - 每阶段的假设（Hypotheses 段）
 - 准确度铁律（Accuracy Rules 段）
@@ -622,6 +696,25 @@ IF 计划中某些阶段/组委托给子 agent 执行：
   → pass/fail 判定是否有 field-level 证据（不是用 trivial case 凑 pass）
   → skip 是否掩盖了已知缺陷（应标 fail + pre-existing）
   → 覆盖声明是否附了覆盖率
+```
+
+### Peer Cross-Verify 追加纪律
+
+```
+1. Coord 派 cross-verify 时，尽量双盲：
+   → 给测试指令 + PASS/FAIL 判据
+   → 不给原 tester 的结论和 narrative，避免 anchor bias
+
+2. 采信 peer finding 时显式标注采信类型：
+   → live repro
+   → evidence audit
+   → accepted peer evidence
+   → binary corroboration
+
+3. 分歧处理顺序：
+   → 先列环境差异
+   → 再做全变量 isolation matrix
+   → 最后才定性为 flaky / scope split / 真冲突
 ```
 
 ### 附加提醒（嵌入 Step 6 展示中，条件触发）

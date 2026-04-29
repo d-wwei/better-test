@@ -190,3 +190,30 @@
 - **内容**: 修改计数方法论时（如从"pass 17"改为"confirmed 11 + direct 4"），必须声明"原按 X 定义计 Y，修正后按 Z 定义计 W"。方法论变更本身是信息，不标注 = 读者困惑
 - **证据**: 01b4 round 4 改了定义没声明，peer review 抓到
 - **状态**: pending
+
+### [2026-04-28] Origin attribution 3-layer template
+- **来源项目**: futu-opend-rs (v1.4.102, adversarial retrospective)
+- **来源**: retrospective / cross-verify resolution
+- **建议目标**: procedures/bug-report.md + test-execution-workflow.md
+- **风险等级**: medium
+- **内容**: 当 finding 的来源归因不清（daemon / tester script / 历史残留）时，必须走 3 层归因链：时间戳 vs ship date、跨版本 binary literal、历史 session 对账。任一层不吻合 → 只能写 undetermined，不能 commit 高 severity
+- **证据**: BUG-ADV-NEW-001 从 P0 自降到 P2，靠的就是 3 层归因链，而不是 narrative 降温
+- **状态**: pending
+
+### [2026-04-28] Role boundary redesign: adversarial 审 coord tentative verdict
+- **来源项目**: futu-opend-rs (v1.4.102, 4-tester retrospective)
+- **来源**: retrospective
+- **建议目标**: methodologies/design-rationale.md + merge-workflow.md
+- **风险等级**: high
+- **内容**: 考虑把 adversarial 从纯 Tier-1 finding 角色升级为 "tester findings + coord tentative verdict 的双向审"，形成 Tier 1A tester / Tier 1B adversarial / Tier 2 coord / Tier 3 L2 / Tier 4 external 的新分层
+- **证据**: v1.4.102 中一部分 coord framing bug，其实 adversarial 就能先挑战出来，能减轻 L2 的系统性审查负担
+- **状态**: pending
+
+### [2026-04-28] Cross-role daemon borrowing fallback
+- **来源项目**: futu-opend-rs (v1.4.102)
+- **来源**: 4-tester retrospective
+- **建议目标**: strategy-workflow.md (多 agent 协调段)
+- **风险等级**: medium
+- **内容**: 当 tester A 的 daemon 不可用、tester B 有同版本 fresh login 时，允许在只读/低副作用前提下借用对方 daemon 作为 fallback；必须写清不改 state、不写对方 HOME、做完通报 request 清单
+- **证据**: 多次高成本 blocker 实际不是"彻底做不到"，而是没把 session 内所有可借用 daemon 先枚举清楚
+- **状态**: pending

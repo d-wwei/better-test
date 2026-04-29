@@ -122,7 +122,7 @@
 - 断言字段: <必填：验证的具体字段名，如 "power">
 - 断言值: <必填：实际值，如 "153.2">
 - 状态: <✅ / 🟡 / 🔴 / ⏭️>
-- 证据级别: <indirect / direct / binary / confirmed>
+- 证据级别: <indirect / direct / binary / confirmed / proven>
 ```
 
 **验证规则（状态 ≤ 字段组合约束）**：
@@ -244,6 +244,28 @@ API 返回错误码不一定是 bug。区分三种情况：
    → Epoch 转换用 `date -r <epoch>` 或 Python `datetime.fromtimestamp()`，不手算
    → 手算错 8 小时的真实案例（UTC vs local 混淆）
    → `ls -la` 用 local time，daemon log 用 UTC——时间戳一律转 UTC 作 SoT
+
+9. Self-correct 触发信号
+   → 结论只基于 binary evidence、只测了单一 mode、CHANGELOG 只验了一半、或 verdict 只基于单一 signal
+   → 任一命中都要主动补 1 轮验证，不等 coord / peer 来 challenge
+```
+
+### Binary 落地 ≠ runtime 生效
+
+```
+binary / strings 证据只能证明"代码或字面已经进包"：
+  → 可以证明 code landed / literal present
+  → 不能单独证明 runtime path hit / state machine 生效 / cooldown 真挡住了
+
+以下类型的 claim 必须 live runtime：
+  - 安全修复
+  - retry / cooldown / backoff
+  - wiring / route / state machine
+  - silent success → loud fail
+
+结论规则：
+  binary-only → 最多写 "代码已落地"
+  runtime 命中 + field/log/counter 对齐 → 才能写 "fixed"
 ```
 
 ### 每个接口的测试深度（happy path 只是起点）
@@ -265,16 +287,61 @@ happy path 通过后，对每个接口主动尝试 break——silent failure 最
    → 暴露参数名容错性和 validation 健壮性
 ```
 
-**字段三态枚举**（每个可选字段至少测 3 种状态）：
+**字段四态枚举**（每个可选字段至少测 4 种状态）：
 
 ```
 对 API 的每个可选字段：
   状态 1：key 缺失（不传这个字段）
   状态 2：key 存在但值为空（null / "" / {} / []）
-  状态 3：key 存在且值合法（正常值）
+  状态 3：key 存在且值为 false / 0 / 空串这类"有效但假值"
+  状态 4：key 存在且值合法非空（正常值）
 
-只测了状态 3 = 只测了 happy path。
-状态 1 和 2 是暴露 default-filling 和 validation 缺失的关键。
+只测了状态 4 = 只测了 happy path。
+状态 1、2、3 是暴露 default-filling、proto3 default、null-filter、validation 缺失的关键。
+```
+
+### Claim Scope 五问
+
+```
+每条 claimed fix / release note / peer verdict，都先问 5 个 scope 问题：
+1. 只修了 happy path 吗？
+2. 只修了一个 mode 吗？（auth / legacy / default / real / sim）
+3. 只修了一个 surface 吗？（REST / CLI / MCP / WS）
+4. 只证明了 binary literal 落地吗？
+5. error path、missing field、wrong enum 是否仍然 silent？
+
+任一问题答不清，就不要写笼统的"已修"。
+结论必须写成带限定词的句子，例如：
+  "fixed in auth mode"
+  "REST loud-fails, MCP 未验证"
+  "code landed, runtime 未确认"
+```
+
+### Control Experiment / Same-State Contrast
+
+```
+遇到 silent-drop、parser mismatch、contract drift 时，不要只盯着怀疑 endpoint 重试。
+
+标准做法：
+  1. 找一个同 daemon、同账号、同 state 下已知会 loud-fail 或已知正确的 sibling endpoint
+  2. 用同一组输入分别打 baseline 和 suspect endpoint
+  3. 比较 truth-value：
+     - baseline loud / suspect silent
+     - baseline 正常生效 / suspect ret=0 但零效果
+  4. 这个 same-state contrast 往往比孤立重试更快拿到实锤
+```
+
+### Functional / Timing / Result 三层验证
+
+```
+对长跑、自愈、重连、重试、状态切换类 bug，不要只看"好像执行了"：
+
+1. Functional layer: 路径真的被 invoke 了吗？（counter / marker / raw log hit）
+2. Timing layer: 发生的时间窗口对吗？（backoff / ladder / cooldown 时间）
+3. Result layer: 执行后结果真的对吗？（目标 state flip / push 恢复 / 数据恢复流动）
+
+三层都对齐才算 PROVEN。
+任意一层缺失 → 只能写 INCONCLUSIVE 或 direct，不要过度定性。
 ```
 
 **其他负向场景**（按适用性选择）：
@@ -364,13 +431,16 @@ Agent 需要做的记录：
 ```
 1. 加载 procedures/bug-report.md 模板
 2. 按 7 节格式写 bug report（两层结构：先大白话说影响，再技术细节）
-3. severity 用"最坏场景下谁受影响"定，不用自己碰到的场景。pre-existing 记在 fix_note 不降 severity
-4. pre-existing 必须标注（found_in 字段）——不标注开发者会误判为回归
-5. changelog 声称修复但实测未变 → 醒目标注 [CHANGELOG 声称修复但未确认]
-6. 写入 run 目录内 bugs/BUG-NNN-<slug>.md（run 内编号）
-7. results.json 中相关 items 的 bug_ids 填入 BUG-NNN
-8. 单 tester: 完成后更新 bugs-index.md；多 tester: 由 /better-test merge 合并
-9. 继续执行剩余测试（不因发现 bug 中断整组测试）
+3. 先分 Observation / Interpretation / Impact 三层
+   → 观测是什么，和你如何解读、谁会受影响，必须分开写
+4. severity 用"最坏场景下谁受影响"定，不用自己碰到的场景。pre-existing 记在 fix_note 不降 severity
+5. pre-existing 必须标注（found_in 字段）——不标注开发者会误判为回归
+6. changelog 声称修复但实测未变 → 醒目标注 [CHANGELOG 声称修复但未确认]
+7. 如果没有 live repro，只做了 evidence audit / accepted peer evidence，也要显式写出
+8. 写入 run 目录内 bugs/BUG-NNN-<slug>.md（run 内编号）
+9. results.json 中相关 items 的 bug_ids 填入 BUG-NNN
+10. 单 tester: 完成后更新 bugs-index.md；多 tester: 由 /better-test merge 合并
+11. 继续执行剩余测试（不因发现 bug 中断整组测试）
 ```
 
 Bug ID 全局递增。如果不确定是不是新 bug（可能是已知 bug 的新表现），先检查 bugs-index.md。

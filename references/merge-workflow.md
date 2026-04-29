@@ -61,8 +61,13 @@ IF 没有未合并 run：
   → 读 results.json（结构化结果）
   → 读 summary.md（tester 结论）
   → 读 strategy-plan.md（此 tester 的计划范围）
+  → 读 execution-log.md / l2-findings.md（如存在）
   → 列出 bugs/*.md（bug 报告清单）
   → 列出 feedback/*.md（feedback 清单）
+
+  如 strategy-plan.md 含 `Team Contract`：
+  → 提取 preset / role / coverage axis / must_not_do / handoff_to
+  → merge 时按角色边界判断"该 tester 是否完成了自己的职责"
 
 汇总并记录：
   - 所有 run 的测试项总数（去重前/后）
@@ -96,28 +101,32 @@ Merge 前两方必须显式同步"一个 bug 的定义"：
   → 定义对齐后再进入冲突检测
 ```
 
-### Cross-Verify 覆盖率分类
+### Cross-Verify 采信分类
 
 ```
-Cross-verify 覆盖率必须按 3 类报告，不允许把 trust_based 算成 bidirectional：
+Cross-verify 采信必须按 4 类报告，不允许把 evidence audit / accepted peer 写成 strict repro：
 
-  bidirectional_strict: 双方独立、各自 daemon、独立复现
-  trust_based_accepted: 单方有 direct/proven 证据，另一方逻辑接受
-  indirect_single_tester: 单方推断，非稳定
+  live_repro: 自己独立重跑并拿到 direct / confirmed 证据
+  evidence_audit: 自己没重跑，但检查了 peer raw JSON / log / strings artifact，内部一致
+  accepted_peer_evidence: 因风险/成本不重跑，但明确接受 peer direct/proven 证据
+  binary_corroboration: 用 binary/source/proto 证据佐证 claim 的某一层，但非完整 runtime 复现
 
-  报告时："8/20 strict + 11 trust + 1 indirect" 不是 "75% bidirectional"
+报告时不要把后 3 类写成"已独立复现"。
 ```
 
 ### Cross-Verify 流程
 
 ```
 1. 列 claims: 对方报告的每条结论逐一列出
-2. 独立工具复现: 自己跑命令验证，不看对方的 curl/output
-3. 发现差异先查自己: peer 结果不同 → 优先假设自己 env 有问题（配置/端口/账号/flag）
+2. 尽量双盲派单: 先只给测试指令 + PASS/FAIL 判据，不给原 tester 的结论和 narrative
+3. 独立工具复现: 自己跑命令验证，不看对方的 curl/output
+4. 发现差异先查自己: peer 结果不同 → 优先假设自己 env 有问题（配置/端口/账号/flag）
    → 列环境差异 → 1:1 重跑 → 单一 factor 切换
-4. Steelman peer: peer challenge 时先假设对方全对自己有盲区
+5. Steelman peer: peer challenge 时先假设对方全对自己有盲区
    → 先接受再查精度。不用"reviewer context 不全"当挡箭牌
    → peer 比我更准是正常现象（不在我的假设链里）
+6. 看 raw artifact，不只看 summary
+   → summary 只能当索引，结论必须落回 raw JSON / log block / strings output / bug report 正文
 ```
 
 ## Step 5: 冲突检测（conflict_detection）
@@ -136,6 +145,8 @@ IF 结果不一致（如 tester A 报 pass，tester B 报 fail）：
     - 时序差异（A 先测，daemon 状态正常；B 后测，daemon 已崩）
     - 真正的 flaky
     - 测试参数差异
+  → 如仍不清楚，做全变量 isolation matrix：
+    body shape / headers / mode / account / timing / request order 全列出来，再找最小区分变量组
   → 记入 conflict-log.md：
     test_id、两方结果、分析、建议处置
 
@@ -162,6 +173,33 @@ IF 结果不一致（如 tester A 报 pass，tester B 报 fail）：
      source: run-<tester-id>-NNN-<ts>/bugs/BUG-NNN-<slug>.md
 
 4. 写入 merge-*/bugs/ 目录
+```
+
+### Severity 复核（merge 时统一口径）
+
+```
+Coordinator 对每个升级/降级建议做 3-anchor check：
+  1. definitional：是否满足正式 P0/P1 定义
+  2. scope-of-impact：影响人群和分母是否明确
+  3. precedent：历史同类项如何定级
+
+单一 anchor 不足以升级 severity。
+scope-of-impact 说得很吓人，但 definitional 不满足时，不能硬升。
+```
+
+### Coordinator 协议（组队场景）
+
+```
+多 tester merge 不只是在收文件，也是在收 team contract：
+  1. 读每个 tester 的 Team Contract
+  2. 对照它的 role goal / coverage axis / success_output 看是否真的完成
+  3. 检查 team 是否出现共享盲区：
+     - 同模型 + 同账号 + 同 surface + 同输入姿态
+  4. 检查是否有 slot 缺失：
+     - 如发布测试没有 skeptical / adversarial 视角
+  5. 最后再综合 ship verdict
+
+如用户要 coordinator 派单，派单卡格式见 `references/team-role-presets.md`。
 ```
 
 ## Step 7: 合并 feedback + 重建 feedback-rules.json（merge_feedback）
@@ -191,6 +229,8 @@ IF 结果不一致（如 tester A 报 pass，tester B 报 fail）：
    - 总结论（pass/fail/skip 计数）
    - 新发现 bug 列表（项目级编号）
    - 冲突项数量（详见 conflict-log.md）
+   - Cross-Verify 采信类型统计
+   - Minor findings bucket（没单独立 bug 但值得下轮继续看的小问题）
 
 2. merged-results.json — 聚合结果
    - 合并所有 run 的 items（去重，冲突项取 fail）
