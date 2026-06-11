@@ -1,6 +1,14 @@
 # Pending Skill Upgrades
 
-> 通用测试经验的升级队列。由 `/better-test update` Step 6 自动追加，由人审核后写入 skill 文件。
+> 通用测试经验的升级队列。**2026-06-11 机制修订**（背景：旧攒批模式积压 21 条 6 周无人审 +
+> 6 条账实不符；机制详见 update-workflow Step 5.5）：
+> 1. **当场审为默认**：medium 项在 update/reflect 会话内当场展示请 verdict（单次 ≤3 条），
+>    本队列只收"用户说稍后再议"的 medium 项和全部 high 项
+> 2. **水位红线**：pending ≥ 5 → update 必须先清队再入队
+> 3. **Promote 原子三步**：写入 skill 文件 + 更新本文件状态 + git commit 同一动作完成，禁止分离
+> 4. **对账**：全量 reflect 分析 7 对本队列账实核对（pending 内容 grep / promoted 落点抽查 /
+>    30 天陈化清单）
+>
 > Agent 不能自行修改 skill 的 protocol 模板、red lines 或 SKILL.md。
 > Agent 可以追加到本文件（排队提议）。
 
@@ -14,7 +22,8 @@
 - **风险等级**: low（design-rationale）/ medium（workflow/templates）/ high（protocol-base/red lines）
 - **内容**: <具体的规则或修改>
 - **证据**: <为什么这是通用的——在几个场景中验证过>
-- **状态**: pending / approved / rejected / promoted
+- **状态**: pending / approved / rejected / promoted / promoted-modified /
+           already-present（内容已在 skill 中，标注位置，不重复写入）/ pilot
 ```
 
 ## 审批规则

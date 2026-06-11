@@ -145,27 +145,49 @@ Q4（对所有进 protocol 的）: 具体到 agent 能对照自检吗？
 
 ---
 
-## Step 5.5：Skill 升级排队（通用经验向上流）
+## Step 5.5：Skill 升级（通用经验向上流——滚动当场审，排队是例外）
 
-分流决策树中判定为"通用"的经验，除了写入项目文件（当前项目立即受益），**同时追加到 skill 的升级队列**。
+> 2026-06-11 机制修订。背景：旧"攒批排队等人审"模式实测停摆——队列积压 21 条达 6 周无一审批
+> （审批无触发钩子 + 批量越大启动成本越高的增强回路 + promote 与状态更新可分离导致账实不符 6 条）。
+> 修订为：**当场审为默认，排队为例外，水位红线兜底，promote 原子化防账实分离。**
 
 ```
 对 Step 2 中判定为 Q2="通用" 的每条经验：
 
 1. 已经写入项目文件（Step 3a/3b）→ 当前项目立即受益 ✓
 
-2. 同时追加到 skill 的 references/pending-skill-upgrades.md：
-   - 标题 + 来源项目 + 建议目标文件 + 风险等级 + 内容 + 证据
-   - 状态: pending
+2. 低风险目标（design-rationale.md）→ 直接写入，不排队（规则不变）
 
-3. 低风险目标（design-rationale.md）→ 直接写入，不排队
-   中/高风险目标 → 排队，报告中提醒用户
+3. 中风险目标（workflow / templates）→ **当场展示给用户请求 verdict**（用户就在会话里，
+   单条 30 秒）：
+   - 批准 → 立即执行"promote 原子三步"（见下）
+   - 要改 → 改后执行
+   - 用户说"稍后再议" → 才进入队列排队（标题+来源+目标+风险+内容+证据，状态 pending）
+   - 一次最多当场审 3 条；超出部分排队并在报告中列明
+
+4. 高风险目标（protocol-base / red lines）→ 一律排队，审批需"用户确认 + L2 审计"（规则不变）
 ```
 
-**Agent 可以做的**：追加到 pending-skill-upgrades.md + 直接写入 design-rationale.md
-**Agent 不能做的**：自行修改 protocol-base.md / SKILL.md red lines / workflow 步骤
+**水位红线**：执行 Step 5.5 前先数队列 pending 条数。**pending ≥ 5 → 必须先向用户弹出
+待审清单处理（批/拒/稍后逐条过），清到 <5 才能继续入队**。先清后加——宁可本次 update
+慢一点，不允许队列再次积压成"专门会议级"工作量（22 条积压 = 永远不会开的会）。
 
-队列中的候选由人审核后执行。审批规则见 `references/pending-skill-upgrades.md`。
+**Promote 原子三步**（任何批准后的写入，三步必须在同一动作内完成，不允许分离）：
+
+```
+① 写入目标 skill 文件
+② 更新队列条目状态（promoted / promoted-modified + 日期 + 实际落点）
+③ git commit（skill 仓库）
+```
+
+状态取值新增 `already-present`：grep 发现内容已在 skill 中（历史上有 6 条这种账实不符）
+→ 不重复写入，状态记 already-present + 所在位置。它和 promoted 是两种不同事实，不得混用。
+
+**Agent 可以做的**：直接写 design-rationale；当场审批准后的 medium 写入（原子三步）；追加排队
+**Agent 不能做的**：未经当场 verdict 或队列审批写 workflow/templates；任何情况下自行写
+protocol-base / SKILL.md red lines
+
+审批分级表见 `references/pending-skill-upgrades.md`。
 
 ---
 
