@@ -77,6 +77,23 @@ IF 没有未合并 run：
 
 ## Step 4: 覆盖校验（coverage_audit）
 
+### Step 4.0: Gate 强制校验（merge 第二道闸，项目有 gate 清单+校验器时必做）
+
+```
+对每个候选 run 运行项目的 gate 校验器（如 python3 test/tools/validate-gates.py
+--run-dir <run> --package-type <type> --keywords <该 run 的变更关键词>）：
+
+  → 通过 → 继续
+  → 非零退出 → 该 run 标 GATE-INCOMPLETE：
+      a. 通知对应 tester 补跑缺失 gate（首选）
+      b. 无法补跑 → 记入 conflict-log.md "Gate Gaps" 段，merged-summary 必须醒目声明
+         "本次合并存在未闭合 gate: <列表>"，发版建议不得高于 SHIP_WITH_NOTES
+  → 旧格式 run（无 gate_items 字段）→ 警告记录，不阻断（历史兼容）
+
+价值：单 agent 在执行关口绕过了校验器，合并关口还能拦——gate 覆盖按 gate 维度
+（而非组维度）核对还能发现跨 tester 互补：A 漏的 gate B 跑了即闭合，都漏的才是真缺口。
+```
+
 ```
 合并所有 tester 测过的 test_id（取并集）
 对照：

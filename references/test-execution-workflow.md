@@ -532,6 +532,12 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 
 ```
 1. 写入 results.json → history/<version>/run-<tester-id>-NNN-<ts>/results.json
+1.5 Gate 强制校验（项目存在机读 gate 清单 + 校验器时必做，如 test/gates.json + validate-gates.py）：
+    → 运行校验器（传入 run 目录 + 包类型 + 变更关键词）
+    → 非零退出 = 有适用 gate 未跑或 verdict 非法 → 测试未完成，不得进入步骤 2
+    → 补跑缺失 gate 或对确实无法执行的标 blocked/skip + reason 后重新校验
+    → 这是确定性代码关口：不同 agent（Claude/Codex/任意平台）跑结果一致，
+      不依赖任何 agent 的记忆或阅读理解——"关键节点漏测"的机器层堵口
 2. 生成 2 分钟速览 → run 目录内 summary.md
 3. 汇总 bug reports → run 目录内 bugs/（每个 bug 独立文件，run 内编号 BUG-NNN）
 4. 触发 L2 独立验证（读 references/l2-audit-prompts.md，spawn 子 Agent）

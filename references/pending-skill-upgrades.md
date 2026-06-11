@@ -248,3 +248,4 @@
 | N9 | 证据分层调度（原"最便宜层拦截"） | strategy Pre-check 6.5（L2 审计否决 protocol-base 落点并改写措辞） | promoted-modified 2026-06-11 |
 | — | 探索性 charter 执行钩子 | strategy 阶段 5（规则原已在 SKILL.md Tier 2 表，补执行点） | promoted 2026-06-11 |
 | — | L2 审计前移（plan 确认时预约） | strategy L2 对抗审查段 | promoted 2026-06-11 |
+| N10 | Gate 强制校验双关口（执行完成 1.5 步 + merge Step 4.0） | test-execution-workflow + merge-workflow | promoted 2026-06-11（**滚动当场审首例**：会话内展示→用户批准"先执行 promote 原子三步"→原子写入。机读 gate 清单+校验器的项目必跑；确定性代码跨 agent 一致，解"不同 agent 漏不同关键测试点"） |
