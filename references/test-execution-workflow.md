@@ -209,6 +209,9 @@ API 返回错误码不一定是 bug。区分三种情况：
 
 不允许 guess 级别出现在任何输出中。
 
+定级铁律：confirmed 必须是**双向独立复现**（不同 tester 或不同输入路径测同一 claim）——
+同一 tester 用同一方法观察 5 次仍是 direct。不得发明中间等级。
+
 **binary 级证据的使用场景**：当开发者声称"修了一个 hardcode 字符串"或"改了错误消息格式"，用 `strings <binary> | grep "<关键字>"` 验证 literal 是否真的变了。这比"跑接口看返回"更直接——证明代码路径确实改了，不只是"碰巧返回对了"。
 
 ### 证据质量纪律
@@ -248,6 +251,15 @@ API 返回错误码不一定是 bug。区分三种情况：
 9. Self-correct 触发信号
    → 结论只基于 binary evidence、只测了单一 mode、CHANGELOG 只验了一半、或 verdict 只基于单一 signal
    → 任一命中都要主动补 1 轮验证，不等 coord / peer 来 challenge
+
+10. 异步断言前先确定观察窗口
+   → 异步路径的 0-result 在观察窗口未确认前不得判 FAIL
+   → 每类异步机制（batch dispatch / push / reconnect）的窗口下限写入执行计划；项目校准值记 env-config
+   → 真实案例：5s 窗口误判"0 dispatch"，扩到 30s 后看到 24 条实际 dispatch
+
+11. 否定断言需肯定验证："X 不存在"必须用肯定方法证明
+   → grep 返 0 ≠ 不存在（可能 stripped / 命名不同 / 搜错文件）
+   → flag 存在性用 --help 验证；"log 里没有"先确认看的是自己进程的 log
 ```
 
 ### Binary 落地 ≠ runtime 生效
@@ -317,6 +329,18 @@ happy path 通过后，对每个接口主动尝试 break——silent failure 最
   "code landed, runtime 未确认"
 ```
 
+### 自审纪律（over-claim 防御）
+
+```
+定稿前对每条结论过一遍：
+1. 形容词 → 有数字支持吗？
+2. 关系表述 → 暗示的是对等还是层级？
+3. 聚合数字 → 分类里有无 false-positive？
+4. 扮演质疑者角色 skim 全文一遍
+5. 用户反复质疑 ≠ 用户挑剔：一个 session 内 3+ 次质疑成立 = 自己的 QC 失效信号
+   → 主动暂停，反思 claim 错误率为什么高。用户的工作是 act on 结论，不是替 agent 做 QC
+```
+
 ### Control Experiment / Same-State Contrast
 
 ```
@@ -342,6 +366,11 @@ happy path 通过后，对每个接口主动尝试 break——silent failure 最
 
 三层都对齐才算 PROVEN。
 任意一层缺失 → 只能写 INCONCLUSIVE 或 direct，不要过度定性。
+
+长跑健康同理三层：进程存活 / 内部状态字段正常 / 主业务输出在流动——缺第三层 = 空壳验证
+（真实案例：PID 在 + logined=True 但 push 输出冻结 17h）。
+长跑监控关键词列表必须在启动前对照全部已知自愈/熔断机制审核——关键词覆盖率 > 采样粒度，
+关键词漏了，17h 内 203 次采样也产出近零事件。详见 procedures/longrun-testing.md。
 ```
 
 **其他负向场景**（按适用性选择）：
@@ -437,6 +466,9 @@ Agent 需要做的记录：
 5. pre-existing 必须标注（found_in 字段）——不标注开发者会误判为回归
 6. changelog 声称修复但实测未变 → 醒目标注 [CHANGELOG 声称修复但未确认]
 7. 如果没有 live repro，只做了 evidence audit / accepted peer evidence，也要显式写出
+7.5 来源归因不清（daemon bug / tester 脚本 / 历史残留）时走 3 层归因链：
+    时间戳 vs ship date → 跨版本 binary literal → 历史 session 对账。
+    任一层不吻合 → severity 只能写 undetermined，不得 commit 高 severity
 8. 写入 run 目录内 bugs/BUG-NNN-<slug>.md（run 内编号）
 9. results.json 中相关 items 的 bug_ids 填入 BUG-NNN
 10. 单 tester: 完成后更新 bugs-index.md；多 tester: 由 /better-test merge 合并
@@ -556,9 +588,20 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 <🟡 项或可疑项，大白话说不确定什么>
 
 ## 数字
-覆盖率: <T>/<R> = <NN>%
+覆盖率: <T>/<R> = <NN>%（分母来源: surface-manifest / 推荐组总项数，必须写明）
 ✅ <N> | 🔴 <N> | ⏭️ <N>（跳过原因: <...>）
 回归验证: BUG-<NNN> <VERIFIED/仍然失败>
+
+## Gate Execution Ledger
+<本次命中的 release-gate / critical-matrix 条目，逐条 verdict。没有 gate 的项目写"无适用 gate"。
+不允许省略本节——"矩阵存在但不知是否执行"就是这节要消灭的。>
+| Gate 条目 | verdict | 证据 |
+|----------|---------|------|
+| <如 T-ORD-04> | PASS / FAIL / BLOCKED / ⏭️ <原因> | <一句话> |
+
+## UX/DX findings
+<本 run 中测试者自己踩的坑 = 产品改进信号（更好的错误信息/预校验/文档能否避免）。
+可以为空但不可缺节；为空写"本轮无"。格式沿用 feedback-workflow 的 UX-NNN。>
 
 ## 详细信息在哪
 - 完整过程: process-log.md（包含每一步的推理和转折）

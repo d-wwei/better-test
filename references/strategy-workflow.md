@@ -340,6 +340,20 @@ IF env-config.md 定义了对照目标（旧版二进制 / C++ SDK / Python SDK 
   → 四色标记规则变为 compare 版本（见 test-execution-workflow）
 ```
 
+### Release Gate 映射（项目定义了 critical matrix / release gate 时）
+
+```
+IF 项目知识库存在 release-gate / critical-matrix 类文件（如 trading-critical-regression-matrix.md）：
+  → Step 2 影响范围命中其适用关键词时，把命中的 gate 条目（如 T-ORD-04）显式列入计划
+  → 这些条目进入 results.json 的 gate_items 和 summary 的 Gate Execution Ledger
+  → "矩阵存在但发版前没人知道执行没执行"是已实证的逃逸根因（escape analysis 案例）
+
+按包类型分级 DoD（项目可自定义包类型名，框架通用）：
+  hotfix 级   → manifest 范围 + 命中域 gate 子集 + 红旗扫描 + smoke
+  feature 级  → strategy 推导的影响范围 + 命中域 gate + smoke
+  RC 级       → 全域 gate + dirty/recovery + full 集合 + 覆盖率分母 + L2 审计
+```
+
 ### Changelog 逐条匹配
 
 ```
@@ -391,6 +405,12 @@ IF 旧版本仍可用且未保存过基线：
    → D3 需要明确说明代价，D4 必须用户显式授权
    → 有内部可重置账号时，不要沿用生产账号的保守 skip 逻辑
 
+6.5 证据分层调度: 诊断与定位优先走最便宜层（log / binary / offline harness），
+   昂贵层（真机、真实写操作、消耗性配额）只用于便宜层原理上验证不了的 claim
+   （runtime 生效 / 状态机 / cooldown / 安全修复——见 test-execution-workflow
+   "Binary 落地 ≠ runtime 生效"）
+   → 便宜层证据压缩昂贵层的次数和范围，**不豁免昂贵层验证的必要性**
+
 7. negative harness 可用性
    → 如果能起 offline-only daemon（不 login / 不烧 SMS），优先保留给 negative test
    → silent-drop / loud-fail 对照在 offline state 往往是最低成本的实锤路径
@@ -398,6 +418,10 @@ IF 旧版本仍可用且未保存过基线：
 8. 声称"做不到"前先尝试 subagent 分担
    → 3 个"不可能"在 25min 内被 subagent 解决的真实案例
    → "做不到"是 90% 的借口，除非穷尽了 subagent 方案
+
+9. 多配置矩阵: 被测对象有 mode flag（auth/legacy、有/无 keys file、debug/release）时
+   → smoke 阶段必须双配置跑同一组 endpoint 并 auto-diff
+   → 单配置只看到一半（真实案例：legacy 正常，auth 模式 3 endpoint 返 404）
 ```
 
 ### 分阶段计划生成
@@ -435,6 +459,11 @@ IF 旧版本仍可用且未保存过基线：
     枚举: 全扫 0-100（或 binary 中已知的全部 variant）
     字符串: 5 点（空 / 短 / 长 / 格式错 / 合法）
     日期: 4 点（倒置 / 过去 / 未来 / garbage）
+  Pairwise 组合取样: 单参数穷举管纵深，多参数矩阵爆炸（如市场×品类×账号×时段 ≥3 维）管横向
+    → 全组合不可行时按"任意两维组合至少出现一次"取样（pict 或 30 行脚本）
+    → 替代"全测不可能就只测熟悉组合"——熟悉组合 = 确认偏误的温床
+  等价类显式化: 每个参数先列等价类（品类/市场/账号类型……），每类至少 1 个代表进用例
+    → 防止符号集硬编码单一代表（如全部用 US.AAPL）导致整个等价类（指数/主连/crypto）零覆盖
   Body 格式矩阵: 每个 endpoint 测 4 种格式（flat / c2s wrapper / camelCase / snake_case），不同格式走不同解析路径
 
 阶段 3: 回归验证
@@ -461,6 +490,8 @@ IF 旧版本仍可用且未保存过基线：
   未覆盖接口:
     能深测（有 EXPECT_PATTERN + 运行条件满足）→ 执行并要求 field-level 证据
     不能深测 → 标 ⏭️ 写原因。不为覆盖率凑数
+  探索性 charter 钩子: 影响范围命中"0 历史记录"的模块 → 按 procedures/exploratory-charter.md
+    开 90 分钟 charter（SKILL.md Tier 2 表的触发条件，此处是执行点）
   输出: 最终可达覆盖率 T / R = NN%
 
 阶段 5+: 状态回验（贯穿所有阶段后）
@@ -514,6 +545,11 @@ IF 用户在 Step 0.5 明确说"只看 X 模块":
 
 IF 用户选择 compare 模式:
   → 切换到对照测试流程（见下方"对照测试模式"段）
+
+IF 计划包含 24h+ 长跑:
+  → 长跑作为独立 session fork：独立 daemon + 独立采样器 + 独立 tester-id
+  → 主 session 不被长跑占用，两 session 互不干扰；port-clean 由主 session 覆盖
+  → P1 级 non-deterministic bug 历史上只有长跑发现（详见 procedures/longrun-testing.md）
 ```
 
 ## Step 5: 为每个阶段写测试假设（form_hypotheses）
@@ -593,6 +629,12 @@ Step 4 + 5 完成后，将完整计划（含假设）写入当前 run 目录的 
     → 两个同型 tester（相同 model、相同 prompt）共享盲区
     → 真对抗需：不同 model / 不同角色强制 / 不同 oracle / 不同 evidence 要求
     → 如果只有同型 tester，至少确保用不同账号 + 不同 surface 测试路径
+
+  Cross-role daemon borrowing（fallback）：
+    → tester A 的 daemon 不可用、tester B 有同版本 fresh login 时，
+      允许在只读/低副作用前提下借用对方 daemon
+    → 约束：不改 state、不写对方 HOME、用完通报 request 清单
+    → 高成本 blocker 多数不是"彻底做不到"，是没先枚举 session 内可借用的 daemon
 ```
 
 ### Team Preset 选择（多 tester 时）
@@ -682,11 +724,20 @@ IF 计划中某些阶段/组委托给子 agent 执行：
      → 指定资源无响应时报错退出，不自动寻找其他端口
   3. 并行隔离: 破坏性操作（重启服务/切换配置）的测试组最后跑、单独跑
      → 同资源多 agent 会互斥，测试前规划好资源分配（账号、端口、进程）
+  4. Prompt 护栏: 显式指定 daemon 端口/keys/账号；25-30min 时间上限
+     → 独立性护栏：禁止子 agent 读主 tester 的 bug 判定（保持双向独立）
+     → 结果纳入不做防御性抵抗——最有价值的恰是子 agent 推翻主 tester 结论
+  5. 双向验证定义: 两个 agent 用相同命令得到相同响应 = 单次观察 ×2，不是双向验证
+     → 双向 = 用不同 body / endpoint / 工具测同一 claim
 ```
 
 ### L2 对抗审查
 
 ```
+预约时机: strategy-plan 确认（status=confirmed）时即在 plan 中写明 L2 触发点
+  → 把 L2 从"测完想起来才做"变为计划内的固定步骤——历史教训：拖到最后才做 L2，
+    会带着错误 severity 和假 pass 一路跑完
+
 触发条件: full / targeted / compare / bug-retest 模式完成后，主动 spawn 子 Agent 做对抗审查
   → 不是被提醒才做，是流程必做步骤
   → 加载 references/l2-audit-prompts.md

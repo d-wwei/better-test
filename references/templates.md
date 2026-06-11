@@ -590,6 +590,33 @@ estimated_time: <分钟>
 
 ---
 
+## oracle-catalog.md（可选：oracle 目录）
+
+回答"怎么知道结果是对的"。每类接口登记适用 oracle 和失效条件。init 时实例化（有参考实现/
+基准的项目强烈建议），填充内容是项目知识。没有 oracle 的接口类是测试盲区——必须显式声明，
+不能默认"返回非空 = 对"。
+
+```markdown
+# Oracle Catalog — <project>
+
+> 正确性层级: App/UI（用户看到的）> 参考实现 > 被测对象（详见 strategy-workflow Ground Truth 层级）
+
+| 接口类 | 首选 oracle | 次选 | 失效/降级条件 |
+|--------|------------|------|--------------|
+| <如 交易读写> | <如 C++ 同账号同参数> | <如 App 截图> | <如 参考实现不暴露该接口 → 降级为字段合理性 + 后端 log> |
+| <如 指标/计数器> | 被计数的行为本身（做 N 次操作 → 计数 +N） | — | — |
+```
+
+### 质量标准
+
+| 项目 | 必须满足 |
+|------|---------|
+| 全覆盖 | 每个接口类都有行；无 oracle 的类显式写"无 oracle——盲区" |
+| 失效条件 | 每行写明 oracle 何时不可用及降级方案 |
+| 修复方向也要对照 | "修复声明 ≠ 行为正确"——bug 修复的方向断言同样需要 oracle 对照（真实案例：按错误方向修复并定向验证通过，后被参考实现证伪） |
+
+---
+
 ## status.md（derived view，面向 agent）
 
 **项目级** `test/status.md` 是 derived view，由 coordinator 通过 `/better-test merge` 生成。单 tester 场景由 tester 在 run 完成后自行生成。不应人手编辑（会被覆盖）。
@@ -1096,6 +1123,7 @@ history/ **只放测试运行产出和版本级材料**。以下不属于 histor
 - **非权威文件标 DEMOTED**：多版本共存时，非权威版本标 `[DEMOTED — 权威版本: <path>]` header。保留历史但引导读者
 - **版本演化声明**：大更正打 v2 标，TL;DR 开头标"v2 更正后"，显式列修正项。"supersedes vN" 让读者立刻知道改过
 - **Roundtrip 透明记录**：错误→修正→撤回的透明记录比完美叙事更可信。Leaf 采用了 reconcile table 而非 polished summary
+- **Calibration shift 显式声明**：修改计数方法论时（如"pass 17"改为"confirmed 11 + direct 4"），必须声明"原按 X 定义计 Y，修正后按 Z 定义计 W"。方法论变更本身是信息，不标注 = 读者困惑
 - **并发 tester 文件含 tester-id**：`BUG-<tester-id>-NNN.md`，避免多 tester 文件名冲突
 
 **Deliverables 4 tier**（Leaf/上游默认收 Tier 1）：
@@ -1185,11 +1213,21 @@ lessons 的 `evidence_level` 字段——只有 proven 级的洞察才能写入 
       "comparison_baseline": "<基准返回值摘要，如无对照则 null>",
       "pre_existing": false
     }
+  ],
+  "gate_items": [
+    {
+      "gate_id": "<critical-matrix 条目 ID，如 T-ORD-04>",
+      "verdict": "pass | fail | blocked | skip",
+      "reason": "<blocked/skip 时必填>",
+      "item_ids": ["<对应的测试项 id>"]
+    }
   ]
 }
 ```
 
 items 中新增 `bug_ids` 字段——关联该测试项触发的 bug 报告。
+`gate_items` 记录本 run 命中的 release-gate / critical-matrix 条目及 verdict（Gate Execution Ledger
+的机器视图）。项目无 gate 定义时为空数组——但不能省略字段，空数组本身就是"无 gate 适用"的声明。
 
 ### execution-log.md（L1 Hook 自动生成）
 
@@ -1232,6 +1270,7 @@ RESULT_FILE: <子 Agent 写入的文件路径>
 - **peer 证据类型**：如果没有 live repro，只做了 evidence audit / accepted peer evidence / binary corroboration，要在正文显式写出
 - **三句话格式**：每个 bug 先写 scene（什么操作触发）+ symptom（看到什么现象）+ impact（谁受影响）。防止"something broke"式模糊描述
 - **P0 门槛**：severity 想标 P0 → 必须附"证否此 finding 的实验设计"。写不出 = 证据不足 → 降级
+- **Origin attribution 3 层归因**：来源归因不清（daemon / tester 脚本 / 历史残留）时走 3 层链——时间戳 vs ship date、跨版本 binary literal、历史 session 对账。任一层不吻合 → severity 写 undetermined
 - **证据文件命名**：`BUG-001-scenario-artifact.txt`（按 bug-id 命名），不按 phase 命名。方便最终 bug report 组装
 
 底部附 yaml 元数据管理 bug 生命周期：
