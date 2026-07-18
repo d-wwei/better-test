@@ -249,3 +249,13 @@
 | — | 探索性 charter 执行钩子 | strategy 阶段 5（规则原已在 SKILL.md Tier 2 表，补执行点） | promoted 2026-06-11 |
 | — | L2 审计前移（plan 确认时预约） | strategy L2 对抗审查段 | promoted 2026-06-11 |
 | N10 | Gate 强制校验双关口（执行完成 1.5 步 + merge Step 4.0） | test-execution-workflow + merge-workflow | promoted 2026-06-11（**滚动当场审首例**：会话内展示→用户批准"先执行 promote 原子三步"→原子写入。机读 gate 清单+校验器的项目必跑；确定性代码跨 agent 一致，解"不同 agent 漏不同关键测试点"） |
+
+---
+
+## 2026-07-18 批次（futu-opend-rs-test 开测准备审计，用户批准 P0/P1）
+
+| ID | 条目 | 落点 | 状态 |
+|----|------|------|------|
+| U1 | hooks 不能只识别 `.better-work/test/` | `hooks/lib/common.sh` + 全部路径敏感规则 + flat fixture | promoted 2026-07-18（支持 repo 内 `.better-test-root`、`BETTER_TEST_DIR` 与 marker-validated flat `test/`） |
+| U2 | results schema 必须防止全量缺 `status` 漏检 | `references/templates.md` + `results-validation` + v1/v2 fixtures | promoted 2026-07-18（v2 strict；v1 `verdict` read compatibility） |
+| U3 | 多平台安装来源不可追溯 | `install.sh` + README + adapters | promoted 2026-07-18（单一 canonical Git checkout + 同源 symlink + commit/dirty provenance） |

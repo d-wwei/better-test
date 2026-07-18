@@ -2,25 +2,25 @@
 
 bt_derived_view_guard_path() {
   local file_path="$1"
+  local cwd="${2:-}"
   local matched_view=""
   local test_base=""
   local session_dir=""
 
-  if [[ -z "$file_path" ]] || [[ "$file_path" != *".better-work/"* ]]; then
-    return 0
-  fi
+  file_path=$(bt_normalize_file_path "$file_path" "$cwd") || return 0
+  test_base=$(bt_find_test_dir_for_path "$file_path" "$cwd") || return 0
 
   case "$file_path" in
-    *".better-work/test/status.md")
+    "$test_base/status.md")
       matched_view="test/status.md"
       ;;
-    *".better-work/test/known-issues.md")
+    "$test_base/known-issues.md")
       matched_view="test/known-issues.md"
       ;;
-    *".better-work/test/history/bugs-index.md")
+    "$test_base/history/bugs-index.md")
       matched_view="test/history/bugs-index.md"
       ;;
-    *".better-work/test/history/feedback-rules.json")
+    "$test_base/history/feedback-rules.json")
       matched_view="test/history/feedback-rules.json"
       ;;
     *)
@@ -29,11 +29,6 @@ bt_derived_view_guard_path() {
   esac
 
   if printf '%s\n' "$file_path" | grep -qE '/(run-|merge-)'; then
-    return 0
-  fi
-
-  test_base=$(printf '%s\n' "$file_path" | sed 's|\(.*\.better-work/test\)/.*|\1|')
-  if [[ -z "$test_base" || ! -d "$test_base" ]]; then
     return 0
   fi
 

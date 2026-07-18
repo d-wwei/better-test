@@ -6,10 +6,12 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+. "$SCRIPT_DIR/lib/common.sh"
 . "$SCRIPT_DIR/lib/rules/feedback-rules-guard.sh"
 
 INPUT=$(cat)
 FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty')
+CWD=$(echo "$INPUT" | jq -r '.cwd // empty')
 
-bt_feedback_rules_guard_path "$FILE_PATH"
+bt_feedback_rules_guard_path "$FILE_PATH" "$CWD"
 exit $?

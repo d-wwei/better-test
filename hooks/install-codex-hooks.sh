@@ -2,8 +2,9 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SKILL_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+SKILL_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 REGISTRY_FILE="$SCRIPT_DIR/registry.json"
+. "$SCRIPT_DIR/lib/common.sh"
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 CONFIG_FILE="$CODEX_HOME/config.toml"
 MANAGED_PREFIX="better-test:"
@@ -14,6 +15,15 @@ shift || true
 
 PROJECT_ROOT=""
 ENABLE_FEATURE_FLAG=false
+HOOK_FEATURE_KEY="hooks"
+
+if command -v codex >/dev/null 2>&1; then
+  if codex features list 2>/dev/null | awk '$1 == "hooks" { found=1 } END { exit found ? 0 : 1 }'; then
+    HOOK_FEATURE_KEY="hooks"
+  elif codex features list 2>/dev/null | awk '$1 == "codex_hooks" { found=1 } END { exit found ? 0 : 1 }'; then
+    HOOK_FEATURE_KEY="codex_hooks"
+  fi
+fi
 
 usage() {
   cat <<'USAGE'
@@ -44,14 +54,20 @@ resolve_project_root() {
 }
 
 has_feature_flag() {
-  [[ -f "$CONFIG_FILE" ]] || return 1
+  if [[ -f "$CONFIG_FILE" ]] && awk '
+      /^\[features\][[:space:]]*$/ { in_features=1; next }
+      /^\[/ { in_features=0 }
+      in_features && /^[[:space:]]*(hooks|codex_hooks)[[:space:]]*=[[:space:]]*true([[:space:]]|$)/ { found=1 }
+      END { exit found ? 0 : 1 }
+    ' "$CONFIG_FILE"; then
+    return 0
+  fi
 
-  awk '
-    /^\[features\][[:space:]]*$/ { in_features=1; next }
-    /^\[/ { in_features=0 }
-    in_features && /^[[:space:]]*codex_hooks[[:space:]]*=[[:space:]]*true([[:space:]]|$)/ { found=1 }
+  command -v codex >/dev/null 2>&1 || return 1
+  codex features list 2>/dev/null | awk -v key="$HOOK_FEATURE_KEY" '
+    $1 == key && $NF == "true" { found=1 }
     END { exit found ? 0 : 1 }
-  ' "$CONFIG_FILE"
+  '
 }
 
 enable_feature_flag() {
@@ -63,12 +79,12 @@ enable_feature_flag() {
   temp_file="$(mktemp)"
 
   if [[ ! -f "$CONFIG_FILE" ]]; then
-    cat > "$temp_file" <<'EOF'
+    cat > "$temp_file" <<EOF
 [features]
-codex_hooks = true
+${HOOK_FEATURE_KEY} = true
 EOF
     mv "$temp_file" "$CONFIG_FILE"
-    echo "enabled codex_hooks in $CONFIG_FILE"
+    echo "enabled $HOOK_FEATURE_KEY in $CONFIG_FILE"
     return
   fi
 
@@ -76,7 +92,7 @@ EOF
     cp "$CONFIG_FILE" "$backup_file"
   fi
 
-  awk '
+  awk -v hook_key="$HOOK_FEATURE_KEY" '
     BEGIN {
       saw_features = 0
       in_features = 0
@@ -90,7 +106,7 @@ EOF
     }
     /^\[/ {
       if (in_features && !inserted) {
-        print "codex_hooks = true"
+        print hook_key " = true"
         inserted = 1
       }
       in_features = 0
@@ -98,9 +114,11 @@ EOF
       next
     }
     {
-      if (in_features && /^[[:space:]]*codex_hooks[[:space:]]*=/) {
-        print "codex_hooks = true"
-        inserted = 1
+      if (in_features && /^[[:space:]]*(hooks|codex_hooks)[[:space:]]*=/) {
+        if (!inserted) {
+          print hook_key " = true"
+          inserted = 1
+        }
         next
       }
       print
@@ -111,15 +129,15 @@ EOF
           print ""
         }
         print "[features]"
-        print "codex_hooks = true"
+        print hook_key " = true"
       } else if (in_features && !inserted) {
-        print "codex_hooks = true"
+        print hook_key " = true"
       }
     }
   ' "$CONFIG_FILE" 2>/dev/null > "$temp_file"
 
   mv "$temp_file" "$CONFIG_FILE"
-  printf 'enabled codex_hooks in %s' "$CONFIG_FILE"
+  printf 'enabled %s in %s' "$HOOK_FEATURE_KEY" "$CONFIG_FILE"
   if [[ -f "$backup_file" ]]; then
     printf ' (backup: %s)' "$backup_file"
   fi
@@ -298,15 +316,22 @@ merge_hooks() {
 install_hooks() {
   local target_dir="$PROJECT_ROOT/.codex"
   local target_file="$target_dir/hooks.json"
+  local test_root=""
   local cleaned_json
   local desired_json
   local merged_json
+
+  test_root=$(bt_resolve_test_dir "$PROJECT_ROOT") || {
+    echo "better-test test root could not be resolved for $PROJECT_ROOT" >&2
+    echo "add a repository .better-test-root file (for example: test) or initialize .better-work/test" >&2
+    exit 1
+  }
 
   if ! has_feature_flag; then
     if [[ "$ENABLE_FEATURE_FLAG" == "true" ]]; then
       enable_feature_flag
     else
-      echo "codex_hooks feature flag is disabled in $CONFIG_FILE" >&2
+      echo "$HOOK_FEATURE_KEY feature is disabled in $CONFIG_FILE and not enabled by the current Codex runtime" >&2
       echo "re-run with --enable-feature-flag to update the user config explicitly" >&2
       exit 1
     fi
@@ -320,6 +345,7 @@ install_hooks() {
   merged_json=$(merge_hooks "$cleaned_json" "$desired_json")
   printf '%s\n' "$merged_json" > "$target_file"
 
+  echo "test root: $test_root"
   echo "installed better-test Codex hooks into $target_file"
 }
 
@@ -339,16 +365,20 @@ uninstall_hooks() {
 
 status_hooks() {
   local target_file="$PROJECT_ROOT/.codex/hooks.json"
+  local test_root=""
   local id status
   local installed=false
 
   echo "project: $PROJECT_ROOT"
   echo "hooks file: $target_file"
 
+  test_root=$(bt_resolve_test_dir "$PROJECT_ROOT") || test_root="unresolved"
+  echo "test root: $test_root"
+
   if has_feature_flag; then
-    echo "feature flag: enabled"
+    echo "feature flag: enabled ($HOOK_FEATURE_KEY)"
   else
-    echo "feature flag: disabled"
+    echo "feature flag: disabled ($HOOK_FEATURE_KEY)"
   fi
 
   if [[ -f "$target_file" ]]; then

@@ -22,7 +22,7 @@ bt_credential_scan_content() {
   for pattern in "${patterns[@]}"; do
     if printf '%s\n' "$content" | grep -qiE "$pattern"; then
       matched=$(printf '%s\n' "$content" | grep -oiE "$pattern" | head -1)
-      echo "better-test L1 Hook: Credential detected in $context. Matched pattern near: ${matched:0:30}... Remove credentials before writing to .better-work/ files." >&2
+      echo "better-test L1 Hook: Credential detected in $context. Matched pattern near: ${matched:0:30}... Remove credentials before writing to the project test root." >&2
       return 2
     fi
   done

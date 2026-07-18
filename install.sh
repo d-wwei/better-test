@@ -8,6 +8,8 @@ linked_platforms=""
 removed_platforms=""
 reminders=""
 had_error=0
+source_commit="unversioned"
+source_state="not-a-git-checkout"
 
 say() {
   printf '%s %s\n' "$1" "$2"
@@ -35,6 +37,20 @@ resolve_dir() {
 }
 
 SCRIPT_REAL="$(resolve_dir "$SCRIPT_DIR")"
+
+if git -C "$SCRIPT_REAL" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  source_commit="$(git -C "$SCRIPT_REAL" rev-parse HEAD 2>/dev/null || printf '%s' unknown)"
+  if [ -n "$(git -C "$SCRIPT_REAL" status --porcelain 2>/dev/null)" ]; then
+    source_state="dirty"
+  else
+    source_state="clean"
+  fi
+fi
+
+print_source_provenance() {
+  say "→" "canonical source: $SCRIPT_REAL"
+  say "→" "source revision: $source_commit ($source_state)"
+}
 
 link_matches_script_dir() {
   target=$1
@@ -67,7 +83,7 @@ install_link() {
 
   if [ -e "$target" ]; then
     if [ -d "$target" ]; then
-      say "⚠" "$label: target is an existing directory; skipping"
+      say "⚠" "$label: unmanaged directory at $target; move or back it up, then rerun so updates come from the canonical source"
     else
       say "⚠" "$label: target exists and is not a symlink; skipping"
     fi
@@ -80,7 +96,7 @@ install_link() {
     return
   fi
 
-  if ln -s "$SCRIPT_DIR" "$target"; then
+  if ln -s "$SCRIPT_REAL" "$target"; then
     say "✓" "$label: linked $target"
     append_csv linked_platforms "$label"
   else
@@ -133,7 +149,7 @@ status_link() {
 
   if [ -e "$target" ]; then
     if [ -d "$target" ]; then
-      say "⚠" "$label: real directory present at $target"
+      say "⚠" "$label: unmanaged directory at $target (update provenance unavailable)"
     else
       say "⚠" "$label: non-symlink file present at $target"
     fi
@@ -265,6 +281,9 @@ print_summary() {
     uninstall)
       printf 'Removed from: %s. Reminders: %s.\n' "$removed_platforms" "$reminders"
       ;;
+    status)
+      printf 'Linked platforms: %s. Reminders: %s.\n' "$linked_platforms" "$reminders"
+      ;;
     *)
       printf 'Installed for: %s. Reminders: %s.\n' "$linked_platforms" "$reminders"
       ;;
@@ -281,6 +300,7 @@ case "$command" in
     ;;
 esac
 
+print_source_provenance
 handle_claude
 handle_codex_legacy
 handle_codex_canonical

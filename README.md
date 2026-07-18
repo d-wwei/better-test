@@ -89,22 +89,26 @@ The agent's quality is ensured by 4 layers, each catching what the previous miss
 ### All platforms (auto-detect)
 
 ```bash
-git clone https://github.com/d-wwei/better-test.git ~/repos/better-test
-cd ~/repos/better-test
+git clone https://github.com/d-wwei/better-test.git ~/src/better-test
+cd ~/src/better-test
 ./install.sh            # detects Claude Code, Codex, etc. and creates symlinks
-./install.sh status     # verify what was installed
+./install.sh status     # verify canonical path, Git revision, and symlink state
 ```
+
+Keep this as the single canonical Git checkout. Claude and Codex must load the same source through symlinks;
+do not copy the repository into multiple skill directories. The installer never overwrites an existing real
+directory: back it up or migrate it first, then rerun installation.
 
 ### Claude Code (manual)
 
 ```bash
-ln -s ~/repos/better-test ~/.claude/skills/better-test
+ln -s ~/src/better-test ~/.claude/skills/better-test
 ```
 
 ### Codex CLI (manual)
 
 ```bash
-ln -s ~/repos/better-test ~/.codex/skills/better-test
+ln -s ~/src/better-test ~/.codex/skills/better-test
 ```
 
 Codex invokes the skill with `$better-test` (instead of `/better-test`). The SKILL.md format is natively compatible — no conversion needed.

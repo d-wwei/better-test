@@ -20,6 +20,7 @@ CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // .working_directory // .tool_input.cw
 COMMAND=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // .tool_input.cmd // .command // empty' 2>/dev/null)
 CONTENT=""
 OUTPUT=""
+VALIDATION_RC=0
 
 while IFS= read -r target; do
   [[ -n "$target" ]] || continue
@@ -28,7 +29,7 @@ while IFS= read -r target; do
   else
     CONTENT=""
   fi
-  OUTPUT="$(bt_results_validation_output "$target" "$CONTENT")"
+  OUTPUT="$(bt_results_validation_output "$target" "$CONTENT" "$CWD")" || VALIDATION_RC=$?
   if [[ -n "$OUTPUT" ]]; then
     printf '%s\n' "$OUTPUT"
     exit 0

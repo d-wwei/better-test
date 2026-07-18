@@ -1,0 +1,37 @@
+{
+  "schema_version": 2,
+  "version": "1.0.0",
+  "run_id": "run-codex-a3f2-001-20260718T120000+0800",
+  "mode": "targeted",
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "excluded": 0,
+    "pending": 0,
+    "partial": 0
+  },
+  "coverage": {
+    "manifest_total": 10,
+    "unreachable": 0,
+    "reachable": 10,
+    "tested": 1,
+    "reachable_coverage_pct": 10.0
+  },
+  "items": [
+    {
+      "id": "AUTH-REM-03",
+      "name": "legacy-shaped item in a v2 document",
+      "group": "AUTH-REM",
+      "type": "functional",
+      "verdict": "PASS",
+      "assertion_field": "login_state",
+      "assertion_value": "ready",
+      "evidence_level": "direct",
+      "pre_existing": false
+    }
+  ],
+  "gate_items": []
+}

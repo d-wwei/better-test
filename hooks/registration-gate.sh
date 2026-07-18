@@ -6,15 +6,17 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+. "$SCRIPT_DIR/lib/common.sh"
 . "$SCRIPT_DIR/lib/rules/registration-gate.sh"
 
 INPUT=$(cat)
 TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
 FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
+CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
 
 if [[ "$TOOL_NAME" != "Write" ]]; then
   exit 0
 fi
 
-bt_registration_gate_output "$FILE_PATH"
+bt_registration_gate_output "$FILE_PATH" "$CWD"
 exit 0

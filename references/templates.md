@@ -1173,7 +1173,7 @@ lessons 的 `evidence_level` 字段——只有 proven 级的洞察才能写入 
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "version": "<X.Y.Z>",
   "tester_id": "<tester-id>",
   "run_id": "run-<tester-id>-<NNN>-<timestamp>",
@@ -1184,8 +1184,11 @@ lessons 的 `evidence_level` 字段——只有 proven 级的洞察才能写入 
     "total": 0,
     "passed": 0,
     "failed": 0,
+    "blocked": 0,
     "skipped": 0,
-    "pending": 0
+    "excluded": 0,
+    "pending": 0,
+    "partial": 0
   },
   "coverage": {
     "manifest_total": 0,
@@ -1196,11 +1199,11 @@ lessons 的 `evidence_level` 字段——只有 proven 级的洞察才能写入 
   },
   "items": [
     {
-      "id": "<Letter>-<NN>",
+      "id": "<A-01 | AUTH-REM-03 | CLI.AUTH-01>",
       "name": "<测试名称>",
       "group": "<Letter>",
       "type": "functional | metadata",
-      "status": "pass | fail | skip | pending",
+      "status": "pass | pass_with_caveat | fail | blocked | skip | excluded | pending | partial | partial_fail",
       "color": "green | yellow | red | skip",
       "assertion_field": "<验证的字段名>",
       "assertion_value": "<实际值>",
@@ -1228,6 +1231,13 @@ lessons 的 `evidence_level` 字段——只有 proven 级的洞察才能写入 
 items 中新增 `bug_ids` 字段——关联该测试项触发的 bug 报告。
 `gate_items` 记录本 run 命中的 release-gate / critical-matrix 条目及 verdict（Gate Execution Ledger
 的机器视图）。项目无 gate 定义时为空数组——但不能省略字段，空数组本身就是"无 gate 适用"的声明。
+
+Schema v2 约束：
+
+- `tester_id`、非空 `finished_at`、`summary.total`、`coverage`、`items`、`gate_items` 都是必填；`summary.total` 必须等于 `items` 数量
+- 每个 item 必须显式写 `status`；`verdict` 仅用于读取 schema v1 / 未标版本的历史结果，不能替代 v2 的 `status`
+- ID 支持层级结构，例如 `A-01`、`AUTH-REM-03`、`CLI.AUTH-01`，但必须使用大写字母、数字、点或连字符组成的稳定 ID
+- validator 对 schema v2 缺失必填字段返回失败；对 schema v1 的 `verdict` 做兼容读取，便于旧历史逐步迁移，不要求原地改写历史
 
 ### execution-log.md（L1 Hook 自动生成）
 

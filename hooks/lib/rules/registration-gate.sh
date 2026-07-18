@@ -2,15 +2,16 @@
 
 bt_registration_gate_output() {
   local file_path="$1"
+  local cwd="${2:-}"
   local run_dir=""
+  local test_dir=""
   local tester_id=""
   local warnings=""
   local testers_dir=""
   local registry=""
 
-  if [[ -z "$file_path" ]]; then
-    return 0
-  fi
+  file_path=$(bt_normalize_file_path "$file_path" "$cwd") || return 0
+  test_dir=$(bt_find_test_dir_for_path "$file_path" "$cwd") || return 0
 
   if ! printf '%s\n' "$file_path" | grep -q 'strategy-plan\.md'; then
     return 0
@@ -29,7 +30,7 @@ bt_registration_gate_output() {
     warnings="${warnings}bio.md not found at $run_dir/bio.md. "
   fi
 
-  testers_dir=$(printf '%s\n' "$run_dir" | sed 's|\(.*\.better-work/test\)/.*|\1/testers|')
+  testers_dir="$test_dir/testers"
   if [[ -n "$tester_id" ]]; then
     registry="$testers_dir/$tester_id/registry.md"
     if [[ ! -f "$registry" ]]; then

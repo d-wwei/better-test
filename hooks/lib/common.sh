@@ -18,8 +18,124 @@ bt_resolve_link_target() {
   )
 }
 
+bt_real_dir() {
+  local candidate="$1"
+
+  if [[ -z "$candidate" || ! -d "$candidate" ]]; then
+    return 1
+  fi
+
+  (
+    cd "$candidate" 2>/dev/null || exit 1
+    pwd -P
+  )
+}
+
+bt_normalize_file_path() {
+  local file_path="$1"
+  local cwd="${2:-}"
+  local parent=""
+  local name=""
+  local parent_real=""
+  local suffix=""
+
+  if [[ -z "$file_path" ]]; then
+    return 1
+  fi
+
+  if [[ "$file_path" != /* ]]; then
+    if [[ -z "$cwd" ]]; then
+      return 1
+    fi
+    file_path="$cwd/$file_path"
+  fi
+
+  parent=$(dirname "$file_path")
+  name=$(basename "$file_path")
+  suffix="$name"
+  while [[ ! -d "$parent" ]]; do
+    suffix="$(basename "$parent")/$suffix"
+    if [[ "$(dirname "$parent")" == "$parent" ]]; then
+      break
+    fi
+    parent=$(dirname "$parent")
+  done
+  parent_real=$(bt_real_dir "$parent") || parent_real=""
+  if [[ -n "$parent_real" ]]; then
+    printf '%s/%s\n' "$parent_real" "$suffix"
+    return 0
+  fi
+
+  printf '%s\n' "$file_path"
+}
+
+bt_is_flat_test_dir() {
+  local candidate="$1"
+
+  [[ -d "$candidate" ]] || return 1
+  [[ -f "$candidate/protocol.md" ]] || return 1
+  [[ -f "$candidate/test-groups.md" || -f "$candidate/status.md" || -d "$candidate/history" ]]
+}
+
+bt_resolve_configured_test_dir() {
+  local project_root="$1"
+  local config_file="$project_root/.better-test-root"
+  local configured=""
+  local root_real=""
+  local target_real=""
+
+  [[ -f "$config_file" ]] || return 1
+
+  configured=$(awk '
+    /^[[:space:]]*#/ { next }
+    /^[[:space:]]*$/ { next }
+    {
+      sub(/^[[:space:]]+/, "")
+      sub(/[[:space:]]+$/, "")
+      print
+      exit
+    }
+  ' "$config_file")
+
+  if [[ -z "$configured" ]]; then
+    echo "better-test: $config_file does not contain a test-root path" >&2
+    return 2
+  fi
+
+  if [[ "$configured" = /* ]]; then
+    echo "better-test: $config_file must contain a repository-relative path; use BETTER_TEST_DIR for an absolute override" >&2
+    return 2
+  fi
+
+  case "/$configured/" in
+    *"/../"*)
+      echo "better-test: $config_file cannot escape the repository with '..'" >&2
+      return 2
+      ;;
+  esac
+
+  root_real=$(bt_real_dir "$project_root") || return 2
+  target_real=$(bt_real_dir "$project_root/$configured") || {
+    echo "better-test: configured test root does not exist: $project_root/$configured" >&2
+    return 2
+  }
+
+  case "$target_real" in
+    "$root_real" | "$root_real"/*)
+      printf '%s\n' "$target_real"
+      return 0
+      ;;
+  esac
+
+  echo "better-test: configured test root resolves outside the repository: $target_real" >&2
+  return 2
+}
+
 bt_resolve_test_dir() {
   local cwd="$1"
+  local current=""
+  local parent=""
+  local candidate=""
   local project_name
   local shared_root
 
@@ -27,25 +143,129 @@ bt_resolve_test_dir() {
     return 1
   fi
 
-  if [[ -d "$cwd/.better-work/test" ]]; then
-    printf '%s\n' "$cwd/.better-work/test"
+  current=$(bt_real_dir "$cwd") || return 1
+
+  if [[ -n "${BETTER_TEST_DIR:-}" ]]; then
+    if [[ "$BETTER_TEST_DIR" = /* ]]; then
+      candidate="$BETTER_TEST_DIR"
+    else
+      candidate="$current/$BETTER_TEST_DIR"
+    fi
+    bt_real_dir "$candidate"
+    return $?
+  fi
+
+  while [[ -n "$current" ]]; do
+    if [[ -f "$current/.better-test-root" ]]; then
+      bt_resolve_configured_test_dir "$current"
+      return $?
+    fi
+
+    if [[ -d "$current/.better-work/test" ]]; then
+      bt_real_dir "$current/.better-work/test"
+      return 0
+    fi
+
+    if [[ -L "$current/.better-work" ]]; then
+      shared_root=$(bt_resolve_link_target "$current/.better-work") || shared_root=""
+      if [[ -n "$shared_root" && -d "$shared_root/test" ]]; then
+        bt_real_dir "$shared_root/test"
+        return 0
+      fi
+    fi
+
+    if bt_is_flat_test_dir "$current/test"; then
+      bt_real_dir "$current/test"
+      return 0
+    fi
+
+    parent=$(dirname "$current")
+    if [[ "$parent" == "$current" ]]; then
+      break
+    fi
+    current="$parent"
+  done
+
+  project_name=$(basename "$(bt_real_dir "$cwd")")
+  if [[ -d "$HOME/.better-work/$project_name/test" ]]; then
+    bt_real_dir "$HOME/.better-work/$project_name/test"
     return 0
   fi
 
-  if [[ -L "$cwd/.better-work" ]]; then
-    shared_root=$(bt_resolve_link_target "$cwd/.better-work") || shared_root=""
-    if [[ -n "$shared_root" && -d "$shared_root/test" ]]; then
-      printf '%s\n' "$shared_root/test"
-      return 0
+  return 1
+}
+
+bt_find_test_dir_for_path() {
+  local file_path="$1"
+  local cwd="${2:-}"
+  local normalized=""
+  local test_dir=""
+  local current=""
+  local parent=""
+
+  normalized=$(bt_normalize_file_path "$file_path" "$cwd") || return 1
+
+  if [[ -n "$cwd" ]]; then
+    test_dir=$(bt_resolve_test_dir "$cwd") || test_dir=""
+    if [[ -n "$test_dir" ]]; then
+      case "$normalized" in
+        "$test_dir" | "$test_dir"/*)
+          printf '%s\n' "$test_dir"
+          return 0
+          ;;
+      esac
     fi
   fi
 
-  project_name=$(basename "$cwd")
-  if [[ -d "$HOME/.better-work/$project_name/test" ]]; then
-    printf '%s\n' "$HOME/.better-work/$project_name/test"
-    return 0
-  fi
+  current=$(dirname "$normalized")
+  while [[ -n "$current" ]]; do
+    if [[ "$current" == */.better-work/test && -d "$current" ]]; then
+      bt_real_dir "$current"
+      return 0
+    fi
 
+    if bt_is_flat_test_dir "$current"; then
+      bt_real_dir "$current"
+      return 0
+    fi
+
+    parent=$(dirname "$current")
+    if [[ "$parent" == "$current" ]]; then
+      break
+    fi
+    current="$parent"
+  done
+
+  return 1
+}
+
+bt_is_test_path() {
+  local file_path="$1"
+  local cwd="${2:-}"
+  local normalized=""
+  local test_dir=""
+
+  normalized=$(bt_normalize_file_path "$file_path" "$cwd") || return 1
+  test_dir=$(bt_find_test_dir_for_path "$normalized" "$cwd") || return 1
+
+  case "$normalized" in
+    "$test_dir" | "$test_dir"/*) return 0 ;;
+  esac
+  return 1
+}
+
+bt_is_test_history_path() {
+  local file_path="$1"
+  local cwd="${2:-}"
+  local normalized=""
+  local test_dir=""
+
+  normalized=$(bt_normalize_file_path "$file_path" "$cwd") || return 1
+  test_dir=$(bt_find_test_dir_for_path "$normalized" "$cwd") || return 1
+
+  case "$normalized" in
+    "$test_dir/history/"*) return 0 ;;
+  esac
   return 1
 }
 

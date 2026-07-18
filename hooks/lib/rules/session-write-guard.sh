@@ -2,6 +2,7 @@
 
 bt_session_write_guard_path() {
   local file_path="$1"
+  local cwd="${2:-}"
   local test_base=""
   local session_file=""
   local target_run=""
@@ -9,9 +10,8 @@ bt_session_write_guard_path() {
   local my_run=""
   local my_tester=""
 
-  if [[ -z "$file_path" ]] || [[ "$file_path" != *".better-work/"* ]]; then
-    return 0
-  fi
+  file_path=$(bt_normalize_file_path "$file_path" "$cwd") || return 0
+  test_base=$(bt_find_test_dir_for_path "$file_path" "$cwd") || return 0
 
   if ! printf '%s\n' "$file_path" | grep -qE '/run-[^/]+-[0-9]+-'; then
     return 0
@@ -19,11 +19,6 @@ bt_session_write_guard_path() {
 
   target_run=$(printf '%s\n' "$file_path" | grep -oE 'run-[^/]+' | head -1)
   if [[ -z "$target_run" ]]; then
-    return 0
-  fi
-
-  test_base=$(printf '%s\n' "$file_path" | sed -n 's|\(.*\.better-work/test\)/.*|\1|p')
-  if [[ -z "$test_base" || ! -d "$test_base" ]]; then
     return 0
   fi
 

@@ -2,6 +2,7 @@
 
 bt_post_test_checklist_output() {
   local file_path="$1"
+  local cwd="${2:-}"
 
   if [[ -z "$file_path" ]]; then
     return 0
@@ -11,7 +12,7 @@ bt_post_test_checklist_output() {
     return 0
   fi
 
-  if ! printf '%s\n' "$file_path" | grep -qE '\.better-work/test/history/'; then
+  if ! bt_is_test_history_path "$file_path" "$cwd"; then
     return 0
   fi
 

@@ -76,7 +76,7 @@ fi
 
 cat > "$HOME_DIR/.codex/config.toml" <<'EOF'
 [features]
-codex_hooks = true
+hooks = true
 EOF
 
 HOME="$HOME_DIR" "$SCRIPT_DIR/install-codex-hooks.sh" install --project "$PROJECT_DIR" >/dev/null

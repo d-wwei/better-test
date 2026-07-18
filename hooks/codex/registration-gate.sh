@@ -22,7 +22,7 @@ OUTPUT=""
 
 while IFS= read -r target; do
   [[ -n "$target" ]] || continue
-  OUTPUT="$(bt_registration_gate_output "$target")"
+  OUTPUT="$(bt_registration_gate_output "$target" "$CWD")"
   if [[ -n "$OUTPUT" ]]; then
     printf '%s\n' "$OUTPUT"
     exit 0

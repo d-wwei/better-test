@@ -22,7 +22,7 @@ OUTPUT=""
 
 while IFS= read -r target; do
   [[ -n "$target" ]] || continue
-  OUTPUT="$(bt_post_test_checklist_output "$target")"
+  OUTPUT="$(bt_post_test_checklist_output "$target" "$CWD")"
   if [[ -n "$OUTPUT" ]]; then
     printf '%s\n' "$OUTPUT"
     exit 0

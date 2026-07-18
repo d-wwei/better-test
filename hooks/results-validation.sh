@@ -5,16 +5,18 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+. "$SCRIPT_DIR/lib/common.sh"
 . "$SCRIPT_DIR/lib/rules/results-validation.sh"
 
 INPUT=$(cat)
 TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
 FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
 CONTENT=$(printf '%s' "$INPUT" | jq -r '.tool_input.content // empty' 2>/dev/null)
+CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
 
 if [[ "$TOOL_NAME" != "Write" ]]; then
   exit 0
 fi
 
-bt_results_validation_output "$FILE_PATH" "$CONTENT"
+bt_results_validation_output "$FILE_PATH" "$CONTENT" "$CWD" || true
 exit 0

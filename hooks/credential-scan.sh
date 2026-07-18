@@ -1,17 +1,19 @@
 #!/bin/bash
 # better-test L1 Hook: Credential Scan
-# Blocks writes to .better-work/test/ that contain credential patterns.
+# Blocks writes to a resolved better-test root that contain credential patterns.
 # PreToolUse on Edit|Write
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+. "$SCRIPT_DIR/lib/common.sh"
 . "$SCRIPT_DIR/lib/rules/credential-scan.sh"
 
 INPUT=$(cat)
 TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
 FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
+CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
 
-if [[ "$FILE_PATH" != *".better-work/test/"* ]] && [[ "$FILE_PATH" != *".better-work/test\\"* ]]; then
+if ! bt_is_test_path "$FILE_PATH" "$CWD"; then
   exit 0
 fi
 

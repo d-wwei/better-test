@@ -21,7 +21,7 @@ COMMAND=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // .tool_input.cmd /
 
 while IFS= read -r target; do
   [[ -n "$target" ]] || continue
-  bt_feedback_rules_guard_path "$target" || exit $?
+  bt_feedback_rules_guard_path "$target" "$CWD" || exit $?
 done < <(bt_extract_codex_write_targets "$TOOL_NAME" "$COMMAND" "$CWD")
 
 exit 0

@@ -2,6 +2,27 @@
 
 All notable changes to **better-test** (Better-Work series testing subskill) are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Configurable test-root resolution through a committed `.better-test-root`, `BETTER_TEST_DIR`, nearest `.better-work/test/`, or a marker-validated flat `test/` layout
+- Flat-layout hook fixture and regression coverage for resolver, Codex hook installation, credential, derived-view, session, checklist, and results-validation behavior
+- Results schema v2 fixtures covering required fields, hierarchical IDs, and schema v1 `verdict` compatibility
+
+### Changed
+
+- `results.json` template now uses schema v2; missing `tester_id`, `finished_at`, or item `status` is a validation failure
+- Hook rules resolve the project test root instead of matching only literal `.better-work/test/` paths
+- `install.sh status` reports canonical checkout path, Git revision, and clean/dirty provenance; platform links always target the physical canonical source
+- Codex hook installation detects the current `hooks` feature name while retaining legacy `codex_hooks` compatibility; runtime smoke bypasses hook trust only inside its isolated fixture
+
+### Fixed
+
+- Prevented all-`verdict` schema v2 files from bypassing pass-evidence validation because every item lacked `status`
+- Accepted stable hierarchical test IDs instead of falsely requiring only `Letter-NN`
+- Marked the Codex native-write fixture test executable so the full local hook suite can run uniformly
+
 ## [3.1.2] - 2026-04-28
 
 ### Extensible team-role presets for multi-tester planning

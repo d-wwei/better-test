@@ -6,7 +6,7 @@
       "phase": "core",
       "priority": "P0",
       "rule_path": "hooks/lib/rules/credential-scan.sh",
-      "summary": "Block credential-like content written into .better-work/test/ paths.",
+      "summary": "Block credential-like content written into the resolved project test root.",
       "platforms": {
         "claude": {
           "status": "active",
@@ -22,14 +22,14 @@
               "event": "PreToolUse",
               "matcher": "Bash",
               "entrypoint": "hooks/codex/credential-scan.sh",
-              "note": "Bash path: scans command text for explicit credential-like literals when the command writes into .better-work/test/; external file copies remain outside this guard."
+              "note": "Bash path: scans command text for explicit credential-like literals when the command writes into the resolved test root; external file copies remain outside this guard."
             },
             {
               "status": "active",
               "event": "PreToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/credential-scan.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0. Built-in file edits surface as matcher Write with tool_name apply_patch; the guard scans added patch lines for credential-like literals targeting .better-work/test/."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18. Built-in file edits surface as matcher Write with tool_name apply_patch; the guard scans added patch lines for credential-like literals targeting the resolved test root."
             }
           ]
         }
@@ -63,7 +63,7 @@
               "event": "PreToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/feedback-rules-guard.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0. Built-in apply_patch edits are blocked when they target feedback-rules.json."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18. Built-in apply_patch edits are blocked when they target feedback-rules.json."
             }
           ]
         }
@@ -111,14 +111,14 @@
               "event": "PostToolUse",
               "matcher": "Bash",
               "entrypoint": "hooks/codex/post-test-checklist.sh",
-              "note": "Bash path: infers shell write targets and emits checklist additionalContext after commands that write results.json under .better-work/test/."
+              "note": "Bash path: infers shell write targets and emits checklist additionalContext after commands that write results.json under the resolved test root."
             },
             {
               "status": "active",
               "event": "PostToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/post-test-checklist.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0. Built-in apply_patch writes to results.json emit the same checklist additionalContext."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18. Built-in apply_patch writes to results.json emit the same checklist additionalContext."
             }
           ]
         }
@@ -129,7 +129,7 @@
       "phase": "core",
       "priority": "P1",
       "rule_path": "hooks/lib/rules/results-validation.sh",
-      "summary": "Validate results.json fields + evidence semantics + pass-evidence-check (compare baseline, assertion_value, pre_existing contradiction).",
+      "summary": "Validate results.json schema v2, legacy verdict compatibility, hierarchical IDs, and pass-evidence semantics.",
       "platforms": {
         "claude": {
           "status": "active",
@@ -145,14 +145,14 @@
               "event": "PostToolUse",
               "matcher": "Bash",
               "entrypoint": "hooks/codex/results-validation.sh",
-              "note": "Bash path: re-reads results.json after shell writes and emits validation warnings via additionalContext."
+              "note": "Bash path: re-reads results.json after shell writes and emits validation errors or advisories via additionalContext."
             },
             {
               "status": "active",
               "event": "PostToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/results-validation.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0. Built-in apply_patch writes to results.json emit the same validation warnings via additionalContext."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18. Built-in apply_patch writes to results.json emit the same validation errors or advisories via additionalContext."
             }
           ]
         }
@@ -186,7 +186,7 @@
               "event": "PreToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/derived-view-guard.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0. Built-in apply_patch edits are blocked when they target protected derived views."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18. Built-in apply_patch edits are blocked when they target protected derived views."
             }
           ]
         }
@@ -220,7 +220,7 @@
               "event": "PostToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/registration-gate.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0. Built-in apply_patch writes to strategy-plan.md emit the same registration warnings via additionalContext."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18. Built-in apply_patch writes to strategy-plan.md emit the same registration warnings via additionalContext."
             }
           ]
         }
@@ -254,7 +254,7 @@
               "event": "PreToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/session-write-guard.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0 for built-in apply_patch. Enforcement still depends on the same session file contract keyed to the hook parent PID."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18 for built-in apply_patch. Enforcement still depends on the same session file contract keyed to the hook parent PID."
             }
           ]
         }

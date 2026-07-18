@@ -2,6 +2,20 @@
 
 L1 constraint hooks. Run automatically before/after tool calls to enforce testing discipline.
 
+## Test Root Resolution
+
+Hooks resolve one test root per project in this order:
+
+1. absolute `BETTER_TEST_DIR` override
+2. nearest repository `.better-test-root` file containing one repository-relative path such as `test`
+3. nearest `.better-work/test/`
+4. flat `test/` containing `protocol.md` plus `test-groups.md`, `status.md`, or `history/`
+5. `~/.better-work/<project>/test/`
+
+Use only one root in a project. Commit `.better-test-root` for a flat or non-default repository layout; this is
+shared by Claude and Codex and does not require per-machine shell configuration. Use `BETTER_TEST_DIR` only for
+an absolute, temporary override.
+
 ## Support Matrix
 
 `hooks/registry.json` is the single source of truth for hook support status.
@@ -19,7 +33,7 @@ L1 constraint hooks. Run automatically before/after tool calls to enforce testin
 
 ## Installation (Recommended: gate.sh global)
 
-Add the following to **global** `~/.claude/settings.json`. Gate.sh auto-detects whether the current project uses better-test and dispatches to individual hooks. Non-better-test projects: ~10ms overhead (immediate exit).
+Add the following to **global** `~/.claude/settings.json`. Gate.sh resolves the project test root and dispatches to individual hooks. Non-better-test projects exit immediately.
 
 ```json
 {
@@ -52,8 +66,11 @@ Codex hooks are installed per project and managed separately from `install.sh`.
 ./hooks/install-codex-hooks.sh uninstall
 ```
 
+Both `install` and `status` print the resolved `test root:`. Treat an unresolved or unexpected root as an
+installation failure before running tests.
+
 Current Codex-active hook set: `execution-log`, `credential-scan`, `feedback-rules-guard`, `derived-view-guard`, `session-write-guard`, `post-test-checklist`, `results-validation`, and `registration-gate`.
-These are runtime-verified on `codex-cli 0.125.0`.
+These were runtime-verified on `codex-cli 0.125.0` and re-verified on `0.145.0-alpha.18` with the renamed `hooks` feature and hook-trust requirement.
 `execution-log` runs on `PostToolUse/Bash`.
 `credential-scan`, `feedback-rules-guard`, `derived-view-guard`, and `session-write-guard` each run on both `PreToolUse/Bash` and `PreToolUse/Write`.
 `post-test-checklist`, `results-validation`, and `registration-gate` each run on both `PostToolUse/Bash` and `PostToolUse/Write`.
@@ -64,7 +81,7 @@ Current runtime payloads also omit shell exit code, so Codex-generated `executio
 Notes:
 - `hooks/install-codex-hooks.sh` reads active Codex entries from `hooks/registry.json`
 - default target is project-local `.codex/hooks.json`
-- it checks `~/.codex/config.toml` for `codex_hooks = true`
+- it detects the current runtime feature name (`hooks` on Codex 0.145+, legacy `codex_hooks` on older builds) and also accepts a runtime-enabled stable default
 - it does not touch the feature flag unless you pass `--enable-feature-flag`
 - install / uninstall preserve unrelated hook entries already present in `.codex/hooks.json`
 - Codex now covers both shell write-intent and built-in `apply_patch`/`file_change` for all active guards and advisories except `execution-log`, which remains `PostToolUse/Bash` only
@@ -141,7 +158,7 @@ Replace `<SKILL_PATH>` with the actual path to the better-test skill directory.
 
 #### credential-scan.sh
 - **Type**: PreToolUse on Edit|Write
-- **What it does**: Scans content being written to `.better-work/test/` for credential patterns (password, token, api_key, secret, Bearer tokens)
+- **What it does**: Scans content being written to the resolved test root for credential patterns (password, token, api_key, secret, Bearer tokens)
 - **Action on match**: Blocks the write (exit 2)
 - **Codex note**: Codex now runs this on both `PreToolUse/Bash` and `PreToolUse/Write`. The Bash path scans command text for explicit credential-like literals; the native Write path scans added `apply_patch` lines. External file copies such as `cp leaked-creds.txt ...` remain outside this guard on the Bash path.
 
@@ -164,17 +181,20 @@ Replace `<SKILL_PATH>` with the actual path to the better-test skill directory.
 #### results-validation.sh
 - **Type**: PostToolUse on Write
 - **Trigger**: When results.json is written
-- **What it does**: Validates results.json structure and **pass-evidence quality** (v3.1.0):
-  - Required top-level fields (version, run_id, mode, summary)
+- **What it does**: Validates results.json structure and **pass-evidence quality**:
+  - Schema v2 requires version, run_id, mode, summary, tester_id, finished_at, coverage, items, and gate_items
+  - Every v2 item must contain `status`; a legacy `verdict` cannot satisfy this requirement
+  - Schema v1/unversioned history can still be read through `status // verdict`
+  - Hierarchical IDs such as `AUTH-REM-03` and `CLI.AUTH-01` are accepted
   - Coverage section exists
   - Items array non-empty
   - Pass items have non-empty assertion_field
-  - Item ID format (Letter-NN)
+  - Stable item ID format
   - Pass items evidence_level >= direct
   - **(v3.1.0)** Compare mode: pass items must have comparison_baseline non-null
   - **(v3.1.0)** Pass items must have assertion_value non-empty (field name alone insufficient)
   - **(v3.1.0)** pre_existing=true items cannot be marked pass (Red Line #18)
-- **Codex note**: Codex now runs this on both `PostToolUse/Bash` and `PostToolUse/Write`. Both paths re-read `results.json` after the write completes and inject validation warnings via `additionalContext`.
+- **Codex note**: Codex now runs this on both `PostToolUse/Bash` and `PostToolUse/Write`. Both paths re-read `results.json` after the write completes and inject validation errors/advisories via `additionalContext`. The shared validator returns failure for schema v2 errors; PostToolUse adapters surface that failure after the write because the runtime cannot undo an already-completed write.
 
 ### Phase B: Tester/Coordinator Isolation (v3.0)
 

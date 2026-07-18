@@ -21,32 +21,18 @@ fi
 # Read stdin (hook input JSON) — need to pass it to sub-hooks
 INPUT=$(cat)
 
+HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
+. "$HOOKS_DIR/lib/common.sh"
+
 # Extract CWD from hook input
 CWD=$(echo "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
 if [[ -z "$CWD" ]]; then
   exit 0
 fi
 
-# Detect: does this project use better-test?
-# Check: CWD/.better-work/test/ OR ~/.better-work/<basename>/test/
-PROJECT_HAS_BETTER_TEST=false
-if [[ -d "$CWD/.better-work/test" ]]; then
-  PROJECT_HAS_BETTER_TEST=true
-elif [[ -L "$CWD/.better-work" && -d "$(readlink "$CWD/.better-work")/test" ]]; then
-  PROJECT_HAS_BETTER_TEST=true
-else
-  PROJECT_NAME=$(basename "$CWD")
-  if [[ -d "$HOME/.better-work/$PROJECT_NAME/test" ]]; then
-    PROJECT_HAS_BETTER_TEST=true
-  fi
-fi
-
-if [[ "$PROJECT_HAS_BETTER_TEST" != "true" ]]; then
+if ! bt_resolve_test_dir "$CWD" >/dev/null; then
   exit 0
 fi
-
-# Find the hooks directory (same directory as this script)
-HOOKS_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 # Dispatch to individual hooks based on event type
 # Collect all outputs — if any hook blocks (exit 2), gate blocks.

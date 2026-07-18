@@ -28,7 +28,7 @@ grep -q 'EXIT: 0' "$LOG_FILE"
 
 cat > "$HOME_DIR/.codex/config.toml" <<'EOF'
 [features]
-codex_hooks = true
+hooks = true
 EOF
 
 cat > "$PROJECT_DIR/.codex/hooks.json" <<'EOF'

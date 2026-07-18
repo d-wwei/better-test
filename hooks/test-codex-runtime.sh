@@ -23,6 +23,8 @@ if ! command -v codex >/dev/null 2>&1; then
   exit 1
 fi
 
+CODEX_RUNTIME_VERSION=$(codex --version 2>/dev/null || printf '%s' unknown)
+
 print_codex_failure_details() {
   local stderr_file="$1"
   local jsonl_file="$2"
@@ -74,7 +76,7 @@ mkdir -p "$INSTALL_HOME/.codex" "$INSTALL_CODEX_HOME_DIR" "$PROJECT_DIR/.better-
 )
 cat > "$INSTALL_CODEX_HOME_DIR/config.toml" <<'EOF'
 [features]
-codex_hooks = true
+hooks = true
 EOF
 
 HOME="$INSTALL_HOME" CODEX_HOME="$INSTALL_CODEX_HOME_DIR" "$SCRIPT_DIR/install-codex-hooks.sh" install --project "$PROJECT_DIR" >/dev/null
@@ -82,7 +84,8 @@ HOME="$INSTALL_HOME" CODEX_HOME="$INSTALL_CODEX_HOME_DIR" "$SCRIPT_DIR/install-c
 runtime_rc=0
 printf '%s\n' 'Use the Bash tool to run exactly: printf "runtime-smoke". After it finishes, reply with exactly OK.' | codex exec \
   --skip-git-repo-check \
-  --enable codex_hooks \
+  --enable hooks \
+  --dangerously-bypass-hook-trust \
   --ephemeral \
   --sandbox workspace-write \
   --json \
@@ -149,7 +152,8 @@ HOME="$INSTALL_HOME" CODEX_HOME="$INSTALL_CODEX_HOME_DIR" "$SCRIPT_DIR/install-c
 credential_block_rc=0
 printf '%s\n' 'Use the Bash tool exactly once to run exactly: mkdir -p .better-work/test/reference && printf "token=supersecrettoken123456" > .better-work/test/reference/notes.md. Do not run any other command. If it is blocked by a hook, stop immediately and reply with exactly BLOCKED.' | codex exec \
   --skip-git-repo-check \
-  --enable codex_hooks \
+  --enable hooks \
+  --dangerously-bypass-hook-trust \
   --ephemeral \
   --sandbox workspace-write \
   --json \
@@ -191,7 +195,8 @@ fi
 feedback_block_rc=0
 printf '%s\n' 'Use the Bash tool exactly once to run exactly: printf "x" > .better-work/test/history/feedback-rules.json. Do not run any other command. If it is blocked by a hook, stop immediately and reply with exactly BLOCKED.' | codex exec \
   --skip-git-repo-check \
-  --enable codex_hooks \
+  --enable hooks \
+  --dangerously-bypass-hook-trust \
   --ephemeral \
   --sandbox workspace-write \
   --json \
@@ -227,7 +232,8 @@ fi
 derived_block_rc=0
 printf '%s\n' 'Use the Bash tool exactly once to run exactly: printf "x" > .better-work/test/status.md. Do not run any other command. If it is blocked by a hook, stop immediately and reply with exactly BLOCKED.' | codex exec \
   --skip-git-repo-check \
-  --enable codex_hooks \
+  --enable hooks \
+  --dangerously-bypass-hook-trust \
   --ephemeral \
   --sandbox workspace-write \
   --json \
@@ -275,7 +281,8 @@ HOME="$INSTALL_HOME" CODEX_HOME="$INSTALL_CODEX_HOME_DIR" "$SCRIPT_DIR/install-c
 session_guard_rc=0
 cat <<'EOF' | codex exec \
   --skip-git-repo-check \
-  --enable codex_hooks \
+  --enable hooks \
+  --dangerously-bypass-hook-trust \
   --ephemeral \
   --sandbox workspace-write \
   --json \
@@ -368,7 +375,8 @@ HOME="$INSTALL_HOME" CODEX_HOME="$INSTALL_CODEX_HOME_DIR" "$SCRIPT_DIR/install-c
 checklist_advisory_rc=0
 printf '%s\n' 'Use the Bash tool exactly once to run exactly: printf "{}" > .better-work/test/history/v1/run-codex-a3f2-001-1234/results.json. After it finishes, if you received any repository-hook advisory, reply with the exact English phrase immediately before "(auto-injected)"; otherwise reply with exactly NONE.' | codex exec \
   --skip-git-repo-check \
-  --enable codex_hooks \
+  --enable hooks \
+  --dangerously-bypass-hook-trust \
   --ephemeral \
   --sandbox workspace-write \
   --json \
@@ -393,7 +401,8 @@ fi
 results_advisory_rc=0
 printf '%s\n' 'Use the Bash tool exactly once to run exactly: printf "%s" "{\"version\":\"1.0.0\",\"run_id\":\"run-1\",\"mode\":\"targeted\",\"summary\":\"bad\",\"coverage\":null,\"items\":[{\"id\":\"bad-id\",\"status\":\"pass\",\"assertion_field\":\"\",\"evidence_level\":\"indirect\"}]}" > .better-work/test/history/v1/run-codex-a3f2-001-1234/results.json. After it finishes, if you received any repository-hook advisory, reply with the exact Chinese phrase immediately before "发现以下问题"; otherwise reply with exactly NONE.' | codex exec \
   --skip-git-repo-check \
-  --enable codex_hooks \
+  --enable hooks \
+  --dangerously-bypass-hook-trust \
   --ephemeral \
   --sandbox workspace-write \
   --json \
@@ -418,7 +427,8 @@ fi
 registration_advisory_rc=0
 printf '%s\n' 'Use the Bash tool exactly once to run exactly: printf "# draft" > .better-work/test/history/v1/run-codex-a3f2-001-1234/strategy-plan.md. After it finishes, if you received any repository-hook advisory, reply with the exact English label immediately before the first colon; otherwise reply with exactly NONE.' | codex exec \
   --skip-git-repo-check \
-  --enable codex_hooks \
+  --enable hooks \
+  --dangerously-bypass-hook-trust \
   --ephemeral \
   --sandbox workspace-write \
   --json \
@@ -455,7 +465,8 @@ HOME="$INSTALL_HOME" CODEX_HOME="$INSTALL_CODEX_HOME_DIR" "$SCRIPT_DIR/install-c
 write_block_rc=0
 printf '%s\n' 'Create the file .better-work/test/reference/notes.md containing exactly token=supersecrettoken123456. You must not execute any shell command or Bash command. Use only the built-in file editing capability. If it is blocked by a hook, stop immediately and reply with exactly BLOCKED.' | codex exec \
   --skip-git-repo-check \
-  --enable codex_hooks \
+  --enable hooks \
+  --dangerously-bypass-hook-trust \
   --ephemeral \
   --sandbox workspace-write \
   --json \
@@ -505,7 +516,8 @@ write_results_content="$(jq -c . "$SCRIPT_DIR/fixtures/results-pass-no-baseline.
 write_advisory_rc=0
 cat <<EOF | codex exec \
   --skip-git-repo-check \
-  --enable codex_hooks \
+  --enable hooks \
+  --dangerously-bypass-hook-trust \
   --ephemeral \
   --sandbox workspace-write \
   --json \
@@ -587,7 +599,8 @@ EOF
 post_fail_rc=0
 printf '%s\n' 'Use the Bash tool exactly once to run exactly: printf "post-fail-probe". After it finishes, reply with exactly OK.' | codex exec \
   --skip-git-repo-check \
-  --enable codex_hooks \
+  --enable hooks \
+  --dangerously-bypass-hook-trust \
   --ephemeral \
   --sandbox workspace-write \
   --json \
@@ -621,4 +634,4 @@ if [[ "$(final_agent_message "$TMP_DIR/codex-post-fail.jsonl")" != "OK" ]]; then
 fi
 
 echo "codex runtime smoke passed"
-echo "observed baseline: project hooks.json + PostToolUse/Bash works; PostToolUse/Bash exit 2 still runs the hook command but does not fail the command path, and stderr surfacing is not treated as stable; PostToolUse/Bash additionalContext is model-visible for post-test-checklist/results-validation/registration-gate; PreToolUse/Bash blocks landed for inline credentials, feedback-rules, derived views, and cross-tester run writes; current runtime omits exit code; matcher=Write is runtime-verified on codex-cli 0.125.0 for built-in file_change/apply_patch, including PreToolUse blocking and PostToolUse advisory visibility"
+echo "observed baseline ($CODEX_RUNTIME_VERSION): project hooks.json + PostToolUse/Bash works; PostToolUse/Bash exit 2 still runs the hook command but does not fail the command path, and stderr surfacing is not treated as stable; PostToolUse/Bash additionalContext is model-visible for post-test-checklist/results-validation/registration-gate; PreToolUse/Bash blocks landed for inline credentials, feedback-rules, derived views, and cross-tester run writes; current runtime omits exit code; matcher=Write covers built-in file_change/apply_patch, including PreToolUse blocking and PostToolUse advisory visibility"

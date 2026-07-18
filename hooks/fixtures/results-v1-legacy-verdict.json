@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "version": "1.0.0",
+  "tester_id": "codex-a3f2",
+  "run_id": "run-codex-a3f2-001-20260718T120000+0800",
+  "mode": "targeted",
+  "started_at": "2026-07-18T12:00:00+08:00",
+  "finished_at": "2026-07-18T12:05:00+08:00",
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "pending": 0
+  },
+  "coverage": {
+    "manifest_total": 10,
+    "unreachable": 0,
+    "reachable": 10,
+    "tested": 1,
+    "reachable_coverage_pct": 10.0
+  },
+  "items": [
+    {
+      "id": "AUTH-REM-03",
+      "name": "legacy pass-with-caveat verdict item",
+      "group": "AUTH-REM",
+      "type": "functional",
+      "verdict": "PASS-WITH-CAVEAT",
+      "assertion_field": "login_state",
+      "assertion_value": "ready",
+      "evidence_level": "direct",
+      "pre_existing": false
+    }
+  ]
+}

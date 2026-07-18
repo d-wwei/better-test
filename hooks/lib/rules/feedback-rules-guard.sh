@@ -2,25 +2,19 @@
 
 bt_feedback_rules_guard_path() {
   local file_path="$1"
+  local cwd="${2:-}"
   local test_base=""
   local session_dir=""
 
-  if [[ -z "$file_path" ]]; then
-    return 0
-  fi
+  file_path=$(bt_normalize_file_path "$file_path" "$cwd") || return 0
+  test_base=$(bt_find_test_dir_for_path "$file_path" "$cwd") || return 0
 
-  if ! printf '%s\n' "$file_path" | grep -q 'feedback-rules\.json'; then
+  if [[ "$file_path" != "$test_base/history/feedback-rules.json" ]]; then
     return 0
   fi
 
   if printf '%s\n' "$file_path" | grep -qE '/(run-|merge-)'; then
     return 0
-  fi
-
-  test_base=$(printf '%s\n' "$file_path" | sed 's|\(.*\.better-work/test\)/.*|\1|')
-  if [[ ! -d "$test_base" ]]; then
-    test_base=$(printf '%s\n' "$file_path" | sed 's|\(.*\.better-work\)/.*|\1|')
-    test_base="$test_base/test"
   fi
 
   if [[ -f "$test_base/.merge-in-progress" ]]; then

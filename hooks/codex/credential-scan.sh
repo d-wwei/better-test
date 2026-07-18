@@ -1,7 +1,7 @@
 #!/bin/bash
 # better-test L1 Hook: Codex credential-scan
 # PreToolUse on Bash and Write(apply_patch) for credential-like literals
-# written into .better-work/test/.
+# written into a resolved better-test root.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -23,13 +23,11 @@ CONTENT=""
 
 while IFS= read -r target; do
   [[ -n "$target" ]] || continue
-  case "$target" in
-    *"/.better-work/test/"* | *".better-work/test/"*)
-      PROTECTED_TARGET="$target"
-      CONTENT="$(bt_extract_codex_write_added_content "$TOOL_NAME" "$COMMAND" "$CWD" "$target")"
-      break
-      ;;
-  esac
+  if bt_is_test_path "$target" "$CWD"; then
+    PROTECTED_TARGET="$target"
+    CONTENT="$(bt_extract_codex_write_added_content "$TOOL_NAME" "$COMMAND" "$CWD" "$target")"
+    break
+  fi
 done < <(bt_extract_codex_write_targets "$TOOL_NAME" "$COMMAND" "$CWD")
 
 if [[ -z "$PROTECTED_TARGET" ]]; then
