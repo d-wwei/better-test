@@ -45,6 +45,7 @@ All notable changes to **better-test** (Better-Work series testing subskill) are
 - Closed false evidence paths based on nonexistent files, out-of-run files, same-file fragments, basis-free `proven`, or source/binary evidence masquerading as runtime proof
 - Closed merge/release-set fail-open paths for forged source validation, omitted source findings, mixed versions/run IDs/config gates, invalid chronology, fake external reviewers, and non-standard JSON values/types
 - Made the rolling-upgrade queue audit cover late/malformed records, expired pilots, invalid final landing details, persistent `approved` states, and the pending waterline
+- Kept the resource-link integrity suite portable across macOS and GitHub's Linux runner without an undeclared `rg` dependency
 - Fixed eight unreachable Tier-2 procedure entries caused by a split `procedures/` vs `references/procedures/` layout
 - Completed the long-running role-boundary pilot by making independent coordinator-verdict challenge an explicit merge gate
 

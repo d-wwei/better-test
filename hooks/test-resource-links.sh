@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TMP_FILE="$(mktemp "${TMPDIR:-/tmp}/better-test-resource-links.XXXXXX")"
 trap 'rm -f "$TMP_FILE"' EXIT
 
-rg --no-filename -o 'references/procedures/[A-Za-z0-9._/-]+\.md' \
+grep -RhEo 'references/procedures/[A-Za-z0-9._/-]+\.md' \
   "$ROOT_DIR/SKILL.md" "$ROOT_DIR/references" "$ROOT_DIR/README.md" \
   "$ROOT_DIR/README.zh-CN.md" | sort -u >"$TMP_FILE"
 
