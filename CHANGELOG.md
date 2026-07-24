@@ -34,6 +34,7 @@ All notable changes to **better-test** (Better-Work series testing subskill) are
 - All eight Codex hook paths were re-verified against authenticated `codex-cli 0.146.0-alpha.3.1`
 - Historical upgrade plans, summaries, and constraint landscapes are marked archived and point to `UPGRADE-STATUS.md`; the old 18-pending and unresolved-pilot claims are reconciled
 - Cleanup guidance is run-owned and fail-safe: no cross-tester temp globs, no PID-only kill, and no `cancel-all` without fresh approval plus exclusive-account scope
+- GitHub Actions uses the current Node 24-based `actions/checkout@v7` release line
 
 ### Fixed
 
