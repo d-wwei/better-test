@@ -40,4 +40,4 @@
 - 不把变异测试得分作为唯一质量指标 — 它是覆盖率的补充不是替代
 - 不要求每个项目都做 — 这是可选增强，不是必须
 
-方法论详解见 `methodologies/coverage.md`。
+方法论详解见 `references/methodologies/design-rationale.md` 的覆盖率章节。

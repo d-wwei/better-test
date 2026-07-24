@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "escapes": [
+    {
+      "id": "ESC-001",
+      "bug_id": "BUG-v1.2.3-004",
+      "reported_by": "external-user",
+      "gate": {
+        "gate_id": "T-AUTH-03",
+        "execution_status": "executed-missed",
+        "evidence_refs": ["results-v3-valid.json#gate_items"]
+      },
+      "root_causes": ["oracle-missing"],
+      "corrective_actions": [
+        {
+          "id": "ACT-001",
+          "description": "Add an expired-token gate",
+          "status": "verified",
+          "evidence_refs": ["results-v3-valid.json#gate_items"]
+        }
+      ],
+      "status": "closed",
+      "closure_evidence": ["results-v3-valid.json#release_readiness"]
+    }
+  ]
+}

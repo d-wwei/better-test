@@ -94,7 +94,7 @@ Q4（对所有进 protocol 的）: 具体到 agent 能对照自检吗？
 | 新测试组 / 新测试项 | test-groups.md | 4 问检查 |
 | 新影响映射 | impact-map.md | 来源必填，无依据标 `[未验证]` |
 | Flaky 发现 | **测试期间**：run 目录内 progress.md 关键发现段；**非测试期间**：known-issues.md Flaky 段 | 稳定性评分 |
-| 经验教训 | **测试期间**：run 目录内 progress.md 关键发现段；**非测试期间**：known-issues.md lessons 段 | 证据级别 ≥ confirmed |
+| 经验教训 | **测试期间**：run 目录内 progress.md 关键发现段；**非测试期间**：known-issues.md lessons 段 | 证据级别 = proven |
 | 覆盖缺口 | **测试期间**：run 目录内 summary.md；**非测试期间**：status.md 覆盖缺口段 | 标明风险和建议测试组 |
 | 新材料 | 对应文件（见下方材料处理表） | 立刻分析影响 |
 | 环境发现 | env-config.md | **立即更新**——新账号/特殊行为发现时当场写入，不等测试结束。等到结束补时细节已丢失 |
@@ -124,7 +124,7 @@ Q4（对所有进 protocol 的）: 具体到 agent 能对照自检吗？
 |---------|-----------|
 | 新 API 规范 | surface-manifest + test-groups + impact-map |
 | 新错误码表 | test-groups（EXPECT_PATTERN） |
-| 新 PRD | test-groups（BDD 场景，加载 procedures/bdd-scenarios.md） |
+| 新 PRD | test-groups（BDD 场景，加载 references/procedures/bdd-scenarios.md） |
 | 新 SLA / 性能指标 | test-groups（pass/fail 判定标准） |
 | 新架构图 | impact-map（路径→组映射） |
 | 新测试账号 | env-config + test-groups 运行条件解除 |
@@ -212,15 +212,16 @@ Protocol 项目纪律：
   → "开测前检查 C++ baseline 端口类型" — 不进 protocol（执行步骤），已加入 env-config 注意事项
   → "results.json 应该检查非标 ID" — 不进 protocol（Hook 职责），已有 results-validation hook
 
-Skill 升级排队：
-  → pending-skill-upgrades.md: +N 条候选
-    "单次观测不定论" → 建议目标: strategy-workflow accuracy rules (medium)
-    "全绿=漏测信号" → 建议目标: strategy-workflow Step 0 (medium)
+Skill 升级处理：
+  → 当场审核并完成: +N 条（medium；记录用户 verdict + 落点 + commit）
+    "单次观测不定论" → strategy-workflow accuracy rules（approved / promoted）
+  → 延后排队: +M 条（仅用户明确“稍后再议”或 high risk）
+    "全绿=漏测信号" → pending-skill-upgrades（high；等待用户确认 + L2）
   → design-rationale.md: +N 条直接写入（low risk）
 
 未写入（需确认）：
   ? "frozen_cash 暂态值不能单次采样下结论" — 通用还是项目特有？
-    → 如果通用：排队到 pending-skill-upgrades + 加 protocol 项目纪律
+    → 如果通用：按风险分级；medium 当场审，high/明确延后才排队；项目纪律同步落地
     → 如果特有：加 known-issues lessons
 ```
 
@@ -247,6 +248,8 @@ Skill 升级排队：
 - ❌ 不要直接修 feedback-rules.json —— 走 feedback 命令
 - ❌ 不要把推测写成 verified —— 标 `[未验证]`
 - ❌ 不要收到材料只存着不分析 —— 立刻检查对所有相关文件的影响
-- ❌ 不要自行修改 skill 的 protocol-base.md / SKILL.md / workflow 文件 —— 排队到 pending-skill-upgrades.md，由人审核
-- ✅ 可以追加到 pending-skill-upgrades.md（排队提议）
+- ❌ 不要在没有用户 verdict 时修改 workflow / templates；medium 先当场展示，批准后按
+  “目标写入 + 队列状态 + commit”原子三步落地
+- ❌ 不要自行修改 protocol-base.md / SKILL.md red lines；high risk 一律排队并需用户确认 + L2
+- ✅ 用户明确“稍后再议”或超过当场审核上限时，可以追加 pending 提议
 - ✅ 可以直接写入 design-rationale.md（Tier 3 参考文档，零风险）

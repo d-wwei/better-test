@@ -1,0 +1,87 @@
+{
+  "factors": [
+    {
+      "name": "transport",
+      "levels": ["http", "grpc"]
+    },
+    {
+      "name": "auth",
+      "levels": ["none", "token"]
+    },
+    {
+      "name": "payload",
+      "levels": ["small", "large"]
+    }
+  ],
+  "cases": [
+    {
+      "id": "C001",
+      "values": {
+        "transport": "http",
+        "auth": "none",
+        "payload": "small"
+      },
+      "classes": ["public-access", "small-payload"]
+    },
+    {
+      "id": "C002",
+      "values": {
+        "transport": "http",
+        "auth": "token",
+        "payload": "large"
+      },
+      "classes": ["protected-access", "large-payload"]
+    },
+    {
+      "id": "C003",
+      "values": {
+        "transport": "grpc",
+        "auth": "none",
+        "payload": "large"
+      },
+      "classes": ["public-access", "large-payload"]
+    },
+    {
+      "id": "C004",
+      "values": {
+        "transport": "grpc",
+        "auth": "token",
+        "payload": "small"
+      },
+      "classes": ["protected-access", "small-payload", "auth-canary"]
+    }
+  ],
+  "required_equivalence_classes": [
+    {
+      "id": "public-access",
+      "factor": "auth",
+      "levels": ["none"]
+    },
+    {
+      "id": "protected-access",
+      "factor": "auth",
+      "levels": ["token"]
+    },
+    {
+      "id": "small-payload",
+      "factor": "payload",
+      "levels": ["small"]
+    },
+    {
+      "id": "large-payload",
+      "factor": "payload",
+      "levels": ["large"]
+    },
+    {
+      "id": "auth-canary",
+      "factor": "auth",
+      "predicate": "valid token is checked against the deny-path canary"
+    }
+  ],
+  "high_risk_canaries": [
+    {
+      "id": "CANARY-AUTH-DENY",
+      "case_id": "C004"
+    }
+  ]
+}

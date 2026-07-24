@@ -348,10 +348,18 @@ IF 项目知识库存在 release-gate / critical-matrix 类文件（如 trading-
   → 这些条目进入 results.json 的 gate_items 和 summary 的 Gate Execution Ledger
   → "矩阵存在但发版前没人知道执行没执行"是已实证的逃逸根因（escape analysis 案例）
 
-按包类型分级 DoD（项目可自定义包类型名，框架通用）：
+按包类型分级 DoD（项目本地名称先映射到以下四个规范类型；`package_type` 只写固定枚举）：
   hotfix 级   → manifest 范围 + 命中域 gate 子集 + 红旗扫描 + smoke
-  feature 级  → strategy 推导的影响范围 + 命中域 gate + smoke
+  feature 级  → strategy 推导的影响范围 + 命中域 gate + 红旗扫描 + smoke
   RC 级       → 全域 gate + dirty/recovery + full 集合 + 覆盖率分母 + L2 审计
+  non-release → 目标验收（不形成发版批准）
+
+  → 新 run 一律写 results schema v3 的 package_type / environment / dod /
+    release_readiness；required check ID 使用 templates.md 的固定枚举
+  → mode/config 相关 claim 必须给每个 run 写稳定 config_profile；多配置要求在 merge
+    按 config_profile 去重核对，不能把同一配置重复跑两次写成双配置覆盖
+  → 若 gate 要求双配置 / 双环境 / 双机，按 templates.md 生成 release-set-policy.json；
+    分母来自实际 gate 要求，不自行加码
 ```
 
 ### Changelog 逐条匹配
@@ -429,6 +437,13 @@ IF 旧版本仍可用且未保存过基线：
 基于 Step 1-3 的输入，生成 5 阶段执行计划：
 
 ```
+每个可执行 claim 的默认验证顺序（不是新的成熟度评分）：
+  1. 黑盒：用户可见输入/输出是否符合 oracle
+  2. 下游效应：状态、push、持久化或消费方是否真的变化，排除 silent success
+  3. 灰盒：需要定位时再看 daemon log / internal state
+  4. 白盒：源码 / proto / binary 用于根因与系统性边界，不替代 runtime
+  → 若前一层已足够回答当前 claim，可停止；若 claim 是 runtime 生效，不能只停在白盒
+
 阶段 1: 基础验证
   输入: test-groups 中标注为 foundation 的组（auth / config / startup / health check）
   做什么: 全项执行。全部 ✅ 才继续，有 🔴 → 先解决基础问题
@@ -460,9 +475,11 @@ IF 旧版本仍可用且未保存过基线：
     字符串: 5 点（空 / 短 / 长 / 格式错 / 合法）
     日期: 4 点（倒置 / 过去 / 未来 / garbage）
   Pairwise 组合取样: 单参数穷举管纵深，多参数矩阵爆炸（如市场×品类×账号×时段 ≥3 维）管横向
-    → 全组合不可行时按"任意两维组合至少出现一次"取样（pict 或 30 行脚本）
+    → 全组合不可行时按 `references/procedures/combinatorial-testing.md` 生成机读矩阵，
+      用 `<skill-root>/scripts/validate-pairwise.py` 证明任意两维 value pair 全覆盖
     → 替代"全测不可能就只测熟悉组合"——熟悉组合 = 确认偏误的温床
   等价类显式化: 每个参数先列等价类（品类/市场/账号类型……），每类至少 1 个代表进用例
+    → required_equivalence_classes 必须过同一 validator；高风险 canary 单列，不被 pairwise 替代
     → 防止符号集硬编码单一代表（如全部用 US.AAPL）导致整个等价类（指数/主连/crypto）零覆盖
   Body 格式矩阵: 每个 endpoint 测 4 种格式（flat / c2s wrapper / camelCase / snake_case），不同格式走不同解析路径
 
@@ -490,7 +507,7 @@ IF 旧版本仍可用且未保存过基线：
   未覆盖接口:
     能深测（有 EXPECT_PATTERN + 运行条件满足）→ 执行并要求 field-level 证据
     不能深测 → 标 ⏭️ 写原因。不为覆盖率凑数
-  探索性 charter 钩子: 影响范围命中"0 历史记录"的模块 → 按 procedures/exploratory-charter.md
+  探索性 charter 钩子: 影响范围命中"0 历史记录"的模块 → 按 references/procedures/exploratory-charter.md
     开 90 分钟 charter（SKILL.md Tier 2 表的触发条件，此处是执行点）
   输出: 最终可达覆盖率 T / R = NN%
 
@@ -503,7 +520,9 @@ IF 旧版本仍可用且未保存过基线：
 ### 贯穿所有阶段的准确度铁律
 
 ```
-1. 每个 🔴 fail 产生时立刻加对照 → 证据从 direct 升级到 confirmed
+1. 每个 🔴 fail 产生时立刻加对照 → 先得到第二份 direct。只有两份证据的
+   `independence_key` 不同（不同 tester，或不同环境 / 输入路径 / 验证方法）才可升级为
+   confirmed；同一 tester 同一方法重复多次仍是 direct
 2. 每个 🟡 产生时立刻升级 → 不积累模糊状态
 3. 每个 ✅ pass 必须有 field-level 证据 → exit=0 级别不算 pass
 4. 每个结论的证据级别 ≥ direct → indirect 不能出现在最终结果中
@@ -549,7 +568,7 @@ IF 用户选择 compare 模式:
 IF 计划包含 24h+ 长跑:
   → 长跑作为独立 session fork：独立 daemon + 独立采样器 + 独立 tester-id
   → 主 session 不被长跑占用，两 session 互不干扰；port-clean 由主 session 覆盖
-  → P1 级 non-deterministic bug 历史上只有长跑发现（详见 procedures/longrun-testing.md）
+  → P1 级 non-deterministic bug 历史上只有长跑发现（详见 references/procedures/longrun-testing.md）
 ```
 
 ## Step 5: 为每个阶段写测试假设（form_hypotheses）

@@ -1,0 +1,144 @@
+{
+  "schema_version": 2,
+  "version": "1.1.0",
+  "merge_id": "merge-coordinator-codex-1234-20260724T140000+0800",
+  "coordinator_id": "coordinator-codex-1234",
+  "merged_at": "2026-07-24T14:00:00+08:00",
+  "source_runs": [
+    {
+      "run_id": "run-codex-a3f2-001",
+      "results_path": "merged-runs/run-codex-a3f2-001/results.json",
+      "sha256": "5e39b4cb00e1ef91230e9df52522451b87fd326f66aff0de38dba6aadf619fe8",
+      "schema_version": 3,
+      "version": "1.1.0",
+      "package_type": "hotfix",
+      "environment": {
+        "environment_id": "env-a",
+        "machine_id": "machine-a",
+        "config_profile": "auth"
+      }
+    },
+    {
+      "run_id": "run-claude-b4e3-001",
+      "results_path": "merged-runs/run-claude-b4e3-001/results.json",
+      "sha256": "84670d51f56e6f6896ba3ba73b3f200058e3c0bb7d07399bb6b61843aadcc67a",
+      "schema_version": 3,
+      "version": "1.1.0",
+      "package_type": "hotfix",
+      "environment": {
+        "environment_id": "env-b",
+        "machine_id": "machine-b",
+        "config_profile": "legacy"
+      }
+    }
+  ],
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "conflicts": 0
+  },
+  "items": [
+    {
+      "id": "AUTH-READY-01",
+      "result": "pass",
+      "source_runs": [
+        "run-codex-a3f2-001",
+        "run-claude-b4e3-001"
+      ],
+      "conflict_details": null
+    }
+  ],
+  "gate_items": [
+    {
+      "gate_id": "GATE-AUTH-READY",
+      "verdict": "pass",
+      "reason": "Both source gates passed and their evidence remains traceable.",
+      "source_runs": [
+        "run-codex-a3f2-001",
+        "run-claude-b4e3-001"
+      ],
+      "item_ids": ["AUTH-READY-01"],
+      "evidence_refs": [
+        {
+          "source_run": "run-codex-a3f2-001",
+          "source_id": "SRC-A-DAEMON"
+        },
+        {
+          "source_run": "run-codex-a3f2-001",
+          "source_id": "SRC-A-CLIENT"
+        },
+        {
+          "source_run": "run-claude-b4e3-001",
+          "source_id": "SRC-B-CLIENT"
+        }
+      ]
+    }
+  ],
+  "environment_coverage": {
+    "distinct_environments": 2,
+    "distinct_machines": 2,
+    "config_profiles": ["auth", "legacy"]
+  },
+  "dod": {
+    "package_type": "hotfix",
+    "verdict": "pass",
+    "source_runs": [
+      "run-codex-a3f2-001",
+      "run-claude-b4e3-001"
+    ],
+    "check_refs": [
+      {
+        "source_run": "run-codex-a3f2-001",
+        "check_id": "manifest-scope"
+      },
+      {
+        "source_run": "run-codex-a3f2-001",
+        "check_id": "impacted-gates"
+      },
+      {
+        "source_run": "run-codex-a3f2-001",
+        "check_id": "red-flag-scan"
+      },
+      {
+        "source_run": "run-codex-a3f2-001",
+        "check_id": "smoke"
+      },
+      {
+        "source_run": "run-claude-b4e3-001",
+        "check_id": "manifest-scope"
+      },
+      {
+        "source_run": "run-claude-b4e3-001",
+        "check_id": "impacted-gates"
+      },
+      {
+        "source_run": "run-claude-b4e3-001",
+        "check_id": "red-flag-scan"
+      },
+      {
+        "source_run": "run-claude-b4e3-001",
+        "check_id": "smoke"
+      }
+    ]
+  },
+  "release_readiness": {
+    "verdict": "go",
+    "reason": "All source runs, gates, DoD checks and challenge dispositions passed."
+  },
+  "verdict_challenge": {
+    "drafted_by": "coordinator-codex-1234",
+    "challenger": "claude-b4e3",
+    "reason": "Independent review checked overclaim, evidence grade and coverage boundaries.",
+    "reviewed_at": "2026-07-24T14:05:00+08:00",
+    "unresolved_count": 0,
+    "dispositions": [
+      {
+        "challenge_id": "CH-OVERCLAIM-01",
+        "disposition": "rejected",
+        "reason": "The GO claim is release-scoped and backed by both source gates and DoD ledgers."
+      }
+    ]
+  }
+}

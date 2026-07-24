@@ -2,26 +2,51 @@
 
 All notable changes to **better-test** (Better-Work series testing subskill) are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [3.2.0] - 2026-07-24
 
 ### Added
 
 - Configurable test-root resolution through a committed `.better-test-root`, `BETTER_TEST_DIR`, nearest `.better-work/test/`, or a marker-validated flat `test/` layout
 - Flat-layout hook fixture and regression coverage for resolver, Codex hook installation, credential, derived-view, session, checklist, and results-validation behavior
 - Results schema v2 fixtures covering required fields, hierarchical IDs, and schema v1 `verdict` compatibility
+- Results schema v3 with package type, environment identity, traceable evidence sources, Gate Execution Ledger, package-specific DoD, and release-readiness verdict
+- Portable non-zero validators for individual results, cross-run environment/config/gate coverage, pairwise/equivalence coverage, post-ship escape closure, and the skill-upgrade queue
+- Deterministic positive/negative fixtures for malformed gate ledgers, false `confirmed`/`proven` evidence, missing or out-of-run artifacts, fake coverage/summary, targeted-to-release escalation, incomplete DoD, invalid GO decisions, missing pair coverage, unclosed escapes, and duplicate release environments
+- Tier-2 combinatorial-testing procedure and machine-checkable pairwise/equivalence format
+- Independent Tentative Verdict Challenge: an adversarial tester or L2 skeptic must challenge the coordinator draft and every challenge must be dispositioned before a final verdict
+- Resource-link integrity test, unified deterministic test entrypoint, and GitHub Actions CI
 
 ### Changed
 
-- `results.json` template now uses schema v2; missing `tester_id`, `finished_at`, or item `status` is a validation failure
+- New `results.json` files use schema v3; schema v1/v2 remain readable for history, while v2 receives strict evidence and gate validation
+- `confirmed` now requires different independence keys and different run-local artifact files; `proven` requires a structured source/proto or multi-version basis, and functional claims still require a separate runtime artifact
+- Summary and coverage are arithmetically recomputed; gate applicability is explicit, and incomplete reachable coverage, skip/excluded/caveat outcomes require a traceable override before GO
+- Merge validation binds every source `results.json` path and SHA-256, reruns strict validation, aggregates every item/gate/DoD occurrence, rejects semantic ID drift, and prevents targeted-only runs from becoming release approval
+- Execution and merge must call `scripts/validate-results.sh`; platform PostToolUse advisories are no longer treated as the portable release gate
+- Release sets can enforce distinct environment, machine, and config-profile denominators through `release-set-policy.json`
+- All Tier-2 procedures now live under `references/procedures/` and every runtime reference uses the full skill-root-relative path
+- Skill upgrades use rolling in-session review for medium-risk changes; the queue is reserved for explicitly deferred or high-risk changes and is mechanically audited
+- Post-ship escape analysis now has a structured SSOT and cannot close before every corrective action is verified
+- The current protocol architecture is clarified as skill-level `protocol-base.md` plus project `protocol.md` at no more than 15 lines; the old v3.1.0 “30 lines” entry remains historical
 - Hook rules resolve the project test root instead of matching only literal `.better-work/test/` paths
 - `install.sh status` reports canonical checkout path, Git revision, and clean/dirty provenance; platform links always target the physical canonical source
 - Codex hook installation detects the current `hooks` feature name while retaining legacy `codex_hooks` compatibility; runtime smoke bypasses hook trust only inside its isolated fixture
+- All eight Codex hook paths were re-verified against authenticated `codex-cli 0.146.0-alpha.3.1`
+- Historical upgrade plans, summaries, and constraint landscapes are marked archived and point to `UPGRADE-STATUS.md`; the old 18-pending and unresolved-pilot claims are reconciled
+- Cleanup guidance is run-owned and fail-safe: no cross-tester temp globs, no PID-only kill, and no `cancel-all` without fresh approval plus exclusive-account scope
 
 ### Fixed
 
 - Prevented all-`verdict` schema v2 files from bypassing pass-evidence validation because every item lacked `status`
 - Accepted stable hierarchical test IDs instead of falsely requiring only `Letter-NN`
 - Marked the Codex native-write fixture test executable so the full local hook suite can run uniformly
+- Closed the fail-open Gate Execution Ledger path that accepted missing IDs, invalid verdicts, missing reasons, dangling item/evidence references, duplicate gates, and verdict/status mismatches
+- Removed conflicting evidence rules that upgraded a single control, a single `curl`, or repeated observations to `confirmed`
+- Closed false evidence paths based on nonexistent files, out-of-run files, same-file fragments, basis-free `proven`, or source/binary evidence masquerading as runtime proof
+- Closed merge/release-set fail-open paths for forged source validation, omitted source findings, mixed versions/run IDs/config gates, invalid chronology, fake external reviewers, and non-standard JSON values/types
+- Made the rolling-upgrade queue audit cover late/malformed records, expired pilots, invalid final landing details, persistent `approved` states, and the pending waterline
+- Fixed eight unreachable Tier-2 procedure entries caused by a split `procedures/` vs `references/procedures/` layout
+- Completed the long-running role-boundary pilot by making independent coordinator-verdict challenge an explicit merge gate
 
 ## [3.1.2] - 2026-04-28
 
@@ -199,14 +224,14 @@ Major redesign: constraint framework, three-tier methodology architecture, test 
 - `protocol-update-workflow.md`: upgrade test cognitive constraints from user input or session summary, with changelog tracking
 
 **New Procedures (Tier 2)**
-- `procedures/bdd-scenarios.md`: Given-When-Then scenario generation from PRD
-- `procedures/tdd-flow.md`: Red-Green-Refactor for new feature development
-- `procedures/contract-testing.md`: consumer-driven contract testing for microservices
-- `procedures/exploratory-charter.md`: structured exploratory testing with time-boxed charters
-- `procedures/hypothesis-investigation.md`: 3-hypothesis rule + investigation ladder + 5-level evidence grading + bug classification
-- `procedures/mutation-testing.md`: incremental mutation testing for changed code
-- `procedures/flakiness-scoring.md`: probabilistic stability scoring from test history
-- `procedures/bug-report.md`: 7-section standard format + yaml metadata
+- `references/procedures/bdd-scenarios.md`: Given-When-Then scenario generation from PRD
+- `references/procedures/tdd-flow.md`: Red-Green-Refactor for new feature development
+- `references/procedures/contract-testing.md`: consumer-driven contract testing for microservices
+- `references/procedures/exploratory-charter.md`: structured exploratory testing with time-boxed charters
+- `references/procedures/hypothesis-investigation.md`: 3-hypothesis rule + investigation ladder + 5-level evidence grading + bug classification
+- `references/procedures/mutation-testing.md`: incremental mutation testing for changed code
+- `references/procedures/flakiness-scoring.md`: probabilistic stability scoring from test history
+- `references/procedures/bug-report.md`: 7-section standard format + yaml metadata
 
 **New Commands**
 - `/better-test protocol-update [text]`: upgrade cognitive constraints with changelog
@@ -233,7 +258,7 @@ Major redesign: constraint framework, three-tier methodology architecture, test 
 
 **Three-Tier Loading Architecture**
 - Tier 1 (always loaded): core procedures embedded directly in workflow files
-- Tier 2 (condition-triggered): 8 standalone procedure files in `procedures/`, each with explicit trigger condition
+- Tier 2 (condition-triggered): 8 standalone procedure files in `references/procedures/`, each with explicit trigger condition
 - Tier 3 (human reference): 5 methodology files consolidated into 1 `design-rationale.md`, agent does not load
 
 **Init Workflow Enhancements**
@@ -264,7 +289,7 @@ Major redesign: constraint framework, three-tier methodology architecture, test 
 
 **Knowledge Evolution**
 - File dependency graph + consistency check checklist for cross-file updates
-- Authority priority: protocol.md > test-execution-workflow.md > procedures/ > templates.md
+- Authority priority: protocol.md > test-execution-workflow.md > references/procedures/ > templates.md
 - Changelog mechanism for both protocol.md and test-execution-workflow.md
 
 ## [1.3.1] - 2026-04-19

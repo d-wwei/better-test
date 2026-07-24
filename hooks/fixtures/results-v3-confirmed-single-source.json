@@ -1,0 +1,57 @@
+{
+  "schema_version": 3,
+  "version": "1.1.0",
+  "tester_id": "codex-a3f2",
+  "run_id": "run-confirmed-single-source",
+  "mode": "non-release-check",
+  "package_type": "non-release",
+  "finished_at": "2026-07-24T12:05:00+08:00",
+  "environment": {
+    "environment_id": "macos-arm64-lab-01",
+    "machine_id": "eli-mac-01",
+    "config_profile": "default"
+  },
+  "summary": {
+    "total": 1
+  },
+  "coverage": {
+    "manifest_total": 1,
+    "reachable": 1,
+    "tested": 1,
+    "reachable_coverage_pct": 100
+  },
+  "items": [
+    {
+      "id": "AUTH-READY-01",
+      "status": "pass",
+      "assertion_field": "session_state",
+      "assertion_value": "ready",
+      "evidence_level": "confirmed",
+      "evidence_sources": [
+        {
+          "source_id": "SRC-LOG-01",
+          "independence_key": "daemon-log",
+          "artifact_ref": "artifacts/daemon.log"
+        }
+      ]
+    }
+  ],
+  "gate_items": [],
+  "dod": {
+    "verdict": "pass",
+    "check_results": [
+      {
+        "check_id": "target-objective",
+        "verdict": "pass",
+        "reason": "The target assertion passed.",
+        "item_ids": [
+          "AUTH-READY-01"
+        ],
+        "gate_ids": []
+      }
+    ]
+  },
+  "release_readiness": {
+    "verdict": "not_applicable"
+  }
+}

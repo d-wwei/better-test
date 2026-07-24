@@ -10,13 +10,14 @@ Of the five ways AI coding agents fail on 100k-line codebases, this one is the m
 
 The agent doesn't know which tests cover which changes. It doesn't know which tests are already failing for known reasons. It doesn't know the test you care about needs a real account to run.
 
-`better-test` captures this knowledge — the testing half of a [Full Context + Lite Control](https://github.com/d-wwei/better-work) framework. Persistent test playbook, developer-feedback loops, experience extraction, and a 4-layer constraint framework that prevents the agent from cutting corners.
+`better-test` captures this knowledge — the testing half of a [Full Context + Proportional Control](https://github.com/d-wwei/better-work) framework. Persistent test playbook, developer-feedback loops, experience extraction, and a 4-layer constraint framework that prevents the agent from cutting corners.
 
 ## What's new in v3.x
 
 v3.0: Multi-agent parallel testing + tester/coordinator two-role architecture.
 v3.1: Hook enforcement, protocol split, skill upgrade pipeline.
 v3.1.2: Extensible team-role presets for multi-tester planning and merge.
+v3.2: Strict results/gate/DoD validation, independently auditable evidence, complete Tier-2 resources, and deterministic CI.
 
 Key capabilities:
 
@@ -26,7 +27,7 @@ Key capabilities:
 - **Extensible team-role presets** — stable role schema, replaceable presets (`release-4way`, `api-3way`, `single-plus-l2`, custom)
 - **4-layer constraint framework** (L0 goal calibration, L1 hooks, L2 independent sub-agent verification, L3 human audit panel)
 - **49 field-tested lessons** integrated from real project testing (futu-opend-rs v1.4.26-v1.4.59)
-- **Skill upgrade pipeline** — universal lessons queue to `pending-skill-upgrades.md`, reviewed and promoted to skill files
+- **Skill upgrade pipeline** — medium-risk lessons are reviewed in-session and promoted atomically; only deferred or high-risk changes enter `pending-skill-upgrades.md`
 - **Experience extraction** (`/better-test reflect`) — learns from test history
 - **Differential testing** (`compare` mode) — test a Rust rewrite against the C++ original
 - **Bug lifecycle management** — OPEN → CONFIRMED → FIXED → VERIFIED → CLOSED
@@ -80,7 +81,7 @@ The agent's quality is ensured by 4 layers, each catching what the previous miss
 | Layer | Mechanism | What it catches |
 |-------|-----------|-----------------|
 | L0 Goal calibration | Protocol.md reframes agent as "test auditor, not test-pass assistant" | Training bias toward optimistic/complete/certain answers |
-| L1 Hooks | 5 system-level hooks (credential scan, empty result prompt, execution logging...) | Mechanical errors the agent might forget to check |
+| L1 Hooks | 8 system-level hooks (credential scan, write guards, execution logging, result validation, registration...) | Mechanical errors the agent might forget to check |
 | L2 Independent verification | Sub-agent audits execution log vs claims, coverage vs manifest, evidence quality | Cognitive errors: skipped steps, false passes, insufficient evidence |
 | L3 Human audit panel | 20-line decision-oriented summary assembled from structured data | Final judgment on ambiguous items; 30-second approve/reject |
 
@@ -98,6 +99,9 @@ cd ~/src/better-test
 Keep this as the single canonical Git checkout. Claude and Codex must load the same source through symlinks;
 do not copy the repository into multiple skill directories. The installer never overwrites an existing real
 directory: back it up or migrate it first, then rerun installation.
+
+Runtime validation requires Bash, `jq`, and Python 3. The authenticated Codex smoke test also requires a
+logged-in `codex` CLI.
 
 ### Claude Code (manual)
 
@@ -164,7 +168,9 @@ references/
 │   ├── procedures/hypothesis-investigation.md   when error diagnosis needs escalation
 │   ├── procedures/mutation-testing.md      when code changes in full/targeted mode
 │   ├── procedures/flakiness-scoring.md     when flaky signal detected
-│   └── procedures/bug-report.md            when bug found during testing
+│   ├── procedures/bug-report.md            when bug found during testing
+│   ├── procedures/longrun-testing.md       for 24h+ stability testing
+│   └── procedures/combinatorial-testing.md for pairwise/equivalence coverage
 │
 └── Tier 3: Design docs (human reference, agent doesn't load)
     └── methodologies/design-rationale.md   all research citations + design reasoning
@@ -181,8 +187,8 @@ references/
 - **No test runner built in.** Recommends which tests to run and why. Running them is your project's tooling.
 - **`impact-map.md` accuracy grows over time.** Initial entries are seeded from keywords; `/better-test reflect` validates and upgrades them from test history.
 - **`feedback-rules.json` is auto-generated.** Do NOT hand-edit. Use `feedback <id> revoke` to retract.
-- **Constraint framework hooks are designed but not yet implemented.** L1-L3 require Claude Code hooks configuration.
-- **No CI integration yet.** GitHub Actions / GitLab CI integration is planned.
+- **Hooks require platform installation.** Claude Code uses `gate.sh`; Codex uses project `.codex/hooks.json`. See `hooks/README.md` and `references/adapters.md`.
+- **CI covers deterministic checks.** Authenticated Codex runtime smoke remains a manual release gate because it calls the live CLI/model.
 
 ## License
 
@@ -190,6 +196,6 @@ MIT.
 
 ---
 
-Companion write-up: the full [Full Context, Lite Control](https://github.com/d-wwei/better-work) story lives in the series entry-point README.
+Companion write-up: the full [Full Context, Proportional Control](https://github.com/d-wwei/better-work) story lives in the series entry-point README.
 
 Questions, issues, discussion: [GitHub issues](https://github.com/d-wwei/better-test/issues).

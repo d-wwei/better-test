@@ -43,5 +43,14 @@
       "pre_existing": false
     }
   ],
-  "gate_items": []
+  "gate_items": [
+    {
+      "gate_id": "GATE-AUTH",
+      "verdict": "pass",
+      "reason": "The directly observed login_state reached ready.",
+      "item_ids": [
+        "AUTH-REM-03"
+      ]
+    }
+  ]
 }

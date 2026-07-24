@@ -46,6 +46,9 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
     ├── known-issues.md                        ← derived view（coordinator 写，tester 只读）
     ├── env-config.md                          ← 共享知识：测试环境配置
     ├── surface-manifest.md                    ← 共享知识：接口清单 SSOT
+    ├── release-set-policy.json                ← 可选：跨 run 环境/配置/gate 分母
+    ├── escapes.json                           ← post-ship escape 机器账本（SSOT）
+    ├── escapes.md                             ← escape 人类视图
     ├── status.md                              ← derived view（coordinator 写，tester 只读）
     ├── tools/                                 ← 共享：跨版本复用的测试脚本
     ├── reference/                             ← 共享：暂存参考资料
@@ -78,6 +81,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
             │   ├── bio.md                     ← coordinator 身份
             │   ├── status.md                  ← 合并工作状态
             │   ├── conflict-log.md            ← tester 间差异和冲突记录
+            │   ├── verdict-challenge.md       ← 独立 adversarial 对 coordinator 暂定结论的挑战与处置
             │   ├── merged-summary.md          ← 统一结论
             │   ├── merged-results.json        ← 聚合结果
             │   └── bugs/                      ← 校验后的 bug（项目级编号）
@@ -128,7 +132,11 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 3. 同一个 bug 用 `/better-test feedback <id> wontfix` 录入后，下次 strategy 推荐时该项自动从 active failures 排除，不再重复提报
 4. `checkpoint` + `resume` 后，agent 能准确复述上次跑到哪个组的哪个 ID（resume 时列出所有 tester，用户选择要恢复的 tester）。如有 `strategy-plan.md`（status: confirmed 或 in-progress），resume 可跳过重跑 strategy 直接从计划续跑
 5. `references/adapters.md` 为每个支持平台（Claude/Cursor/Gemini/Codex/OpenCode/OpenClaw）都给出**可粘贴执行**的注入语法（@ 引用 vs 内容嵌入），无 placeholder 占位
-6. 多 tester 并发测试时，各 tester 只写自己的 `run-<自己>-*/` 目录和 `testers/<自己>/registry.md`，互不干扰。`/better-test merge` 能从多个 run 目录正确生成聚合 status.md、bugs-index.md 和 conflict-log.md
+6. 多 tester 并发测试时，各 tester 只写自己的 `run-<自己>-*/` 目录和 `testers/<自己>/registry.md`，互不干扰。`/better-test merge` 能从多个 run 目录正确生成聚合 status.md、bugs-index.md、conflict-log.md 和 verdict-challenge.md；最终结论只能在独立 challenge 全部处置后发布
+7. 新 run 的 schema v3 `results.json` 必须通过 `scripts/validate-results.sh`；confirmed
+   要有两个不同 independence key 和两个不同 run-local artifact 文件，proven 要有
+   source/proto/multi-version basis（functional 结论另有独立 runtime artifact），gate /
+   package DoD / release readiness 机器闭环，跨环境要求由 release-set validator 对账
 
 ## References
 
@@ -157,15 +165,16 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 
 | File | 触发者 | 触发条件 | Content |
 |------|--------|---------|---------|
-| `procedures/bdd-scenarios.md` | init / update | 用户在信号源 F 提供了 PRD 或验收标准 | Given-When-Then 场景生成 |
-| `procedures/tdd-flow.md` | agent | 当前任务包含写新功能代码（不只是跑测试） | Red-Green-Refactor |
-| `procedures/contract-testing.md` | init | Step 1 分类为 API/Web 服务 **且** 有多服务调用链 | 契约测试步骤 |
-| `procedures/exploratory-charter.md` | 用户 / strategy | 用户要求"深度测试"；或 strategy 发现某模块 0 历史记录 | 探索性测试 charter |
-| `procedures/hypothesis-investigation.md` | test-execution | 错误解读三问无法定位（3 问都答了仍不确定） | 3-假设法 + 调查阶梯 + 证据分级完整定义 + bug 分类 |
-| `procedures/mutation-testing.md` | strategy | full/targeted **且** 有代码变更 **且** 项目有变异测试工具 | 增量变异测试 |
-| `procedures/flakiness-scoring.md` | update / strategy | update 检测到 flaky 信号；或推荐组含 known-issues Flaky 项 | 稳定性评分 |
-| `procedures/bug-report.md` | test-execution | 发现 bug 需要写报告 | 7 节标准格式 + yaml 元数据 |
-| `procedures/longrun-testing.md` | strategy | strategy 包含 24h+ 长跑；或用户要求稳定性/耐久性测试 | 长跑监控：canary/采样器/三层健康验证/daemon 身份 6 元组 |
+| `references/procedures/bdd-scenarios.md` | init / update | 用户在信号源 F 提供了 PRD 或验收标准 | Given-When-Then 场景生成 |
+| `references/procedures/tdd-flow.md` | agent | 当前任务包含写新功能代码（不只是跑测试） | Red-Green-Refactor |
+| `references/procedures/contract-testing.md` | init | Step 1 分类为 API/Web 服务 **且** 有多服务调用链 | 契约测试步骤 |
+| `references/procedures/exploratory-charter.md` | 用户 / strategy | 用户要求"深度测试"；或 strategy 发现某模块 0 历史记录 | 探索性测试 charter |
+| `references/procedures/hypothesis-investigation.md` | test-execution | 错误解读三问无法定位（3 问都答了仍不确定） | 3-假设法 + 调查阶梯 + 证据分级完整定义 + bug 分类 |
+| `references/procedures/mutation-testing.md` | strategy | full/targeted **且** 有代码变更 **且** 项目有变异测试工具 | 增量变异测试 |
+| `references/procedures/flakiness-scoring.md` | update / strategy | update 检测到 flaky 信号；或推荐组含 known-issues Flaky 项 | 稳定性评分 |
+| `references/procedures/bug-report.md` | test-execution | 发现 bug 需要写报告 | 7 节标准格式 + yaml 元数据 |
+| `references/procedures/longrun-testing.md` | strategy | strategy 包含 24h+ 长跑；或用户要求稳定性/耐久性测试 | 长跑监控：canary/采样器/三层健康验证/daemon 身份 6 元组 |
+| `references/procedures/combinatorial-testing.md` | strategy | 2+ 个输入因子且穷举成本高；或需要证明 pairwise / 等价类覆盖 | 2-way 覆盖、等价类显式化、高风险 canary 与机器校验 |
 
 ### Tier 3: 设计文档（面向人类，agent 不加载）
 

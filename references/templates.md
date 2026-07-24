@@ -326,7 +326,7 @@ estimated_time: <分钟>
 - **测试项 ID**: `<组字母>-<序号>` 格式（如 A-01），全局唯一，被 known-issues / feedback / impact-map 引用
 - **类型（功能/元数据）**: 元数据测试不计入功能覆盖率（4 问中的第 1 问）
 - **断言字段**: 具体到字段名，不是"返回值正确"（4 问中的第 2 问）
-- **稳定性**: 从 history/ 自动计算的 flakiness 评分百分比（见 procedures/flakiness-scoring.md）
+- **稳定性**: 从 history/ 自动计算的 flakiness 评分百分比（见 references/procedures/flakiness-scoring.md）
 - **smoke 选组标准**: 必须写明"为什么选这几组"——应该是关键业务路径，不是随便选的
 
 ### 质量标准
@@ -436,7 +436,7 @@ estimated_time: <分钟>
 | Test ID | 必须是 test-groups.md 中真实存在的 ID（`<Letter>-<NN>` 格式） |
 | Verdict | 取自 `not-a-bug / fixed / wontfix / deferred / fixed-differently` |
 | 来源版本 | 该规则首次出现的版本 |
-| Flaky 稳定性评分 | 从 history/ 自动计算，格式 `NN% (N/N)`（见 procedures/flakiness-scoring.md） |
+| Flaky 稳定性评分 | 从 history/ 自动计算，格式 `NN% (N/N)`（见 references/procedures/flakiness-scoring.md） |
 | 经验教训 | 是可推广的洞察（evidence: proven 级），不是特定 ID 的现象 |
 
 ---
@@ -919,7 +919,8 @@ total_items: <N>
 
 ## Accuracy Rules
 
-1. 每个 🔴 立刻加对照 → direct → confirmed
+1. 每个 🔴 立刻加对照 → 先补第二份 direct；只有不同 `independence_key`
+   的两份直接证据才可升 confirmed，同一路径重复仍是 direct
 2. 每个 🟡 立刻升级 → 不积累模糊状态
 3. 每个 ✅ 必须 field-level 证据
 4. 最终结论证据 ≥ direct
@@ -961,6 +962,8 @@ test/
 ├── tools/                                  ← 跨版本复用的测试脚本
 │   └── surface-walk.sh
 ├── reference/                              ← 暂存区（无法归入版本目录的参考资料）
+├── escapes.json                            ← post-ship escape 机器账本（SSOT）
+├── escapes.md                              ← escape 人类视图
 │
 ├── testers/                                ← 轻量注册表
 │   └── <tester-id>/
@@ -994,6 +997,7 @@ test/
 │           ├── bio.md                      ← coordinator 身份
 │           ├── status.md                   ← 合并工作状态
 │           ├── conflict-log.md             ← tester 间差异和冲突记录
+│           ├── verdict-challenge.md        ← tentative verdict 的独立挑战与处置
 │           ├── merged-summary.md           ← 统一结论
 │           ├── merged-results.json         ← 聚合结果
 │           └── bugs/                       ← 校验后的 bug（项目级编号）
@@ -1169,17 +1173,81 @@ history/ **只放测试运行产出和版本级材料**。以下不属于 histor
 
 lessons 的 `evidence_level` 字段——只有 proven 级的洞察才能写入 lessons。
 
+### escapes.json（post-ship escape 机器账本）
+
+```json
+{
+  "schema_version": 1,
+  "escapes": [
+    {
+      "id": "ESC-001",
+      "bug_id": "BUG-v1.2.3-004",
+      "reported_by": "external-user",
+      "gate": {
+        "gate_id": "T-AUTH-03",
+        "execution_status": "executed-missed | not-executed | no-gate",
+        "evidence_refs": ["history/v1.2.3/run-.../results.json#gate_items"]
+      },
+      "root_causes": ["oracle-missing"],
+      "corrective_actions": [
+        {
+          "id": "ACT-001",
+          "description": "增加过期 token 的 gate 与回归项",
+          "status": "planned | landed | verified",
+          "evidence_refs": []
+        }
+      ],
+      "status": "open | closed",
+      "closure_evidence": []
+    }
+  ]
+}
+```
+
+约束：ID 唯一；root cause 和 corrective action 不得为空；`landed/verified` action 必须有
+evidence；`closed` 只在全部 action 都为 `verified` 且 `closure_evidence` 非空时合法。
+写后运行 `python3 <skill-root>/scripts/validate-escapes.py test/escapes.json`。`escapes.md`
+按 feedback workflow 的五字段格式从同一记录同步，不能成为第二套事实源。
+
+### release-set-policy.json（跨 run 环境 / 配置门禁）
+
+```json
+{
+  "schema_version": 1,
+  "min_distinct_environments": 2,
+  "min_distinct_machines": 1,
+  "required_config_profiles": ["legacy", "auth"],
+  "required_gate_ids": ["T-AUTH-03"]
+}
+```
+
+只有项目的 release gate 明确要求双配置 / 双环境 / 双机时才提高对应分母；不要为了数字好看
+虚构要求。合并前先逐个运行 `validate-results.sh`，再运行：
+
+```bash
+python3 <skill-root>/scripts/validate-release-set.py \
+  --policy test/release-set-policy.json <run-a>/results.json <run-b>/results.json
+```
+
 ### results.json（每次测试运行的结果）
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "version": "<X.Y.Z>",
   "tester_id": "<tester-id>",
   "run_id": "run-<tester-id>-<NNN>-<timestamp>",
   "mode": "smoke | full | targeted | bug-retest | compare",
+  "package_type": "hotfix | feature | rc | non-release",
+  "gate_applicability": "required | none",
+  "gate_applicability_reason": "<none 时必填，说明项目为何没有 release/critical gate>",
   "started_at": "<YYYY-MM-DDTHH:MM:SS±HH:MM>",
   "finished_at": "<YYYY-MM-DDTHH:MM:SS±HH:MM>",
+  "environment": {
+    "environment_id": "<稳定环境 ID>",
+    "machine_id": "<稳定机器 ID>",
+    "config_profile": "<本 run 的配置档>"
+  },
   "summary": {
     "total": 0,
     "passed": 0,
@@ -1208,7 +1276,23 @@ lessons 的 `evidence_level` 字段——只有 proven 级的洞察才能写入 
       "assertion_field": "<验证的字段名>",
       "assertion_value": "<实际值>",
       "evidence_level": "indirect | direct | binary | confirmed | proven",
+      "evidence_sources": [
+        {
+          "source_id": "<run 内全局唯一 ID>",
+          "independence_key": "<验证路径身份；不同 key 才算独立>",
+          "artifact_ref": "<run 目录内可定位的原始证据路径或锚点>",
+          "evidence_kind": "<proven basis 使用 source | proto | binary>",
+          "version": "<multi-version binary evidence 对应版本>"
+        }
+      ],
+      "proven_basis": {
+        "kind": "source | proto | multi-version",
+        "evidence_refs": ["<本 item 的 source_id>"],
+        "versions": ["<multi-version 时至少两个不同版本>"],
+        "runtime_evidence_refs": ["<functional pass/fail 必须另引 runtime source_id>"]
+      },
       "skip_reason": "<如果 skip，原因>",
+      "caveat_reason": "<如果 pass_with_caveat / pass_known_legacy_behavior，原因>",
       "error_code": "<如果 fail，错误码>",
       "error_detail": "<错误详情，不含凭证>",
       "stability_score": 1.0,
@@ -1221,10 +1305,32 @@ lessons 的 `evidence_level` 字段——只有 proven 级的洞察才能写入 
     {
       "gate_id": "<critical-matrix 条目 ID，如 T-ORD-04>",
       "verdict": "pass | fail | blocked | skip",
-      "reason": "<blocked/skip 时必填>",
-      "item_ids": ["<对应的测试项 id>"]
+      "reason": "<所有 verdict 必填的证据化理由>",
+      "item_ids": ["<对应的测试项 id>"],
+      "evidence_refs": ["<对应 evidence source_id>"]
     }
-  ]
+  ],
+  "dod": {
+    "verdict": "pass | fail | blocked | not_applicable",
+    "check_results": [
+      {
+        "check_id": "<package-type 对应的 required check>",
+        "verdict": "pass | fail | blocked | not_applicable",
+        "reason": "<判定理由>",
+        "item_ids": [],
+        "gate_ids": [],
+        "evidence_refs": ["<需要独立 artifact 的 check 引用 evidence source_id>"]
+      }
+    ]
+  },
+  "release_readiness": {
+    "verdict": "go | no-go | blocked | not_applicable",
+    "override": {
+      "approved_by": "<仅 GO 且存在 skip gate 时必填>",
+      "approved_at": "<ISO 8601 + timezone>",
+      "reason": "<为什么允许 skip>"
+    }
+  }
 }
 ```
 
@@ -1232,12 +1338,46 @@ items 中新增 `bug_ids` 字段——关联该测试项触发的 bug 报告。
 `gate_items` 记录本 run 命中的 release-gate / critical-matrix 条目及 verdict（Gate Execution Ledger
 的机器视图）。项目无 gate 定义时为空数组——但不能省略字段，空数组本身就是"无 gate 适用"的声明。
 
-Schema v2 约束：
+Schema v3 约束：
 
-- `tester_id`、非空 `finished_at`、`summary.total`、`coverage`、`items`、`gate_items` 都是必填；`summary.total` 必须等于 `items` 数量
-- 每个 item 必须显式写 `status`；`verdict` 仅用于读取 schema v1 / 未标版本的历史结果，不能替代 v2 的 `status`
+- `tester_id`、非空 `finished_at`、`package_type`、`environment`、`summary.total`、
+  `coverage`、`items`、`gate_items`、`dod`、`release_readiness` 都是必填；
+  `summary` 各状态计数必须与 `items` 精确一致；coverage 必须满足
+  `manifest_total=unreachable+reachable`、`tested<=reachable` 且百分比可复算
+- 每个 item 必须显式写 `status`、合法 `evidence_level` 和非空 `evidence_sources`；
+  每个 `artifact_ref` 的文件部分必须真实存在并位于该 `results.json` 所在 run 目录内，远程
+  URL 或 run 外文件必须先归档为本地 artifact
+- `confirmed` 必须至少有两个不同 `independence_key` 和 `artifact_ref`；同 tester 同方法重复
+  5 次仍是 direct；同一本地文件的不同 `#fragment` 不算两个独立 artifact
+- `proven` 必须有结构化 `proven_basis`：`source/proto` 要引用匹配
+  `evidence_kind` 的本地 artifact；`multi-version` 至少绑定两个不同版本、两个 binary source
+  和两个不同本地文件。functional pass/fail 还必须用 `runtime_evidence_refs` 另行绑定
+  `evidence_kind=runtime` 的运行时观察，而且至少一个 runtime artifact 文件必须与 basis
+  文件不同；给同一文件换 source ID/fragment 不能把源码/binary 伪装成 runtime。没有 basis
+  时最高只能写 confirmed
+- gate ID 唯一，必须引用真实 item 与 evidence source；gate verdict 必须与被引用 item 状态一致
+- `gate_applicability=required` 时 gate ledger 非空，`impacted-gates / all-gates` DoD
+  必须引用 pass gate；项目确实没有 gate 时显式写 `none + gate_applicability_reason`
+- package DoD 必填项：hotfix=`manifest-scope / impacted-gates / red-flag-scan / smoke`；
+  feature=`impact-scope / impacted-gates / red-flag-scan / smoke`；
+  rc=`all-gates / dirty-recovery / full-suite / coverage-denominator / l2-audit`；
+  non-release=`target-objective`
+- 每个 DoD check 至少引用一个 item、gate 或 evidence source；`smoke / dirty-recovery /
+  full-suite` 必须引用 direct+ 的 functional pass item，`red-flag-scan /
+  coverage-denominator / l2-audit` 必须引用 direct+ evidence source
+- `release_readiness=go` 要求 DoD pass、至少一个 pass 类 item 且无 fail/blocked
+  item/gate；存在 `tested<reachable`、skip、excluded 或 caveat/known-legacy pass 时必须有人类
+  override。框架不规定固定覆盖率阈值，但未覆盖 reachable 不能静默 GO
 - ID 支持层级结构，例如 `A-01`、`AUTH-REM-03`、`CLI.AUTH-01`，但必须使用大写字母、数字、点或连字符组成的稳定 ID
-- validator 对 schema v2 缺失必填字段返回失败；对 schema v1 的 `verdict` 做兼容读取，便于旧历史逐步迁移，不要求原地改写历史
+- 写完必须运行 `<skill-root>/scripts/validate-results.sh <run>/results.json`；Hook 只负责即时提示，
+  该命令的非零退出才是执行/merge 的硬门禁
+
+机器校验能证明 artifact 文件存在、引用闭合、独立 identity/文件数量满足声明；它不能自动
+证明文件内容真的支持业务 claim。内容真实性仍由 L2 evidence audit / cross-verify 负责。
+
+兼容边界：schema v2 继续严格校验 item evidence 与 gate ledger，但没有 v3 的环境、独立证据、
+DoD 和 release-readiness 模型；schema v1 仅兼容历史读取。新 run 一律写 schema v3，不要求原地
+改写历史文件。
 
 ### execution-log.md（L1 Hook 自动生成）
 
@@ -1269,7 +1409,7 @@ RESULT_FILE: <子 Agent 写入的文件路径>
 
 每个 bug 一个文件，存放在 tester 的 run 目录内 `bugs/`。文件名格式 `BUG-NNN-<slug>.md`，NNN 在 run 内递增。Coordinator merge 后分配项目级编号 `BUG-<version>-NNN`。
 
-使用 `procedures/bug-report.md` 的 7 节模板写正文。**写作规则**：
+使用 `references/procedures/bug-report.md` 的 7 节模板写正文。**写作规则**：
 
 - **两层结构**：第一层用非技术人员能看懂的大白话（问题是什么、影响谁、有多严重），第二层是开发者需要的技术细节（复现步骤、log 证据、根因分析）
 - **pre-existing 标注**：found_in 字段标注首次出现版本。不标注 → 开发者误判为回归，排查方向错误
@@ -1443,6 +1583,31 @@ created: <YYYY-MM-DDTHH:MM:SS±HH:MM>
 | (none) | — | — | 无 bug 冲突 |
 ```
 
+### verdict-challenge.md（独立结论挑战）
+
+```markdown
+# Verdict Challenge — <merge-id>
+
+## Tentative Verdict
+- Drafted by: <coordinator-id>
+- Verdict: <GO | NO-GO | BLOCKED | TARGETED-ONLY>
+- Claims: <claim ids>
+- Gate / DoD basis: <gate ids + evidence refs>
+
+## Independent Challenge
+- Challenger: <tester-id；不得等于 drafted by>
+- Overclaims: <targeted pass 是否越界成 release approval>
+- Counterevidence: <相反证据；无则列检索范围>
+- Evidence-grade issues: <confirmed independence audit>
+- Coverage / role gaps: <缺环境、配置、slot、gate、DoD>
+
+## Coordinator Disposition
+| Challenge ID | accepted / rejected | Evidence-based reason | Follow-up |
+|--------------|---------------------|-----------------------|-----------|
+
+Unresolved count: 0
+```
+
 ### merged-summary.md（统一结论）
 
 ```markdown
@@ -1484,13 +1649,25 @@ created: <YYYY-MM-DDTHH:MM:SS±HH:MM>
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "version": "<X.Y.Z>",
   "merge_id": "merge-<coordinator-id>-<ts>",
   "coordinator_id": "<coordinator-id>",
   "merged_at": "<YYYY-MM-DDTHH:MM:SS±HH:MM>",
   "source_runs": [
-    "run-claude-a3f2-002-...",
-    "run-codex-c9d4-001-..."
+    {
+      "run_id": "run-claude-a3f2-002-...",
+      "results_path": "<相对 merged-results.json 或绝对路径>/results.json",
+      "sha256": "<results.json 的小写 SHA-256>",
+      "schema_version": 3,
+      "version": "<X.Y.Z>",
+      "package_type": "hotfix | feature | rc | non-release",
+      "environment": {
+        "environment_id": "<id>",
+        "machine_id": "<id>",
+        "config_profile": "<profile>"
+      }
+    }
   ],
   "summary": {
     "total": 0,
@@ -1503,19 +1680,80 @@ created: <YYYY-MM-DDTHH:MM:SS±HH:MM>
     {
       "id": "<test_id>",
       "result": "pass | fail | skip | conflict",
-      "source_run": "<run that produced this result>",
+      "source_runs": ["<每个出现该 item 的 run-id，不能漏>"],
       "conflict_details": null
     }
-  ]
+  ],
+  "gate_items": [
+    {
+      "gate_id": "<gate-id>",
+      "verdict": "pass | fail | blocked | skip",
+      "reason": "<聚合判定理由>",
+      "source_runs": ["<run-id>"],
+      "item_ids": ["<item-id>"],
+      "evidence_refs": [
+        {
+          "source_run": "<run-id>",
+          "source_id": "<该 run 内的 evidence source-id>"
+        }
+      ]
+    }
+  ],
+  "environment_coverage": {
+    "distinct_environments": 0,
+    "distinct_machines": 0,
+    "config_profiles": []
+  },
+  "dod": {
+    "package_type": "hotfix | feature | rc | non-release",
+    "verdict": "pass | fail | blocked | not_applicable",
+    "source_runs": ["<run-id>"],
+    "check_refs": [
+      {
+        "source_run": "<run-id>",
+        "check_id": "<source results.json 中的 check-id>"
+      }
+    ]
+  },
+  "release_readiness": {
+    "verdict": "go | no-go | blocked | not_applicable",
+    "reason": "<由 gate/DoD/release-set 校验得出>"
+  },
+  "verdict_challenge": {
+    "drafted_by": "<coordinator-id>",
+    "challenger": "<不同于 coordinator 的 source tester-id，或 external reviewer-id>",
+    "reason": "<独立复核范围和结论>",
+    "reviewed_at": "<YYYY-MM-DDTHH:MM:SS±HH:MM>",
+    "unresolved_count": 0,
+    "dispositions": [
+      {
+        "challenge_id": "<CH-NNN>",
+        "disposition": "accepted | rejected | unresolved",
+        "reason": "<证据化处置理由>"
+      }
+    ]
+  }
 }
 ```
+
+`source_runs[].validation=pass` 不是证据，schema v2 不再接受它作为捷径。Validator 会读取
+每个 `results_path`、核对 SHA-256、直接运行 strict results validator，并绑定 run/version/
+package/environment。合并 items 必须覆盖每个 source occurrence；相同 item ID 的
+`name/group/type/assertion_field` 以及相同 gate ID 的 item scope 不得跨 run 漂移。GO 允许
+targeted source 写 `not_applicable`，但至少一个 source 必须是 release-scoped `go`；全是
+targeted/not_applicable 不能合成发版批准。任何 source `no-go/blocked`、遗漏 finding、未处置
+challenge 或引用断链也会失败。若 challenger 不属于 source tester，必须额外提供
+`external_reviewer: {reviewer_id, identity, evidence_ref}`，其中 evidence_ref 必须解析到 merge
+目录内真实存在的独立审计文件。`merged_at` / `reviewed_at` 必须是真实带时区时间，且复核不能
+早于 merge。
 
 ### Coordinator 输出质量标准
 
 | 项目 | 必须满足 |
 |------|---------|
 | conflict-log.md | 每个冲突有 Analysis + Resolution；Coverage Gaps 逐项列出 |
+| verdict-challenge.md | coordinator 先写 tentative；challenger 与 coordinator 不同；每条 challenge 都有 evidence-based disposition；未处置为 0 |
 | merged-summary.md | ≤ 35 行；每个 bug 标注来源 run；含 Cross-Verify 采信统计和 Minor Findings Bucket |
-| merged-results.json | items 去重（同 test_id 取 fail 优先）；conflicts 计数正确 |
+| merged-results.json | source path+SHA+strict validator 全绑定；每个 source item/gate/DoD occurrence 完整聚合且语义 identity 不漂移；source readiness、environment、challenge 全闭合；通过 `validate-merged-results.py` 才可 GO |
 | bugs/ 目录 | 项目级编号（BUG-\<version\>-NNN）；每个 bug 有 source 字段指向原始 run |
 | 不含凭证 | 同其他文件规则 |

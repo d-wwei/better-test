@@ -1,0 +1,22 @@
+name: deterministic-validation
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: |
+          find hooks scripts -type f -name '*.sh' -print0 |
+            xargs -0 -n1 bash -n
+          sh -n install.sh
+      - name: Deterministic suites
+        run: ./scripts/test-all.sh

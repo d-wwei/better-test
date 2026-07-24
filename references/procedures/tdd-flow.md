@@ -30,4 +30,4 @@
 - 每轮只加一个测试 case，不批量
 - 重构阶段不加新功能
 
-方法论详解见 `methodologies/test-design.md`。
+方法论详解见 `references/methodologies/design-rationale.md` 的测试设计章节。

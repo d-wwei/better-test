@@ -120,13 +120,18 @@ curl -X POST http://localhost:11111/api/v1/option_chain \
 bug:
   id: <BUG-XXX>
   status: OPEN | CONFIRMED | FIXED | WONTFIX
-  evidence_level: indirect | direct | confirmed | proven
+  evidence_level: indirect | direct | binary | confirmed | proven
+  evidence_refs: [<results.json source_id 或 artifact path>]
   bug_type: regression | integration | edge_case | environment | data | concurrency
   affected_groups: [B, C, I]
   affected_scenarios: [warrant, agent]
   version_found: v1.4.28
   version_fixed: null
   regression_canary: true  # 是否已加入回归 canary
+  post_ship: false
+  escape_id: null  # post_ship=true 时必须是 ESC-NNN
 ```
 
-bug_type 取值见 investigation.md 的 Bug 分类表。evidence_level 取值见 investigation.md 的证据分级体系。
+bug_type 和 evidence_level 取值见
+`references/procedures/hypothesis-investigation.md`；confirmed 的 evidence refs 必须能回到
+两个不同 independence key。post_ship=true 时同步更新并校验 `test/escapes.json`。

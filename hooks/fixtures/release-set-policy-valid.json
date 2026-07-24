@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "min_distinct_environments": 2,
+  "min_distinct_machines": 2,
+  "required_config_profiles": ["legacy", "auth"],
+  "required_gate_ids": ["GATE-AUTH-READY"]
+}

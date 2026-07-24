@@ -171,6 +171,35 @@ Coordinator 派单时，不要只说"你去测这个"。至少要给一张 Dispa
 
 Coordinator 合并时，先按 Team Contract 理解角色，再看结果。
 
+### Tentative Verdict Challenge（多 tester 必做）
+
+Coordinator 先生成**暂定**结论，不得直接发布最终 ship / no-ship verdict。由一个未参与该
+结论起草的 `adversarial` tester 审查；若没有独立 adversarial tester，则使用
+`single-plus-l2` 的 `l2-skeptic` 补位。挑战者不能只是确认格式，必须尝试证伪结论。
+
+```markdown
+## Tentative Verdict
+- Drafted by: <coordinator-id>
+- Verdict: <GO | NO-GO | BLOCKED | TARGETED-ONLY>
+- Claims: <逐条 claim-id>
+- Gate / DoD basis: <gate ids + evidence refs>
+
+## Independent Challenge
+- Challenger: <tester-id，不能等于 drafted by>
+- Overclaim checks: <是否把 targeted pass 写成 release approval>
+- Counterevidence: <遗漏或相反证据；没有也要写检索范围>
+- Evidence-grade challenges: <confirmed 是否真有两个 independence_key + 两个 run-local 文件；
+  proven 是否有 basis + 独立 runtime artifact>
+- Coverage / role gaps: <缺 slot、缺环境、缺 gate、缺 DoD>
+
+## Coordinator Disposition
+| Challenge ID | accepted / rejected | Evidence-based reason | Follow-up |
+```
+
+所有 challenge 必须有 disposition。存在未处置 challenge 时，`merged-summary.md` 的 release
+verdict 只能是 `BLOCKED`。挑战者与 coordinator 可以意见不同，但 coordinator 拒绝 challenge
+必须引用原始 artifact / gate / item，不能用叙述性判断带过。
+
 ### Merge 关注点
 
 | Role 类型 | merge 时重点看什么 |
@@ -186,7 +215,9 @@ Coordinator 合并时，先按 Team Contract 理解角色，再看结果。
 ```
 1. 先检查每个 slot 有没有完成自己的 success_output
 2. 再检查不同 slot 之间有没有共享盲区
-3. 最后才综合 severity / ship verdict
+3. Coordinator 先写 tentative verdict
+4. 独立 adversarial / l2-skeptic 完成 challenge
+5. Coordinator 逐条 disposition 后才综合 severity / final ship verdict
 
 不能因为结果好看，就忽略某个关键 slot 根本没完成自己的职责。
 ```

@@ -32,4 +32,4 @@
 - 契约测试不替代集成测试 — 它验证接口结构，不验证业务逻辑
 - 契约变更需双方同步
 
-方法论详解见 `methodologies/test-design.md`。
+方法论详解见 `references/methodologies/design-rationale.md` 的测试设计章节。

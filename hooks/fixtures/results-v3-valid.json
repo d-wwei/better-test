@@ -1,0 +1,125 @@
+{
+  "schema_version": 3,
+  "version": "1.1.0",
+  "tester_id": "codex-a3f2",
+  "run_id": "run-codex-a3f2-002-20260724T120000+0800",
+  "mode": "hotfix-retest",
+  "package_type": "hotfix",
+  "gate_applicability": "required",
+  "started_at": "2026-07-24T12:00:00+08:00",
+  "finished_at": "2026-07-24T12:05:00+08:00",
+  "environment": {
+    "environment_id": "macos-arm64-lab-01",
+    "machine_id": "eli-mac-01",
+    "config_profile": "clean-cache-us-east"
+  },
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "excluded": 0,
+    "pending": 0,
+    "partial": 0
+  },
+  "coverage": {
+    "manifest_total": 1,
+    "unreachable": 0,
+    "reachable": 1,
+    "tested": 1,
+    "reachable_coverage_pct": 100
+  },
+  "items": [
+    {
+      "id": "AUTH-READY-01",
+      "name": "authenticated session becomes ready",
+      "group": "AUTH-READY",
+      "type": "functional",
+      "status": "pass",
+      "assertion_field": "session_state",
+      "assertion_value": "ready",
+      "evidence_level": "confirmed",
+      "evidence_sources": [
+        {
+          "source_id": "SRC-DAEMON-LOG-01",
+          "independence_key": "daemon-log",
+          "artifact_ref": "artifacts/daemon.log#ready"
+        },
+        {
+          "source_id": "SRC-CLIENT-JSON-01",
+          "independence_key": "client-response",
+          "artifact_ref": "artifacts/client-response.json"
+        }
+      ],
+      "pre_existing": false
+    }
+  ],
+  "gate_items": [
+    {
+      "gate_id": "GATE-AUTH-READY",
+      "verdict": "pass",
+      "reason": "All authentication readiness assertions passed with independent evidence.",
+      "item_ids": [
+        "AUTH-READY-01"
+      ],
+      "evidence_refs": [
+        "SRC-DAEMON-LOG-01",
+        "SRC-CLIENT-JSON-01"
+      ]
+    }
+  ],
+  "dod": {
+    "verdict": "pass",
+    "check_results": [
+      {
+        "check_id": "manifest-scope",
+        "verdict": "pass",
+        "reason": "The hotfix manifest contains the one impacted authentication item.",
+        "item_ids": [
+          "AUTH-READY-01"
+        ],
+        "gate_ids": [
+          "GATE-AUTH-READY"
+        ]
+      },
+      {
+        "check_id": "impacted-gates",
+        "verdict": "pass",
+        "reason": "The impacted authentication gate passed.",
+        "item_ids": [
+          "AUTH-READY-01"
+        ],
+        "gate_ids": [
+          "GATE-AUTH-READY"
+        ]
+      },
+      {
+        "check_id": "red-flag-scan",
+        "verdict": "pass",
+        "reason": "No red-flag signature appeared in the captured daemon log.",
+        "item_ids": [],
+        "gate_ids": [
+          "GATE-AUTH-READY"
+        ],
+        "evidence_refs": [
+          "SRC-DAEMON-LOG-01"
+        ]
+      },
+      {
+        "check_id": "smoke",
+        "verdict": "pass",
+        "reason": "The authenticated readiness smoke assertion passed.",
+        "item_ids": [
+          "AUTH-READY-01"
+        ],
+        "gate_ids": [
+          "GATE-AUTH-READY"
+        ]
+      }
+    ]
+  },
+  "release_readiness": {
+    "verdict": "go"
+  }
+}

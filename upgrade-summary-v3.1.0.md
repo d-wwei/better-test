@@ -1,5 +1,8 @@
 # better-test Skill 升级总结 — v3.0.1 → v3.1.0
 
+> **ARCHIVED HISTORICAL SNAPSHOT**：文中的“18 pending”“下一步”和 Hook 状态是
+> 2026-04 当时状态，不是当前 backlog。当前收口状态见 `UPGRADE-STATUS.md`。
+>
 > 日期: 2026-04-26
 > 触发: 17 份测试回顾文件（8 testers, v1.4.48 → v1.4.94, ~450KB）
 > 方法: update-workflow Q1-Q4 决策树分流 → 按强制执行层级分配
@@ -36,7 +39,7 @@ L2: test-execution-workflow.md — 执行时加载，字段约束硬卡
 L3: strategy-workflow.md      — 规划时加载，步骤级卡点
 L4: templates.md              — 写输出时加载，格式标准
 L5: merge-workflow.md         — 合并时加载，coordinator 角色
-L6: procedures/*.md           — 条件触发加载
+L6: references/procedures/*.md           — 条件触发加载
 L7: known-issues lessons      — strategy Step 0 提取（最弱但仍有价值）
 ```
 
@@ -48,7 +51,7 @@ L7: known-issues lessons      — strategy Step 0 提取（最弱但仍有价值
 
 | 文件 | 层级 | 触发条件 | 内容 |
 |------|------|---------|------|
-| `procedures/longrun-testing.md` | L6 | strategy 包含 24h+ 长跑项 | 10 条长跑经验：三层健康验证 / daemon 6 元组身份 / canary heartbeat / 采样器自包含 / Monitor+Cron 双通道 / 采样粒度权衡 / 关键词覆盖率 / loop auto-stop / 跨 tester 命名隔离 / PID reuse 防误归 |
+| `references/procedures/longrun-testing.md` | L6 | strategy 包含 24h+ 长跑项 | 10 条长跑经验：三层健康验证 / daemon 6 元组身份 / canary heartbeat / 采样器自包含 / Monitor+Cron 双通道 / 采样粒度权衡 / 关键词覆盖率 / loop auto-stop / 跨 tester 命名隔离 / PID reuse 防误归 |
 
 ### 3.2 Skill 文件修改
 
@@ -93,7 +96,7 @@ L7: known-issues lessons      — strategy Step 0 提取（最弱但仍有价值
 
 | 段落 | 增补 |
 |------|------|
-| Tier 2 扩展流程表 | `procedures/longrun-testing.md` 触发条件和内容说明 |
+| Tier 2 扩展流程表 | `references/procedures/longrun-testing.md` 触发条件和内容说明 |
 
 ### 3.3 项目知识文件修改
 
@@ -218,7 +221,7 @@ L7: known-issues lessons      — strategy Step 0 提取（最弱但仍有价值
 1. **known-issues #67-#82 仍是 L7 层**：这 16 条通用方法论经验在 known-issues 中，依赖 strategy Step 0 提取。如果 agent 跳过 strategy 直接测试，这些经验不会被看到。
 2. **pending-skill-upgrades 18 条仍未 promote**：这些是 v3.0.3 排队的候选，需要人审核后写入 skill 文件才能跨项目生效。
 3. **项目专属经验（#83-#90）不跨项目传播**：按设计只在 futu-opend-rs 项目生效。通用化需要人判断。
-4. **新建的 longrun procedure 未经实测**：procedures/longrun-testing.md 基于回顾提炼，尚未在新的 24h 长跑中验证。
+4. **新建的 longrun procedure 未经实测**：references/procedures/longrun-testing.md 基于回顾提炼，尚未在新的 24h 长跑中验证。
 
 ---
 
@@ -232,13 +235,13 @@ L7: known-issues lessons      — strategy Step 0 提取（最弱但仍有价值
 | **cleanup-guard** | **部分实现** | active (advisory) | active (advisory) | 扩展 post-test-checklist 追加清理提醒段（/tmp 凭据 / orphan 进程 / orphan orders / 副作用） |
 | port-bind-verify | planned | — | — | 过于项目特定（daemon 二进制名/端口参数），不适合 skill 级 hook |
 | number-traceability | planned | — | — | 数字声明 vs 普通数字区分需 NLP 级分析，误报率太高。由 L4 templates 标准执行 |
-| longrun-heartbeat | planned | — | — | 无 Cron/周期触发生命周期事件。由 L6 procedures/longrun-testing.md 通过 agent 指令处理 |
+| longrun-heartbeat | planned | — | — | 无 Cron/周期触发生命周期事件。由 L6 references/procedures/longrun-testing.md 通过 agent 指令处理 |
 
 ---
 
 ## 九、下一步
 
 1. 审核 `pending-skill-upgrades.md` 中 18 条候选 → promote 到 skill 文件
-2. 下次 24h 长跑测试中验证 `procedures/longrun-testing.md` 是否生效
+2. 下次 24h 长跑测试中验证 `references/procedures/longrun-testing.md` 是否生效
 3. 考虑将 #67-#69（4 阶段测试法 / 5 级成熟度 / 覆盖率上限表）升级到 strategy-workflow 或 design-rationale（当前在 L7 层偏弱）
 4. 实施 Hook 候选（优先 pass-evidence-check → cleanup-guard → port-bind-verify）

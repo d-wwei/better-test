@@ -1,0 +1,104 @@
+{
+  "schema_version": 3,
+  "version": "1.1.0",
+  "tester_id": "codex-a3f2",
+  "run_id": "run-codex-a3f2-001",
+  "mode": "hotfix-retest",
+  "package_type": "hotfix",
+  "gate_applicability": "required",
+  "started_at": "2026-07-24T13:50:00+08:00",
+  "finished_at": "2026-07-24T13:55:00+08:00",
+  "environment": {
+    "environment_id": "env-a",
+    "machine_id": "machine-a",
+    "config_profile": "auth"
+  },
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "excluded": 0,
+    "pending": 0,
+    "partial": 0
+  },
+  "coverage": {
+    "manifest_total": 1,
+    "unreachable": 0,
+    "reachable": 1,
+    "tested": 1,
+    "reachable_coverage_pct": 100
+  },
+  "items": [
+    {
+      "id": "AUTH-READY-01",
+      "name": "authenticated session becomes ready",
+      "group": "AUTH-READY",
+      "type": "functional",
+      "status": "pass",
+      "assertion_field": "session_state",
+      "assertion_value": "ready",
+      "evidence_level": "confirmed",
+      "evidence_sources": [
+        {
+          "source_id": "SRC-A-DAEMON",
+          "independence_key": "daemon-log",
+          "artifact_ref": "artifacts/daemon.log#ready"
+        },
+        {
+          "source_id": "SRC-A-CLIENT",
+          "independence_key": "client-json",
+          "artifact_ref": "artifacts/client.json"
+        }
+      ],
+      "pre_existing": false
+    }
+  ],
+  "gate_items": [
+    {
+      "gate_id": "GATE-AUTH-READY",
+      "verdict": "pass",
+      "reason": "Authentication readiness passed with two independent sources.",
+      "item_ids": ["AUTH-READY-01"],
+      "evidence_refs": ["SRC-A-DAEMON", "SRC-A-CLIENT"]
+    }
+  ],
+  "dod": {
+    "verdict": "pass",
+    "check_results": [
+      {
+        "check_id": "manifest-scope",
+        "verdict": "pass",
+        "reason": "The hotfix manifest contains the impacted authentication item.",
+        "item_ids": ["AUTH-READY-01"],
+        "gate_ids": ["GATE-AUTH-READY"]
+      },
+      {
+        "check_id": "impacted-gates",
+        "verdict": "pass",
+        "reason": "The impacted authentication gate passed.",
+        "item_ids": ["AUTH-READY-01"],
+        "gate_ids": ["GATE-AUTH-READY"]
+      },
+      {
+        "check_id": "red-flag-scan",
+        "verdict": "pass",
+        "reason": "No red-flag signature appeared in the daemon log.",
+        "item_ids": [],
+        "gate_ids": ["GATE-AUTH-READY"],
+        "evidence_refs": ["SRC-A-DAEMON"]
+      },
+      {
+        "check_id": "smoke",
+        "verdict": "pass",
+        "reason": "The authenticated readiness smoke assertion passed.",
+        "item_ids": ["AUTH-READY-01"],
+        "gate_ids": ["GATE-AUTH-READY"]
+      }
+    ]
+  },
+  "release_readiness": {
+    "verdict": "go"
+  }
+}

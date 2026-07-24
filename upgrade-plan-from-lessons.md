@@ -1,10 +1,13 @@
 # 升级计划：融入实战经验到 better-test skill
 
-> 状态：**项目知识文件已写入，skill 升级候选待执行**
+> **ARCHIVED / SUPERSEDED**：这是 2026-04 的输入计划，不是当前待办。12 条 skill 候选均已
+> 落地；当前对账见 `UPGRADE-STATUS.md`。
+>
+> 状态：**项目知识文件与 skill 候选均已完成**
 > 来源：3 份经验文档，原始约 111 条
 > 去重后通用经验：49 条
 > 已写入项目文件：protocol 6 行改动 + known-issues 合并 4 处 + 新增 13 条 + env-config 5 处
-> Skill 升级候选：12 条（见下方"workflow 候选"段）
+> Skill 升级候选：12 条（历史输入；当前 12/12 已完成）
 
 ---
 
@@ -271,7 +274,7 @@
 
 ---
 
-## 四、Skill 升级候选（12 条 workflow/模板修改）
+## 四、Skill 升级候选（历史清单；12/12 已完成）
 
 以下经验经 update-workflow Q1 分流为"怎么做"，目标是修改 skill 的 workflow 或 templates。
 需人审核后手动修改 better-test skill 文件。
@@ -303,7 +306,7 @@
 | known-issues.md | 合并 A2→#10, C2+G4→#22, D1→#17, M5→#12 + 新增 #24-#36 | 4 合并 + 13 新增 |
 | env-config.md | 合并环境清理 + 新增标的物/状态回验/并行规则/时段说明 | 1 合并 + 4 新增 |
 
-### 未写入：
+### 当时未写入（现已对账完成）：
 - 已有覆盖 10 条（不动）
-- Skill 升级候选 12 条（上方表格，待人审核）
+- Skill 升级候选 12 条（已全部落地；见 `UPGRADE-STATUS.md`）
 - M1（protocol L0 保留原文）已过时（≤30 行已解决），丢弃

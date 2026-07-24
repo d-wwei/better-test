@@ -32,4 +32,4 @@
 - 84% 的 pass→fail 转换涉及 flaky 测试
 - 三次连续不一致再标 flaky（避免单次误判）
 
-方法论详解见 `methodologies/execution.md`。
+方法论详解见 `references/methodologies/design-rationale.md` 的执行纪律章节。

@@ -29,7 +29,7 @@
               "event": "PreToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/credential-scan.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18. Built-in file edits surface as matcher Write with tool_name apply_patch; the guard scans added patch lines for credential-like literals targeting the resolved test root."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0, 0.145.0-alpha.18, and 0.146.0-alpha.3.1. Built-in file edits surface as matcher Write with tool_name apply_patch; the guard scans added patch lines for credential-like literals targeting the resolved test root."
             }
           ]
         }
@@ -63,7 +63,7 @@
               "event": "PreToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/feedback-rules-guard.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18. Built-in apply_patch edits are blocked when they target feedback-rules.json."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0, 0.145.0-alpha.18, and 0.146.0-alpha.3.1. Built-in apply_patch edits are blocked when they target feedback-rules.json."
             }
           ]
         }
@@ -118,7 +118,7 @@
               "event": "PostToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/post-test-checklist.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18. Built-in apply_patch writes to results.json emit the same checklist additionalContext."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0, 0.145.0-alpha.18, and 0.146.0-alpha.3.1. Built-in apply_patch writes to results.json emit the same checklist additionalContext."
             }
           ]
         }
@@ -129,7 +129,7 @@
       "phase": "core",
       "priority": "P1",
       "rule_path": "hooks/lib/rules/results-validation.sh",
-      "summary": "Validate results.json schema v2, legacy verdict compatibility, hierarchical IDs, and pass-evidence semantics.",
+      "summary": "Validate results schema v1/v2/v3 compatibility, run-local evidence and proven basis, gate semantics, package DoD, coverage, overrides, and release readiness.",
       "platforms": {
         "claude": {
           "status": "active",
@@ -152,7 +152,7 @@
               "event": "PostToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/results-validation.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18. Built-in apply_patch writes to results.json emit the same validation errors or advisories via additionalContext."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0, 0.145.0-alpha.18, and 0.146.0-alpha.3.1. Built-in apply_patch writes to results.json emit the same validation errors or advisories via additionalContext."
             }
           ]
         }
@@ -186,7 +186,7 @@
               "event": "PreToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/derived-view-guard.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18. Built-in apply_patch edits are blocked when they target protected derived views."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0, 0.145.0-alpha.18, and 0.146.0-alpha.3.1. Built-in apply_patch edits are blocked when they target protected derived views."
             }
           ]
         }
@@ -220,7 +220,7 @@
               "event": "PostToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/registration-gate.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18. Built-in apply_patch writes to strategy-plan.md emit the same registration warnings via additionalContext."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0, 0.145.0-alpha.18, and 0.146.0-alpha.3.1. Built-in apply_patch writes to strategy-plan.md emit the same registration warnings via additionalContext."
             }
           ]
         }
@@ -254,7 +254,7 @@
               "event": "PreToolUse",
               "matcher": "Write",
               "entrypoint": "hooks/codex/session-write-guard.sh",
-              "note": "Write path: runtime-verified on codex-cli 0.125.0 and 0.145.0-alpha.18 for built-in apply_patch. Enforcement still depends on the same session file contract keyed to the hook parent PID."
+              "note": "Write path: runtime-verified on codex-cli 0.125.0, 0.145.0-alpha.18, and 0.146.0-alpha.3.1 for built-in apply_patch. Enforcement still depends on the same session file contract keyed to the hook parent PID."
             }
           ]
         }
@@ -262,51 +262,51 @@
     },
     {
       "id": "port-bind-verify",
-      "phase": "planned",
+      "phase": "delegated",
       "priority": "P2",
       "rule_path": null,
-      "summary": "[PLANNED] Verify daemon port binding after startup. Too project-specific for skill-level hook; projects should add their own.",
+      "summary": "[DELEGATED] Verify daemon port binding after startup through a project-specific check.",
       "platforms": {
         "claude": {
-          "status": "planned",
+          "status": "delegated",
           "note": "Requires project-specific daemon binary/port patterns. Not implementable as generic skill hook."
         },
         "codex": {
-          "status": "planned",
+          "status": "delegated",
           "note": "Same limitation as Claude."
         }
       }
     },
     {
       "id": "number-traceability",
-      "phase": "planned",
+      "phase": "delegated",
       "priority": "P2",
       "rule_path": null,
-      "summary": "[PLANNED] Scan summary/report for numeric claims without source references. Automated detection has unacceptable false-positive rate; enforced via L4 templates quality standards instead.",
+      "summary": "[DELEGATED] Numeric-claim traceability remains an L4/L2 semantic review because generic automation has unacceptable false positives.",
       "platforms": {
         "claude": {
-          "status": "planned",
+          "status": "delegated",
           "note": "Distinguishing 'numeric claim' from 'step number' requires NLP-level analysis. Better as template standard."
         },
         "codex": {
-          "status": "planned",
+          "status": "delegated",
           "note": "Same limitation as Claude."
         }
       }
     },
     {
       "id": "longrun-heartbeat",
-      "phase": "planned",
+      "phase": "delegated",
       "priority": "P2",
       "rule_path": null,
-      "summary": "[PLANNED] Periodically verify canary/sampler health during 24h+ long-run tests. No Cron/periodic trigger in hook lifecycle; handled by L6 procedures/longrun-testing.md via agent instructions.",
+      "summary": "[DELEGATED] Periodic canary/sampler health is handled by the longrun procedure because hooks have no portable periodic lifecycle.",
       "platforms": {
         "claude": {
-          "status": "planned",
+          "status": "delegated",
           "note": "CronCreate exists for prompts but not hooks. No session-idle or periodic-tick lifecycle event."
         },
         "codex": {
-          "status": "planned",
+          "status": "delegated",
           "note": "No equivalent periodic lifecycle event."
         }
       }

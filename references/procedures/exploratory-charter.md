@@ -37,4 +37,4 @@
 - 时间盒是硬限制，到点就停，不管"还差一点"
 - 效率数据：探索性 0.99 缺陷/小时 vs 脚本 0.24 缺陷/小时（F-Secure 研究）
 
-方法论详解见 `methodologies/test-design.md`。
+方法论详解见 `references/methodologies/design-rationale.md` 的测试设计章节。

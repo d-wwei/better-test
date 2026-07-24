@@ -173,7 +173,7 @@ grep daemon/service log 查 error code
 禁止：直接重试 / 直接换参数 / 直接放弃
 ```
 
-三问无法定位 → 加载 Tier 2 `procedures/hypothesis-investigation.md`（3-假设调查法）。
+三问无法定位 → 加载 Tier 2 `references/procedures/hypothesis-investigation.md`（3-假设调查法）。
 
 ### 预期错误 ≠ 测试失败
 
@@ -203,9 +203,9 @@ API 返回错误码不一定是 bug。区分三种情况：
 |------|--------|---------|
 | **indirect** | 仅用于形成假设 | 行为观察、类比推断 |
 | **direct** | ✅ pass 判定、🔴 fail 报告 | debug log、命令输出、具体字段值 |
-| **binary** | 验证"代码修改确实生效了" | `strings binary \| grep` 证明 literal 变化 |
-| **confirmed** | 根因确认、写入 known-issues lessons | 多重直接证据 + 基准对照交叉验证 |
-| **proven** | 系统性模式、更新 impact-map 为 verified | 源码/proto 验证、多版本验证 |
+| **binary** | 验证代码/资源已落入 artifact，不代表 runtime 生效 | `strings binary \| grep` 证明 literal 变化 |
+| **confirmed** | 根因确认 | 多重直接证据 + 基准对照交叉验证 |
+| **proven** | 系统性模式、更新 impact-map、写入 known-issues lessons | 结构化 source/proto 或 multi-version basis；functional claim 另有独立 runtime artifact |
 
 不允许 guess 级别出现在任何输出中。
 
@@ -370,7 +370,7 @@ happy path 通过后，对每个接口主动尝试 break——silent failure 最
 长跑健康同理三层：进程存活 / 内部状态字段正常 / 主业务输出在流动——缺第三层 = 空壳验证
 （真实案例：PID 在 + logined=True 但 push 输出冻结 17h）。
 长跑监控关键词列表必须在启动前对照全部已知自愈/熔断机制审核——关键词覆盖率 > 采样粒度，
-关键词漏了，17h 内 203 次采样也产出近零事件。详见 procedures/longrun-testing.md。
+关键词漏了，17h 内 203 次采样也产出近零事件。详见 references/procedures/longrun-testing.md。
 ```
 
 **其他负向场景**（按适用性选择）：
@@ -419,12 +419,16 @@ happy path 通过后，对每个接口主动尝试 break——silent failure 最
 
 ```
 测试完成或 session 结束前：
-1. kill 所有测试进程（daemon、采样器、monitor）→ `kill $(cat /tmp/daemon-<tester-id>.pid)`
-2. 删 /tmp 含凭据的文件 → `rm -f /tmp/futu-pwd-*`（trap EXIT 更好）
-3. cancel orphan orders → 先尝试 `/api/cancel-all-order`，不行则标注"需用户清理"
+1. 只清理本 run 登记的进程。kill 前同时核对 PID、binary、启动时间、端口和 tester/run
+   owner；PID 文件单独不能证明归属。任何一项不符就不 kill，记录并交给用户处理
+2. 只删除本 run 创建并登记的精确临时路径；禁止 `futu-pwd-*` 等跨 tester glob，也不能删
+   其他 run 或用户创建的文件
+3. 只撤销本 run 下单账本中记录的 order ID。`cancel-all` 默认禁止；只有用户针对本次清理
+   重新明确授权、且确认测试账户在该时段为独占范围时才能执行，并保存取消前后的订单清单
 4. 副作用作为 bug 的"外部性成本"显式列出 → 如"测试消耗了 $X margin"
 
-敏感文件最佳实践：trap "rm -f $TMPFILE" EXIT 在启动时设置，不依赖手动清理。
+敏感文件最佳实践：创建本 run 独占 tempdir，并在启动时用 trap 删除这个已解析的精确路径；
+不要让 trap 展开未校验变量或 glob。无法证明资源属于本 run 时，报告而不是清理。
 ```
 
 ---
@@ -435,10 +439,10 @@ happy path 通过后，对每个接口主动尝试 break——silent failure 最
 
 | 触发条件 | 加载什么 |
 |---------|---------|
-| 三问无法定位失败原因 | `procedures/hypothesis-investigation.md` |
-| 同一测试连续 2 次结果不一致 | `procedures/flakiness-scoring.md` |
-| 用户要求对某模块做深度探索 | `procedures/exploratory-charter.md` |
-| 发现 bug 需要写报告 | `methodologies/bug-report.md`（可执行模板） |
+| 三问无法定位失败原因 | `references/procedures/hypothesis-investigation.md` |
+| 同一测试连续 2 次结果不一致 | `references/procedures/flakiness-scoring.md` |
+| 用户要求对某模块做深度探索 | `references/procedures/exploratory-charter.md` |
+| 发现 bug 需要写报告 | `references/procedures/bug-report.md`（可执行模板） |
 
 ---
 
@@ -458,7 +462,7 @@ Agent 需要做的记录：
 测试中遇到确认的 🔴 fail（evidence: direct 或更高）且不在 known-issues 已知列表中：
 
 ```
-1. 加载 procedures/bug-report.md 模板
+1. 加载 references/procedures/bug-report.md 模板
 2. 按 7 节格式写 bug report（两层结构：先大白话说影响，再技术细节）
 3. 先分 Observation / Interpretation / Impact 三层
    → 观测是什么，和你如何解读、谁会受影响，必须分开写
@@ -532,12 +536,14 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 
 ```
 1. 写入 results.json → history/<version>/run-<tester-id>-NNN-<ts>/results.json
-1.5 Gate 强制校验（项目存在机读 gate 清单 + 校验器时必做，如 test/gates.json + validate-gates.py）：
-    → 运行校验器（传入 run 目录 + 包类型 + 变更关键词）
-    → 非零退出 = 有适用 gate 未跑或 verdict 非法 → 测试未完成，不得进入步骤 2
+1.5 结构化结果强制校验（所有新 run 必做）：
+    → 运行 `<skill-root>/scripts/validate-results.sh <run>/results.json`
+    → 非零退出 = evidence / gate / DoD / release-readiness 未闭合 → 测试未完成，不得进入步骤 2
+    → 项目另有 `test/gates.json` / applicability 校验器时，再运行项目校验器
+      （传入 run 目录 + 包类型 + 变更关键词）；两道校验都必须通过
     → 补跑缺失 gate 或对确实无法执行的标 blocked/skip + reason 后重新校验
     → 这是确定性代码关口：不同 agent（Claude/Codex/任意平台）跑结果一致，
-      不依赖任何 agent 的记忆或阅读理解——"关键节点漏测"的机器层堵口
+      不依赖任何 agent 的记忆或阅读理解——"关键节点漏测"和伪 confirmed 的机器层堵口
 2. 生成 2 分钟速览 → run 目录内 summary.md
 3. 汇总 bug reports → run 目录内 bugs/（每个 bug 独立文件，run 内编号 BUG-NNN）
 4. 触发 L2 独立验证（读 references/l2-audit-prompts.md，spawn 子 Agent）
@@ -755,7 +761,7 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 
 冲突处理：
   发现冲突 → 不能只改一个文件。确定"哪个是权威源"，然后同步修改所有相关文件。
-  权威源优先级：protocol.md > test-execution-workflow.md > procedures/ > templates.md
+  权威源优先级：protocol.md > test-execution-workflow.md > references/procedures/ > templates.md
 ```
 
 ### 变更日志

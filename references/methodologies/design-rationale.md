@@ -1,7 +1,7 @@
 # 测试方法论：设计理由与研究依据
 
 > **本文件面向人类读者**（skill 维护者、想理解"为什么这样设计"的用户）。
-> Agent 执行时不加载本文件。核心步骤在 workflow 文件（Tier 1）和 procedures/ 目录（Tier 2）。
+> Agent 执行时不加载本文件。核心步骤在 workflow 文件（Tier 1）和 references/procedures/ 目录（Tier 2）。
 > 本文件合并了原 5 个方法论文件的设计理由和研究数据。
 
 ---

@@ -70,7 +70,8 @@ Both `install` and `status` print the resolved `test root:`. Treat an unresolved
 installation failure before running tests.
 
 Current Codex-active hook set: `execution-log`, `credential-scan`, `feedback-rules-guard`, `derived-view-guard`, `session-write-guard`, `post-test-checklist`, `results-validation`, and `registration-gate`.
-These were runtime-verified on `codex-cli 0.125.0` and re-verified on `0.145.0-alpha.18` with the renamed `hooks` feature and hook-trust requirement.
+These were runtime-verified on `codex-cli 0.125.0`, `0.145.0-alpha.18`, and
+`0.146.0-alpha.3.1` with the renamed `hooks` feature and hook-trust requirement.
 `execution-log` runs on `PostToolUse/Bash`.
 `credential-scan`, `feedback-rules-guard`, `derived-view-guard`, and `session-write-guard` each run on both `PreToolUse/Bash` and `PreToolUse/Write`.
 `post-test-checklist`, `results-validation`, and `registration-gate` each run on both `PostToolUse/Bash` and `PostToolUse/Write`.
@@ -175,26 +176,32 @@ Replace `<SKILL_PATH>` with the actual path to the better-test skill directory.
 #### post-test-checklist.sh
 - **Type**: PostToolUse on Write
 - **Trigger**: When results.json is written
-- **What it does**: Injects post-completion checklist reminder + **cleanup checklist** (v3.1.0: /tmp 凭据残留检查、orphan daemon/sampler 进程 kill、orphan orders cancel、测试副作用记入 process-log)
+- **What it does**: Injects post-completion checklist reminder + cleanup checklist. Cleanup is
+  ownership-scoped: exact run-owned temp paths only, process identity re-check before kill, and only
+  order IDs created by this run. `cancel-all` requires fresh approval and exclusive-account scope.
 - **Codex note**: Codex now runs this on both `PostToolUse/Bash` and `PostToolUse/Write`. The Bash path infers shell write targets; the native Write path observes built-in `apply_patch` writes to `results.json`.
 
 #### results-validation.sh
 - **Type**: PostToolUse on Write
 - **Trigger**: When results.json is written
-- **What it does**: Validates results.json structure and **pass-evidence quality**:
-  - Schema v2 requires version, run_id, mode, summary, tester_id, finished_at, coverage, items, and gate_items
-  - Every v2 item must contain `status`; a legacy `verdict` cannot satisfy this requirement
-  - Schema v1/unversioned history can still be read through `status // verdict`
+- **What it does**: Validates results.json structure, evidence, gate, DoD, and readiness:
+  - Schema v3 requires package/environment identity, arithmetic summary/coverage, explicit gate
+    applicability, evidence sources, package DoD, and release readiness
+  - Evidence artifacts must resolve to files inside the run directory; `confirmed` requires two
+    distinct independence keys and two distinct resolved artifact files
+  - `proven` requires a source/proto or multi-version basis; functional claims also require a
+    separate runtime artifact
+  - Schema v2 remains strict for item evidence and gate-ledger semantics; schema v1 remains historical-read compatible
   - Hierarchical IDs such as `AUTH-REM-03` and `CLI.AUTH-01` are accepted
-  - Coverage section exists
-  - Items array non-empty
-  - Pass items have non-empty assertion_field
-  - Stable item ID format
-  - Pass items evidence_level >= direct
-  - **(v3.1.0)** Compare mode: pass items must have comparison_baseline non-null
-  - **(v3.1.0)** Pass items must have assertion_value non-empty (field name alone insufficient)
-  - **(v3.1.0)** pre_existing=true items cannot be marked pass (Red Line #18)
-- **Codex note**: Codex now runs this on both `PostToolUse/Bash` and `PostToolUse/Write`. Both paths re-read `results.json` after the write completes and inject validation errors/advisories via `additionalContext`. The shared validator returns failure for schema v2 errors; PostToolUse adapters surface that failure after the write because the runtime cannot undo an already-completed write.
+  - Gate IDs/verdicts/reasons/references are validated and must agree with item status
+  - Package-specific required checks, targeted-vs-release scope, incomplete reachable coverage,
+    caveats/skips, and invalid GO decisions fail closed or require a traceable human override
+- **Portable hard gate**: run `scripts/validate-results.sh <run>/results.json`; unlike a post-write
+  advisory, this command propagates the validator's non-zero exit code.
+- **Codex note**: Codex runs this on both `PostToolUse/Bash` and `PostToolUse/Write`. Both paths re-read
+  `results.json` after the write and inject validation context. A PostToolUse hook cannot undo the
+  completed write and some runtimes do not propagate its exit status, so release workflows must use
+  the portable hard-gate command.
 
 ### Phase B: Tester/Coordinator Isolation (v3.0)
 
@@ -273,6 +280,12 @@ If `.better-work/` is NOT gitignored on the target project, add:
 ## Testing
 
 ```bash
+# all deterministic suites (runtime smoke intentionally excluded)
+./scripts/test-all.sh
+
+# deterministic suites plus authenticated runtime smoke
+./scripts/test-all.sh --include-runtime
+
 # execution-log regression: Claude direct vs gate vs Codex direct
 ./hooks/test-execution-log-parity.sh
 

@@ -232,6 +232,8 @@ mkdir -p test/testers
 # 测试历史
 mkdir -p test/history
 touch test/history/bugs-index.md
+# post-ship escape 人类视图；escapes.json 按 templates.md 初始化，不能只建空 JSON
+touch test/escapes.md
 ```
 
 | 目录 | 用途 | 边界 |
@@ -248,6 +250,9 @@ touch test/history/bugs-index.md
 
 1. **`protocol.md`** — **项目级**测试认知约束（安全纪律 + 项目纪律口子）。L0 和思维纪律已在 skill 的 `protocol-base.md` 中，不重复生成。从模板中按风险等级（严格/标准/宽松）选择安全纪律版本，询问用户。**无人值守 fallback**：默认 **标准版**，Step 5 报告中明示。项目纪律段初始为空（由 `/better-test protocol-update` 积累）
 2. **`test-groups.md`** — 从信号源 A + B + F 提取。每组包含：名称、覆盖范围、运行命令、运行条件（环境变量、依赖、是否需要真账户）
+3. **`escapes.json` + `escapes.md`** — 从模板初始化空 escape 账本。JSON 是 SSOT，
+   Markdown 是人类视图；写后运行
+   `python3 <skill-root>/scripts/validate-escapes.py test/escapes.json`
 
 **新增测试项检查（Tier 1 核心流程）**：每个测试项写入 test-groups.md 前，必须过 4 问：
 

@@ -46,4 +46,4 @@ Then <错误处理预期>
 - 没有 PRD 不强行套 BDD — 直接用 MECE 用户场景 + 代码分析
 - 不为内部实现细节写 BDD — BDD 描述用户可见行为，不描述内部状态
 
-方法论详解见 `methodologies/test-design.md`。
+方法论详解见 `references/methodologies/design-rationale.md` 的测试设计章节。

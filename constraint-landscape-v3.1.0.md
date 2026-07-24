@@ -1,5 +1,8 @@
 # better-test 约束体系全景 — v3.1.0
 
+> **ARCHIVED HISTORICAL SNAPSHOT**：本图中的 18 pending、procedure 数量和平台状态是
+> v3.1.0 当时快照。当前状态见 `UPGRADE-STATUS.md`。
+>
 > 这份文档说明 better-test skill 目前用了哪些机制来约束 AI 测试 agent 的行为，每一层做了什么，效果如何。
 > 版本: v3.1.0 | 日期: 2026-04-26
 

@@ -10,4 +10,7 @@
 
 - This checkout is the canonical Codex skill source; `~/.codex/skills/better-test` points here by symlink.
 - Keep credentials, private test evidence, generated artifacts, and project-specific test histories out of this repository.
-- Validate hook changes with the deterministic `hooks/test-*.sh` suites before pushing.
+- Validate changes with `scripts/test-all.sh` before pushing; run
+  `hooks/test-codex-runtime.sh` whenever the Codex CLI version or hook contract changes.
+- New test runs use results schema v3 and must pass `scripts/validate-results.sh`; schema v1/v2
+  remain historical compatibility formats.

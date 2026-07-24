@@ -22,9 +22,12 @@
 - **风险等级**: low（design-rationale）/ medium（workflow/templates）/ high（protocol-base/red lines）
 - **内容**: <具体的规则或修改>
 - **证据**: <为什么这是通用的——在几个场景中验证过>
-- **状态**: pending / approved / rejected / promoted / promoted-modified /
+- **状态**: pending / rejected / promoted / promoted-modified /
            already-present（内容已在 skill 中，标注位置，不重复写入）/ pilot
 ```
+
+`approved` 不是可持久化状态：用户批准后必须在同一原子动作中落地并直接记为
+`promoted*`；无法同轮落地则保持 `pending`，不能制造“已批但未落”的第二队列。
 
 ## 审批规则
 
@@ -70,9 +73,9 @@
 - **来源**: 多 tester 反复犯同样的定级错误
 - **建议目标**: templates.md (证据分级段) + test-execution-workflow.md
 - **风险等级**: medium
-- **内容**: proven = 多版本 binary 或源码/proto 级验证；confirmed = 双向独立复现；direct = 单 tester 观察（哪怕 5 次）；indirect = 逻辑推断。"5 次独立观察 by 1 tester" = direct 不是 confirmed。不得发明中间等级
+- **内容**: proven = 结构化多版本 binary 或源码/proto basis（functional 结论另有独立 runtime artifact）；confirmed = 双向独立复现且落到两个不同 run-local 文件；direct = 单 tester 观察（哪怕 5 次）；indirect = 逻辑推断。"5 次独立观察 by 1 tester" = direct 不是 confirmed。binary 是证明 artifact/literal 落地的正交范围标签，不能单独判 runtime。不得发明其他中间等级
 - **证据**: e4da/2b2f 3 轮定级 drift；01b4 round 4 从 "pass 17" 改 "confirmed 11 + direct 4" 未声明 calibration shift
-- **状态**: promoted 2026-06-11（test-execution 证据分级表补定级铁律：confirmed=双向独立复现）
+- **状态**: promoted-modified 2026-07-24（统一 hypothesis / execution / update / merge / templates：binary 只证明 artifact，confirmed 确认根因，长期 lessons 必须 proven）
 
 ### [2026-04-26] 双向验证 = 不同输入测同一 claim，不是同一输入 ×2
 - **来源项目**: futu-opend-rs (01b4/5318 cross-verify)
@@ -203,7 +206,7 @@
 ### [2026-04-28] Origin attribution 3-layer template
 - **来源项目**: futu-opend-rs (v1.4.102, adversarial retrospective)
 - **来源**: retrospective / cross-verify resolution
-- **建议目标**: procedures/bug-report.md + test-execution-workflow.md
+- **建议目标**: references/procedures/bug-report.md + test-execution-workflow.md
 - **风险等级**: medium
 - **内容**: 当 finding 的来源归因不清（daemon / tester script / 历史残留）时，必须走 3 层归因链：时间戳 vs ship date、跨版本 binary literal、历史 session 对账。任一层不吻合 → 只能写 undetermined，不能 commit 高 severity
 - **证据**: BUG-ADV-NEW-001 从 P0 自降到 P2，靠的就是 3 层归因链，而不是 narrative 降温
@@ -216,7 +219,10 @@
 - **风险等级**: high
 - **内容**: 考虑把 adversarial 从纯 Tier-1 finding 角色升级为 "tester findings + coord tentative verdict 的双向审"，形成 Tier 1A tester / Tier 1B adversarial / Tier 2 coord / Tier 3 L2 / Tier 4 external 的新分层
 - **证据**: v1.4.102 中一部分 coord framing bug，其实 adversarial 就能先挑战出来，能减轻 L2 的系统性审查负担
-- **状态**: pilot 2026-06-11（high 风险不直接写入；下次多 tester merge 试运行 adversarial 审 coord verdict 一轮，凭实测再定）
+- **状态**: promoted-modified 2026-07-24（用户授权完成冻结升级；落点
+  `team-role-presets.md` Tentative Verdict Challenge + `merge-workflow.md` coordinator
+  challenge/disposition gate + `templates.md` 输出质量标准。没有独立 adversarial 时由
+  l2-skeptic 补位；未处置 challenge 强制 BLOCKED）
 
 ### [2026-04-28] Cross-role daemon borrowing fallback
 - **来源项目**: futu-opend-rs (v1.4.102)
@@ -239,16 +245,16 @@
 |----|------|------|------|
 | N1 | 14 质量维度评估 | init-workflow 3.1 维度评估段 | promoted 2026-06-11 |
 | N2 | 体系六部件框架 | design-rationale 第八章 | promoted 2026-06-11（low 直写） |
-| N3 | pairwise 组合取样 + 等价类显式化 | strategy 阶段 2（穷举标准旁） | promoted 2026-06-11 |
+| N3 | pairwise 组合取样 + 等价类显式化 | strategy + combinatorial procedure + validator/fixtures | promoted-modified 2026-07-24（机器闭环） |
 | N4 | oracle catalog 模板 | templates.md 新文件模板段 | promoted 2026-06-11 |
-| N5 | Gate Execution Ledger + results.json gate_items | test-execution summary 模板 + strategy"Release Gate 映射"段 + templates results.json schema | promoted 2026-06-11 |
-| N6 | Escape analysis 五字段制度 | feedback-workflow 新段 | promoted 2026-06-11 |
-| N7 | 按包类型分级 DoD | strategy"Release Gate 映射"段 | promoted 2026-06-11 |
+| N5 | Gate Execution Ledger + results.json gate_items | schema v3 + strict results/merge validators + fixtures | promoted-modified 2026-07-24（fail-closed） |
+| N6 | Escape analysis 五字段制度 | feedback + structured ledger + closure validator/fixtures | promoted-modified 2026-07-24（机器闭环） |
+| N7 | 按包类型分级 DoD | schema v3 package DoD + release readiness validator | promoted-modified 2026-07-24（机器闭环） |
 | N8 | UX/DX findings 固定节 | test-execution summary 模板（沿用 feedback UX-NNN 格式） | promoted 2026-06-11 |
 | N9 | 证据分层调度（原"最便宜层拦截"） | strategy Pre-check 6.5（L2 审计否决 protocol-base 落点并改写措辞） | promoted-modified 2026-06-11 |
 | — | 探索性 charter 执行钩子 | strategy 阶段 5（规则原已在 SKILL.md Tier 2 表，补执行点） | promoted 2026-06-11 |
 | — | L2 审计前移（plan 确认时预约） | strategy L2 对抗审查段 | promoted 2026-06-11 |
-| N10 | Gate 强制校验双关口（执行完成 1.5 步 + merge Step 4.0） | test-execution-workflow + merge-workflow | promoted 2026-06-11（**滚动当场审首例**：会话内展示→用户批准"先执行 promote 原子三步"→原子写入。机读 gate 清单+校验器的项目必跑；确定性代码跨 agent 一致，解"不同 agent 漏不同关键测试点"） |
+| N10 | Gate 强制校验双关口（执行完成 1.5 步 + merge Step 4.0） | portable `validate-results.sh` + project applicability validator + merge validator | promoted-modified 2026-07-24（执行/merge 都传播非零） |
 
 ---
 

@@ -49,12 +49,13 @@
 ## 调查阶梯（有源码版）
 
 ```
-1. strings binary | grep → indirect（推测级）
-2. daemon --log-level debug → direct（可靠）
-3. curl + xxd / python read → confirmed（金标准）
-4. git log / blame / 读源码 → proven（根因级）
-5. proto / API spec → proven（最终权威）
-无源码时止于第 3 层
+1. strings binary | grep → binary（只能证明 artifact/literal 存在，不能证明 runtime 生效）
+2. daemon --log-level debug → direct
+3. curl + xxd / python read → direct（换了观测工具，不自动变成 confirmed）
+4. 用不同 tester，或不同环境 / 输入路径 / 验证方法独立复现 → confirmed
+5. git log / blame / 读源码，或 proto / API spec → proven
+无源码时最高可到 confirmed，但必须真的有两个不同 `independence_key` 和两个不同的
+run-local artifact 文件
 ```
 
 ## 证据分级完整定义
@@ -64,10 +65,11 @@
 | 级别 | 定义 | 可用于 | 不可用于 |
 |------|------|--------|---------|
 | **guess** | 无任何依据的猜测 | 不可出现在任何输出中 | 一切 |
-| **indirect** | 间接推测（strings binary / 行为观察 / 类比推断） | 仅形成假设 | pass/fail 判定 |
+| **indirect** | 间接推测（上下文推断 / 类比 / 未执行的因果解释） | 仅形成假设 | pass/fail 判定 |
 | **direct** | 直接证据（debug log / 命令输出 / 具体字段值） | ✅ pass、🔴 fail、假设验证 | 根因确认 |
-| **confirmed** | 多重直接证据交叉验证 | 根因确认、known-issues lessons | 声称系统性模式 |
-| **proven** | 源码/proto 级验证，或多版本验证 | 系统性模式、impact-map 标 verified | — |
+| **binary** | binary/artifact 中的 literal、symbol 或结构证据 | 证明代码/资源已落入 artifact | 单独判 runtime pass/fail 或 fixed |
+| **confirmed** | 至少两份不同 `independence_key`、两个不同 run-local artifact 文件的直接证据交叉验证 | 根因确认 | 声称系统性模式、写长期 lessons |
+| **proven** | 结构化 source/proto 或 multi-version basis；functional claim 另有独立 runtime artifact | 系统性模式、impact-map 标 verified、known-issues lessons | — |
 
 ### 语气匹配
 
@@ -86,4 +88,4 @@
 | known-issues lessons | proven |
 | impact-map 标 verified | confirmed |
 
-方法论详解见 `methodologies/investigation.md`。
+方法论详解见 `references/methodologies/design-rationale.md` 的调查方法章节。

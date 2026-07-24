@@ -110,12 +110,16 @@ Smoke 模式不触发（覆盖率审计对 smoke 无意义）。
 1. {path_to_results_json} — 测试结果（每项有 assertion_field、evidence_level 等字段）
 2. {path_to_bugs_dir} — bug 报告目录（如有）
 
-检查以下 5 项：
+检查以下 10 项：
 
 1. **pass 证据**：每个标 ✅ 的项：
    - assertion_field 是否具体？（"power" 是具体的，"output" 不是）→ 不具体则 ⚠
    - assertion_value 是否有值？（空 = 没验证）→ 空则 ⚠
    - evidence_level 是否 ≥ direct？（indirect 不够标 ✅）→ indirect 则 ⚠
+   - evidence_level=confirmed 时，是否有至少两个不同 `independence_key`，且至少解析到
+     两个 run 目录内真实存在的不同 artifact 文件？同一文件不同 fragment 不得算 confirmed
+   - evidence_level=proven 时，是否有 source/proto 或 multi-version 的结构化 basis？
+     functional pass/fail 是否另有与 basis 文件不同的 runtime artifact？
 
 2. **fail 证据**：每个标 🔴 的项：
    - error_code 或 error_detail 是否有实际值？（不是"失败了"）→ 空则 ⚠
@@ -143,6 +147,16 @@ Smoke 模式不触发（覆盖率审计对 smoke 无意义）。
 8. **观测和解读是否混写**：
    - bug report 是否把 observation（看到什么）和 interpretation / impact（怎么理解、影响谁）混成一句
    - impact 没独立证据支撑 → ⚠
+
+9. **Gate / DoD / readiness 闭环**：
+   - gate 是否引用真实 item 与 evidence source，verdict 是否与 item 状态一致
+   - package-type required DoD checks 是否全存在且结论有证据
+   - GO 是否在存在 fail/blocked gate、未通过 DoD 或无批准 skip override 时被错误给出
+
+10. **环境与配置分母**：
+    - 声称双配置 / 双环境 / 双机时，是否真的有不同 config_profile /
+      environment_id / machine_id
+    - 同一 run 或同一配置重复执行不得冒充独立覆盖
 
 输出格式见下方"l2-findings.md 格式"段的"证据审计"部分。
 ```

@@ -158,7 +158,7 @@ Codex 支持原生 skill 系统，但 better-test 在 Codex 上现在是**三层
 2. Layer 2: AGENTS.md protocol 注入
 3. Layer 3: `.codex/hooks.json` 的 L1 hooks 安装
 
-注意：Layer 3 当前安装 8 条 Codex-active hooks：`execution-log`、`credential-scan`、`feedback-rules-guard`、`derived-view-guard`、`session-write-guard`、`post-test-checklist`、`results-validation`、`registration-gate`。其中 `execution-log` 通过 `PostToolUse/Bash` 记录执行日志；其余 7 条已在 `codex-cli 0.125.0` 和 `0.145.0-alpha.18` 上完成双路径验证：Bash 写入继续走 `PreToolUse/PostToolUse + Bash`，built-in 文件编辑则走 `matcher: "Write"`，但真实 payload 是 `tool_name: "apply_patch"` + patch command，而不是 Claude 风格的 `file_path/content`。这也是为什么 Codex 入口层必须保留平台适配，不能直接复用 Claude 的原始 `Write` 入口。`credential-scan` 在 Bash 路径上仍只覆盖命令文本里显式嵌入的 secret，不覆盖外部文件搬运。当前 payload 还没有暴露 shell exit code，所以 Codex 日志会写 `EXIT: ?`。
+注意：Layer 3 当前安装 8 条 Codex-active hooks：`execution-log`、`credential-scan`、`feedback-rules-guard`、`derived-view-guard`、`session-write-guard`、`post-test-checklist`、`results-validation`、`registration-gate`。其中 `execution-log` 通过 `PostToolUse/Bash` 记录执行日志；其余 7 条已在 `codex-cli 0.125.0`、`0.145.0-alpha.18` 和 `0.146.0-alpha.3.1` 上完成双路径验证：Bash 写入继续走 `PreToolUse/PostToolUse + Bash`，built-in 文件编辑则走 `matcher: "Write"`，但真实 payload 是 `tool_name: "apply_patch"` + patch command，而不是 Claude 风格的 `file_path/content`。这也是为什么 Codex 入口层必须保留平台适配，不能直接复用 Claude 的原始 `Write` 入口。`credential-scan` 在 Bash 路径上仍只覆盖命令文本里显式嵌入的 secret，不覆盖外部文件搬运。当前 payload 还没有暴露 shell exit code，所以 Codex 日志会写 `EXIT: ?`。
 
 ### Layer 1: Skill 注册
 
