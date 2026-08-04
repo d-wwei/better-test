@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -204,6 +205,63 @@ def main() -> int:
                             f"- schema v3 proven functional item {item_id} "
                             "至少需要一个与 proven basis 文件不同的 runtime artifact"
                         )
+
+        hybrid = document.get("hybrid")
+        if hybrid is not None:
+            if not isinstance(hybrid, dict):
+                errors.append("- schema v3.1 hybrid 必须是对象")
+            else:
+                if hybrid.get("contract_version") != "1.0.0":
+                    errors.append("- schema v3.1 hybrid.contract_version 必须是 1.0.0")
+                if hybrid.get("mode") not in {"blackbox", "whitebox", "hybrid"}:
+                    errors.append("- schema v3.1 hybrid.mode 不支持")
+                for field in ("objective", "max_claim_scope"):
+                    value = hybrid.get(field)
+                    if not isinstance(value, str) or not value.strip() or value != value.strip():
+                        errors.append(f"- schema v3.1 hybrid.{field} 必须是非空字符串")
+                missing = hybrid.get("missing_capabilities")
+                if not isinstance(missing, list) or not all(
+                    isinstance(value, str) and value.strip() and value == value.strip()
+                    for value in missing
+                ):
+                    errors.append("- schema v3.1 hybrid.missing_capabilities 必须是字符串数组")
+                semantic_diff = hybrid.get("semantic_diff")
+                if semantic_diff not in {"pass", "fail", "not_run"}:
+                    errors.append("- schema v3.1 hybrid.semantic_diff 不支持")
+                artifacts = hybrid.get("artifacts")
+                if not isinstance(artifacts, dict):
+                    errors.append("- schema v3.1 hybrid.artifacts 必须是对象")
+                else:
+                    for name, artifact in artifacts.items():
+                        if not isinstance(artifact, dict):
+                            errors.append(f"- schema v3.1 hybrid.artifacts.{name} 必须是对象")
+                            continue
+                        artifact_ref = artifact.get("artifact_ref")
+                        expected_sha = artifact.get("sha256")
+                        if not isinstance(artifact_ref, str) or not artifact_ref.strip():
+                            errors.append(f"- schema v3.1 hybrid.artifacts.{name}.artifact_ref 缺失")
+                            continue
+                        if not isinstance(expected_sha, str) or len(expected_sha) != 64 or any(
+                            char not in "0123456789abcdef" for char in expected_sha
+                        ):
+                            errors.append(f"- schema v3.1 hybrid.artifacts.{name}.sha256 无效")
+                            continue
+                        path_text = artifact_ref.split("#", 1)[0].strip()
+                        if path_text.startswith(("http://", "https://")):
+                            errors.append(f"- schema v3.1 hybrid.artifacts.{name} 必须归档为本地 artifact")
+                            continue
+                        artifact_path = Path(path_text)
+                        if not artifact_path.is_absolute():
+                            artifact_path = run_dir / artifact_path
+                        try:
+                            artifact_path = artifact_path.resolve(strict=True)
+                            artifact_path.relative_to(run_dir)
+                        except (OSError, ValueError):
+                            errors.append(f"- schema v3.1 hybrid.artifacts.{name} 不存在或超出 run 目录")
+                            continue
+                        digest = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+                        if digest != expected_sha:
+                            errors.append(f"- schema v3.1 hybrid.artifacts.{name} sha256 不匹配")
 
     if errors:
         print("\n".join(errors))

@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "contract_version": "1.0.0",
+  "project_id": "generic-rust-fixture",
+  "result_versions": [3, 4],
+  "providers": [
+    {
+      "id": "better-test.rust-cargo",
+      "kind": "source",
+      "command": ["python3", "{better_test_root}/scripts/rust-cargo-provider.py"],
+      "capabilities": ["source-map", "source-impact", "typed-subject-identity"],
+      "trust": {
+        "path_scope": ["."],
+        "version": "1.0.0",
+        "sha256": "7596b24065295fa088181f0c80f834b57542f073e0f0bc94d3ba90bb247e8f9d",
+        "dependencies": [
+          {
+            "path": "{better_test_root}/scripts/hybrid_core.py",
+            "sha256": "e39ad433274312fad41d37c5e23848041caebecd5d4c9204d39655bc81149978"
+          }
+        ],
+        "source_access": "read-only",
+        "network": "deny",
+        "external_writes": "deny"
+      }
+    }
+  ],
+  "evidence_policy": {
+    "unknown_impact": "expand-safe-default",
+    "safe_default_lanes": ["surface", "inventory", "risk", "invariant", "selection"],
+    "release_required_claim_scopes": ["runtime_readiness", "release_gate"],
+    "mutation": {
+      "required_for": ["high-risk-source-change"],
+      "survivor_disposition_required": true
+    }
+  },
+  "features": {
+    "hybrid_testing": true,
+    "results_v4": "shadow",
+    "dual_write": true
+  }
+}

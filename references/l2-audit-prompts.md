@@ -10,7 +10,8 @@ AND results.json 已写入
 THEN spawn L2 sub-agent
 ```
 
-Smoke 模式不触发（覆盖率审计对 smoke 无意义）。
+Smoke 模式通常不触发（覆盖率审计对 smoke 无意义）；但 results v4 default 切换、Provider 合同
+升级、artifact/source mismatch 或 release GO 即使是 smoke 也必须触发 hybrid identity audit。
 
 ## Spawn 方式
 
@@ -110,7 +111,7 @@ Smoke 模式不触发（覆盖率审计对 smoke 无意义）。
 1. {path_to_results_json} — 测试结果（每项有 assertion_field、evidence_level 等字段）
 2. {path_to_bugs_dir} — bug 报告目录（如有）
 
-检查以下 10 项：
+检查以下 11 项：
 
 1. **pass 证据**：每个标 ✅ 的项：
    - assertion_field 是否具体？（"power" 是具体的，"output" 不是）→ 不具体则 ⚠
@@ -158,8 +159,27 @@ Smoke 模式不触发（覆盖率审计对 smoke 无意义）。
       environment_id / machine_id
     - 同一 run 或同一配置重复执行不得冒充独立覆盖
 
+11. **Bug Report Schedule 完整性**：
+    - `bugs/BUG-*.md` 每份是否都有 TL;DR、现象矩阵、基准对照、其他对照、
+      权限/账号排除、Root cause 推测、复现步骤、影响评估共 8 节
+    - 复现步骤是否可直接执行，预期/实际、命令参数、环境、对照、证据引用和影响范围
+      是否完整，不能用“见日志”“同上”或本地链接代替
+    - YAML 是否含完整身份、状态、严重程度、证据、影响范围、发现版本/run/tester、
+      related tests、修复版本、回归 canary 和 post-ship/escape 字段
+    - 任一节或元数据缺失 → ⚠ 不完整 Bug Report；主报告不得交付
+
 输出格式见下方"l2-findings.md 格式"段的"证据审计"部分。
 ```
+
+## Audit 4: Hybrid 身份与策略审计
+
+**输入文件**：project-profile、capabilities、source-map、source-impact、v3/v4 results、strategy plan。
+
+检查：Provider id/version/hash/path scope 与声明一致；dirty fingerprint 完整；source/build/artifact/
+process/session 没有按版本号偷合并；source-only evidence 没有 runtime/release claim；unknown/low
+confidence 扩围且 hard gate 未减少；七条 coverage lane 分母可复算；required/recommended/excluded
+均有理由；双写文件各自通过 validator 且 semantic diff 已处置；v3 GO 未在缺 typed runtime identity
+时被无条件继承。任何一项不满足均写 finding，并把 release readiness 上限降为 blocked/no-go。
 
 ---
 
@@ -197,6 +217,13 @@ Smoke 模式不触发（覆盖率审计对 smoke 无意义）。
 | 2 | severity 偏低 | BUG-002 | 影响所有 REST 查询但标 P2，建议 P1 |
 | 3 | 推测当结论 | E-07 | 结论写"可能是预期行为"但 evidence_level 标 direct |
 
+## Hybrid 身份与策略审计
+
+| # | 问题 | 详情 |
+|---|------|------|
+| 1 | subject 越权 | source-only unit 结果被用于 release gate |
+| 2 | 安全降级缺失 | unknown change 未扩展 required selection |
+
 ## 统计
 
 | 审计项 | 检查数 | 问题数 |
@@ -225,19 +252,19 @@ Smoke 模式不触发（覆盖率审计对 smoke 无意义）。
    - surface-manifest: test/surface-manifest.md（如有）
    - known-issues: test/known-issues.md
    - bugs: run-<tester-id>-NNN-<ts>/bugs/
-4. 填充 3 个 prompt 模板的文件路径
+4. 填充 4 个 prompt 模板的文件路径（非 hybrid run 的 Audit 4 写 not applicable）
 5. Spawn 子 Agent（用 Agent tool），传入合并后的 prompt
-   建议合并为一次 spawn（3 个审计一起做），减少开销
+   建议合并为一次 spawn（4 个审计一起做），减少开销
 6. 子 Agent 输出写入 run-<tester-id>-NNN-<ts>/l2-findings.md
 7. 主 Agent 读 l2-findings.md，嵌入审计面板（run 目录内 audit-report.md）
 ```
 
-### 合并 Prompt（推荐：一次 spawn 做 3 个审计）
+### 合并 Prompt（推荐：一次 spawn 做 4 个审计）
 
 ```
 你是独立审计员。你的唯一职责是找出主测试 Agent 的问题。不要帮它辩护。
 
-请阅读以下文件，然后执行 3 项审计。将所有发现写入一个文件。
+请阅读以下文件，然后执行 4 项审计。将所有发现写入一个文件。
 
 文件列表：
 - execution-log: {path}
@@ -246,12 +273,14 @@ Smoke 模式不触发（覆盖率审计对 smoke 无意义）。
 - surface-manifest.md: {path}（如不存在则跳过 Audit 2）
 - known-issues.md: {path}
 - bugs/: {path}（如不存在则跳过 bug severity 检查）
+- project-profile/capabilities/source-map/source-impact/v4 shadow: {paths}（非 hybrid 则 Audit 4 写 N/A）
 
-执行以下 3 项审计：
+执行以下 4 项审计：
 
 [Audit 1: 执行审计 — 上方完整内容]
 [Audit 2: 覆盖率对账 — 上方完整内容]
 [Audit 3: 证据审计 — 上方完整内容]
+[Audit 4: Hybrid 身份与策略审计 — 上方完整内容]
 
 将所有发现写入 {path_to_l2_findings}，格式见上方 l2-findings.md 模板。
 没有发现的审计项写"✓ 未发现问题"。

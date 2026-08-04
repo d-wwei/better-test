@@ -2,6 +2,67 @@
 
 All notable changes to **better-test** (Better-Work series testing subskill) are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); this project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Strategy now resolves `objective × discovered capabilities × project policy` into black-box,
+  white-box, or hybrid execution. Missing or unknown source capability expands to the project's safe
+  black-box defaults and can never remove a hard gate.
+- Results v3 remains readable and gains an optional v3.1 hybrid extension for shadow metadata;
+  results v4 adds typed source/build/artifact/process/session subjects, evidence relations, claim
+  scopes, and seven independently reproducible coverage lanes.
+- Results v4 can become the project default after an audited shadow/pilot window while v3 remains a
+  dual-written compatibility format. Stopping new v3 writes is a separate, explicitly approved
+  migration governed by `references/v3-deprecation.md`.
+- Legacy projection now preserves caveated/known-legacy pass states, split pass counts, gates and
+  carry-forward provenance; a caveated GO requires a complete override.
+- Source/compile/unit/mutation evidence is capped at source/build claims. Runtime readiness and
+  release decisions require matching process/session evidence and identity relations.
+- Mutation testing no longer applies universal score thresholds; project policy controls gates and
+  every surviving mutant requires an explicit disposition.
+
+- Developer handoff is now one self-contained `FULL-TEST-REPORT.md`; internal
+  summaries, audit files, bug sources, and result ledgers are mechanically
+  embedded instead of being submitted as separate files.
+- Every Bug Report must retain the complete eight-section Schedule body and
+  full lifecycle/evidence metadata. A summary, list item, or local link is not
+  an acceptable substitute.
+- Added an account-controlled automation mode for profiles marked
+  `dedicated-real-test` + `standing-all-actions`: login, unlock, order lifecycle,
+  `cancel-all`, and cleanup run without per-action, per-run, or per-session approval.
+- Kept credentials outside agent context through local secret-store or credential-broker
+  injection while separating ordinary/production-account authorization policy from
+  dedicated real-test accounts.
+- Dedicated-account campaigns now reuse persistent local sessions and automatically
+  discover derivable trading-account identifiers after strict readiness instead of
+  asking the user to enter account, password, or account-ID fields per run.
+- Product login and user-journey claims must now be proven through the product's
+  first-party GUI, official CLI, or official configuration. Agents perform setup
+  and launch themselves; brokers/wrappers remain internal credential plumbing and
+  cannot be handed to users or counted as substitute product evidence.
+
+### Added
+
+- Versioned JSON contracts for project profiles, source maps, source impact, and results v4, plus
+  strict standard-library validators and deterministic positive/negative fixtures.
+- A declaration-aware Provider runner and a project-neutral Rust/Cargo Provider for capability
+  probing, source inventory, reverse-dependency impact analysis, and allowlisted checks.
+- Deterministic strategy replay, atomic v3-to-v4 projection, canonical semantic diff, and a hybrid
+  L2 audit covering trust, dirty source identity, artifact/source mismatch, safe fallback, and
+  dual-write equivalence.
+- Atomic dual-write materializes independent canonical v3/v4 run trees and hash-bound local
+  artifacts; semantic diff includes objectives, claim ceilings, gates and provenance.
+- `references/source-provider-contract.md` and the conditional hybrid-testing procedure, keeping
+  generic testing mechanics separate from project-specific risk, gate, ledger, and history knowledge.
+
+- `scripts/build-full-report.py`, a deterministic builder and `--validate-only`
+  gate that rejects missing sections or metadata, unresolved result `bug_id`
+  references, omitted/duplicated Bug Reports, and any embedded-body truncation
+  or drift by SHA-256.
+- Regression coverage for full-report assembly, tamper detection, incomplete
+  Bug Reports, missing Bug Report sources, and explicit no-bug reports.
+
 ## [3.2.0] - 2026-07-24
 
 ### Added

@@ -114,6 +114,21 @@
 
 ## Step 2.5: 代码读取策略
 
+### Step 2.4: 白盒能力发现（只读）
+
+在读代码前先判断“能获得什么事实”，不要因为看见源码就默认 whitebox/full：
+
+1. 查找已有 `project-profile.json`；存在则运行
+   `validate-provider-output.py project-profile`，再通过受信 runner 执行 `probe`。
+2. 无 profile 时只读发现构建系统、源码根、VCS、native test/inventory/static-analysis 命令；
+   通用 Rust/Cargo 项目可建议 `better-test.rust-cargo`，项目专属 gate/ledger 不写入通用配置。
+3. 把能力区分为 available / unavailable / unconfigured / error，并记录证据；没有源码能力时
+   保持原黑盒知识，不把 unavailable 误写成“项目不需要”。
+4. 若用户批准启用 hybrid，按 `references/source-provider-contract.md` 生成项目 profile；
+   Provider 默认只读、无网络、无外部写，profile 不含 secret 或个人绝对路径。
+5. init 只生成/校验 profile 和知识骨架，不运行 source check 或业务测试；source map 是 strategy
+   的 cache/run artifact，不在 init 中手工维护。
+
 信号源 A–E 采集的是结构和元数据。对于有代码仓库的项目，读取测试代码本身能提取更丰富的信息（断言模式、fixture 依赖、环境要求）。
 
 ### 第一遍：签名扫描（始终执行）
@@ -245,6 +260,10 @@ touch test/escapes.md
 | `test/history/<version>/input/` | 触发本版本测试的开发者输入（fix report、沟通记录） | 每版本一个 input/ |
 
 ### 3.1–3.8 生成 test/ 文件
+
+启用 hybrid 时额外生成 `test/project-profile.json` 和项目级 `source-model.md`（名称可按项目
+知识布局调整）。前者只声明 Provider/能力/信任边界/feature flags，后者只记录项目专属 unit、
+risk、gate、native ledger 映射。通用合同仍引用 skill 的 schema，不复制到项目仓库。
 
 按以下顺序生成（参考 `references/templates.md` 的质量标准）：
 

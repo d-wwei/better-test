@@ -1,6 +1,7 @@
 # Merge Workflow
 
-`/better-test merge` 在多个 tester 完成测试后执行：扫描 run 目录 → 校验覆盖 → 检测冲突 → 合并 bug → 重建聚合文件 → 用户确认。
+`/better-test merge` 在多个 tester 完成测试后执行：扫描 run 目录 → 校验覆盖 → 检测冲突 →
+合并 bug → 重建聚合源文件 → 生成并校验单一 `FULL-TEST-REPORT.md` → 用户确认。
 
 执行此命令的 agent 承担 **Coordinator** 角色。理想情况下由未参与测试的 agent 执行（更客观），但任何 agent 都可以——workflow 保证步骤完整性。
 
@@ -103,28 +104,39 @@ IF 没有未合并 run：
 （而非组维度）核对还能发现跨 tester 互补：A 漏的 gate B 跑了即闭合，都漏的才是真缺口。
 ```
 
-`merged-results.json.source_runs[]` 不能只写叙述性的 `"validation": "pass"`。每个来源必须绑定
-不可变原件：
+hybrid 的 shadow/default run 还必须：
+
+- 用外部 canonical profile trust anchor 校验 profile/capabilities/source-map/source-impact/v4 shadow 的本地引用与 SHA-256；跨项目 merge 为每个 source run 提供对应的 `--profile`；
+- 重新运行 v3/v4 semantic diff，并拒绝未处置差异；
+- 按 typed subject 合并，source/build/artifact/process/session 不得仅凭 version/run id 合并；
+- 每个来源保留自己的 source fingerprint、artifact hash、process/session identity；
+- release-scoped merge 必须有 runtime subjects 和适用 hard gate，source-only run 只能作佐证；
+- coverage 按七条 lane 分别对账，不把不同分母相加成单一百分比。
+
+`merged-results.json.source_runs[]` 不能只写叙述性的 `"validation": "pass"`。v4 default
+合并必须绑定 v4 不可变原件：
 
 ```json
 {
   "run_id": "<与来源 results.json 完全相同>",
   "results_path": "<相对 merged-results.json 或绝对路径，文件名必须为 results.json>",
   "sha256": "<results.json 的 64 位小写 SHA-256>",
-  "schema_version": 3,
-  "version": "<与来源完全相同>",
-  "package_type": "<与来源完全相同>",
-  "environment": {
-    "environment_id": "<与来源完全相同>",
-    "machine_id": "<与来源完全相同>",
-    "config_profile": "<与来源完全相同>"
-  }
+  "schema_version": 4,
+  "version": "<与来源完全相同>"
 }
 ```
 
-`validate-merged-results.py` 会重新计算 SHA-256、调用 `validate-results.sh` 校验每个真实来源，
-再逐字段比对 run / schema / version / package / environment。路径不存在、hash 漂移、来源本身
-未过 strict validator 或声明字段不一致，均视为 merge 失败。
+v4 `subjects`、`relations`、`items[].occurrences`、`gates[].occurrences` 和
+`release_readiness.source_verdicts` 必须逐来源原样保存，不得把 typed identity、claim scope、
+evidence strength、evidence hash/independence key 或 caveated pass 折叠掉。每个 caveated
+occurrence 必须有独立 `caveat_overrides` 处置记录。
+
+`validate-merged-results-v4.py` 会重新计算 SHA-256、执行 results v4 Schema 与语义校验，逐项比对
+上述 occurrence，并按最弱 claim、最保守 item/gate/readiness 重新计算聚合结论。路径不存在、
+hash 漂移、来源本身未过 strict validator、漏项或语义升级，均视为 merge 失败。
+
+只有兼容历史 v3 run 时才生成旧 merged schema v2，并用 `validate-merged-results.py`；v3 合并
+不能承载 v4 typed semantics，也不能作为 v4 default 项目的主合并结果。
 
 ```
 合并所有 tester 测过的 test_id（取并集）
@@ -287,7 +299,8 @@ scope-of-impact 说得很吓人，但 definitional 不满足时，不能硬升�
    - Minor findings bucket（没单独立 bug 但值得下轮继续看的小问题）
 
 2. merged-results.json — 聚合结果
-   - 合并所有 run 的 items（去重，冲突项取 fail）
+   - v4 default：按来源保留 typed subject/relation/item/gate occurrence；聚合项取保守结论
+   - v3 compatibility：保留旧 merged schema v2 输出，但不能替代 v4 主结果
    - summary 重新计算
 
 3. conflict-log.md — 冲突和差异
@@ -300,25 +313,46 @@ scope-of-impact 说得很吓人，但 definitional 不满足时，不能硬升�
 5. status.md — coordinator 工作状态
    - 合并进度 / 已完成
 
+6. FULL-TEST-REPORT.md — 开发者唯一交付物
+   - 完整嵌入 merged-summary.md
+   - 完整嵌入适用的 status / conflict / verdict-challenge / L2 审计材料
+   - 逐字嵌入 merge-*/bugs/ 下每个 8 节 Bug Report 及完整 YAML 元数据
+   - 完整嵌入 merged-results.json
+
 更新项目级聚合文件：
-6. test/status.md — 从 merged-results.json 重新生成
-7. history/bugs-index.md — 从 merge-*/bugs/ 重建
-8. test/known-issues.md — 从 merged-results + feedback 更新
-9. history/feedback-rules.json — Step 7 已重建
+7. test/status.md — 从 merged-results.json 重新生成
+8. history/bugs-index.md — 从 merge-*/bugs/ 重建
+9. test/known-issues.md — 从 merged-results + feedback 更新
+10. history/feedback-rules.json — Step 7 已重建
 
 生成 `merged-results.json` 后运行：
-  python3 <skill-root>/scripts/validate-merged-results.py <merge>/merged-results.json
+  # v4 default 主路径
+  python3 <skill-root>/scripts/validate-merged-results-v4.py <merge>/merged-results.json
+
+  # 仅历史 v3 compatibility 合并
+  python3 <skill-root>/scripts/validate-merged-results.py <merge>/merged-results-v3.json
 非零退出时 merge 未完成，尤其不能发布 GO。
 
+L2 审计和独立 challenge 全部闭合后，最后运行：
+  python3 <skill-root>/scripts/build-full-report.py \
+    --run-dir <merge> \
+    --output <merge>/FULL-TEST-REPORT.md
+  python3 <skill-root>/scripts/build-full-report.py \
+    --run-dir <merge> \
+    --output <merge>/FULL-TEST-REPORT.md \
+    --validate-only
+
+任一命令非零退出时，不得交付。`merged-summary.md`、`bugs/`、`conflict-log.md` 和
+`merged-results.json` 继续保留为内部结构化源，但不得要求开发者分别打开。
+
 机器闭环要求：
-  - `summary` 的 total / passed / failed / skipped / conflicts 必须与 items 逐项精确重算一致
-  - merged item 的 source_runs 必须覆盖该 item 在所有来源中的 occurrence；任何来源 fail
-    或任意 item 都不能通过省略 source_run / merged item 隐藏；相同 item ID 跨来源的
-    name / group / type / assertion_field 必须一致，否则按语义漂移阻断
-  - merged gate 必须覆盖来源中的全部 gate；item_ids / evidence_refs 必须精确绑定来源
-    item 与 evidence source，不能写悬空字符串；全部来源都声明 gate_applicability=none 时，
-    merged gate_items 可以且应当是 []；同一 gate ID 在不同来源的 item scope 必须一致
-  - merged DoD 的 source_runs / check_refs 必须覆盖每个来源 DoD check
+  - v4 `summary` 的 pass/caveat/fail/blocked/partial/skip/excluded/conflict 必须与 items 精确重算
+  - v4 merged item occurrence 必须与来源 item 完全相等，连同 subject_refs、claim_scope、
+    evidence_strength、proven_basis 和 evidence source；任何来源结果都不能被省略或升级
+  - v4 subject/relation/gate/readiness occurrence 必须逐来源原样覆盖；claim 上限取来源最弱值
+  - caveated / known-legacy pass 不得归一化为 unconditional pass，且每个 occurrence 必须有
+    人类可追溯的 caveat override
+  - v3 compatibility merged item/gate/DoD 仍按旧 validator 覆盖全部来源，不得反向替代 v4
   - 独立 challenge 必须有 reason、reviewed_at 和 dispositions；
     unresolved_count 必须等于 disposition=unresolved 的实际数量；challenger 必须绑定来源
     tester_id，或显式提供 external reviewer 的 reviewer_id / identity / evidence_ref
@@ -326,6 +360,8 @@ scope-of-impact 说得很吓人，但 definitional 不满足时，不能硬升�
     精确一致；DoD 必须 pass，来源 readiness 只能是 go / not_applicable，且至少一个
     release-scoped source 必须为 go（全是 targeted/not_applicable 不得合成发版批准）；不得有
     fail/blocked gate、failed/conflict item 或未处置 challenge
+  - merged-results 引用的每个 bug_id 必须有对应完整 bug 源；merge-*/bugs/ 中的全部 bug
+    必须各自满足 8 节正文 + 完整 YAML 元数据，并逐字、各一次嵌入 FULL-TEST-REPORT.md
 ```
 
 ## Step 9: 展示给用户确认（present_to_user）
@@ -343,9 +379,9 @@ scope-of-impact 说得很吓人，但 definitional 不满足时，不能硬升�
   Bug: 2 个（BUG-v1.4.28-001, BUG-v1.4.28-002）
   冲突: 1 项（B-05: claude pass / codex fail → 标 fail）
 
-详见:
-  合并报告: merge-coordinator-xxx/merged-summary.md
-  冲突记录: merge-coordinator-xxx/conflict-log.md
+开发者交付:
+  merge-coordinator-xxx/FULL-TEST-REPORT.md
+  （唯一文件；已包含统一结论、冲突、审计、全部完整 Bug Reports 和机器结果）
 
 确认合并结果？[y / 查看冲突详情 / 重新分析某项]
 ```
@@ -373,3 +409,6 @@ merge       → coordinator 读所有 run，生成合并输出 + 更新项目级
 - 不要自动丢弃冲突——全部记入 conflict-log.md 供用户裁决
 - 不要跳过覆盖校验——即使所有结果一致，仍需检查是否有遗漏的 stage
 - 不要在 tester 未全部完成时强制 merge——由用户判断何时所有 tester 就绪
+- 不要把 merged-summary、bugs/、conflict-log 或 results 当作多个开发者附件——它们是
+  `FULL-TEST-REPORT.md` 的内部源；默认只提交通过机器校验的主报告
+- 不要用 Bug 摘要、列表行或本地链接代替完整 Bug Report

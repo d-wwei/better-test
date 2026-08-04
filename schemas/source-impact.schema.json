@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://better-test.local/schemas/source-impact.schema.json",
+  "title": "Better Test Source Impact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "source_map_sha256", "base", "head", "changed_units", "impacted_risk_units", "selections", "required_lanes", "required_gates", "mutation_triggers", "confidence", "unknown_changes", "fallback_policy"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "contract_version": {"const": "1.0.0"},
+    "source_map_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "base": {"type": "string", "minLength": 1},
+    "head": {"type": "string", "minLength": 1},
+    "changed_units": {"$ref": "#/$defs/units"},
+    "impacted_risk_units": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "selections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required", "recommended", "excluded"],
+      "properties": {
+        "required": {"$ref": "#/$defs/selections"},
+        "recommended": {"$ref": "#/$defs/selections"},
+        "excluded": {"$ref": "#/$defs/selections"}
+      }
+    },
+    "required_lanes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "required_gates": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "mutation_triggers": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "confidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["score", "level", "reasons"],
+      "properties": {
+        "score": {"type": "number", "minimum": 0, "maximum": 1},
+        "level": {"enum": ["high", "medium", "low"]},
+        "reasons": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "unknown_changes": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "fallback_policy": {"enum": ["none", "expand-safe-default"]},
+    "provider_metadata": {"type": "object"}
+  },
+  "$defs": {
+    "units": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "path", "change_type"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "path": {"type": "string", "minLength": 1},
+          "change_type": {"enum": ["added", "modified", "deleted", "renamed", "unknown"]}
+        }
+      }
+    },
+    "selections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "reason", "unit_ids", "risk_ids"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "kind": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1},
+          "unit_ids": {"type": "array", "items": {"type": "string", "minLength": 1}},
+          "risk_ids": {"type": "array", "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    }
+  }
+}

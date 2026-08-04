@@ -59,7 +59,7 @@ port + account 组合才能唯一标识。
 
 ```
 采样脚本必须 nohup + disown，完全独立于 Claude session：
-  nohup /tmp/futu-sampler-<tester-id>.sh > /tmp/futu-sampler-<tester-id>.log 2>&1 &
+  nohup /tmp/project-sampler-<tester-id>.sh > /tmp/project-sampler-<tester-id>.log 2>&1 &
   disown
 
 脚本结束时自己写 SAMPLER_DONE 标记。
@@ -134,11 +134,11 @@ Canary 告警升级：
 
 ```
 Canary 命名：/tmp/canary-<tester-id>-<daemon-port>.log（不是 /tmp/canary-24h.log）
-Log 命名：/tmp/futu-<tester-id>-<port>.log（不是 /tmp/futu-daemon.log）
+Log 命名：/tmp/service-<tester-id>-<port>.log（不是 /tmp/service-daemon.log）
 PID 文件：/tmp/daemon-<tester-id>.pid
 
-跨 tester 的 PID reuse + 共享 /tmp 导致 log 归属错误的真实案例：
-  → e4da canary 检测 PID 3921 消失 → 归档 log → 实际是另一个 tester 的 daemon
+跨 tester 的 PID reuse + 共享 /tmp 会导致 log 归属错误：
+  → 某 canary 检测一个 PID 消失后归档 log，但实际归档的是另一个 tester 的 daemon
   → 验证必须四项匹配：port + account + 启动时间 + log 最后行时间
 ```
 
@@ -153,17 +153,17 @@ PID 文件：/tmp/daemon-<tester-id>.pid
 规则：所有时间戳转 UTC 作 SoT。
   macOS: stat -f "%Sm" -t "%Y-%m-%dT%H:%M:%SZ" <file>
   Epoch 计算：必须用工具（date -r / Python datetime），不手算
-  手算错 8h 的真实案例：29cd v9 算错导致结论反转
+  手算错时区可能直接导致结论反转
 ```
 
 ## 10. /tmp 污染控制
 
 ```
-多 tester 长跑后 /tmp 可能有 44+ 个 futu-*.log 文件。
+多 tester 长跑后 `/tmp` 可能有大量 `service-*.log` 文件。
 
 清理规则：
   自己的 log → tester-id 前缀 + session 结束后归档到 run 目录
-  查找时 → find /tmp -name "futu-*" -newer <session-start-stamp> -user $(whoami)
+  查找时 → find /tmp -name "service-*" -newer <session-start-stamp> -user $(whoami)
   不用 grep /tmp 全部文件——先限定时间范围和归属
 ```
 

@@ -1,7 +1,7 @@
 ---
 name: better-test
 description: |
-  测试知识管理：为项目构建持久化的测试组定义、变更影响映射、已知问题库和测试认知约束，支持变更驱动的策略推荐、跨 session 反馈循环和断点续传。Better-Work 系列子技能。
+  黑盒 + 白盒混合测试知识管理：按目标和实际能力自动选择 blackbox / whitebox / hybrid 策略，为项目构建持久化测试组、源码影响映射、已知问题库和测试认知约束。支持安全降级、typed evidence、跨 session 反馈和断点续传。Better-Work 系列子技能。
   触发场景：发布新版本前回归、修了 bug 想验证、变更后想知道跑哪些测试、录入开发者反馈避免重复提报。独立命令 /better-test，或作为子技能 /better-work test。
   Subcommands: init, update, strategy, feedback, protocol-update, reflect, checkpoint, resume, merge
 argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-update [text] | reflect [scope] | checkpoint | resume | merge"
@@ -19,7 +19,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 
 - `/better-test init` — 探索测试结构，生成 `.better-work/test/` 知识文件
 - `/better-test update` — 信号驱动的增量更新（新测试、新 bug、新组）
-- `/better-test strategy` — 基于变更分析推荐测试策略（smoke / targeted / bug-retest / full）
+- `/better-test strategy` — 先判定目标和能力，再推荐 blackbox / whitebox / hybrid 下的 smoke / targeted / bug-retest / full
 - `/better-test feedback <id> <verdict> [--note "..."]` — 录入反馈，提炼为 known-issues 规则。verdict ∈ `not-a-bug` / `fixed` / `fixed-differently` / `wontfix` / `deferred` / `revoke`
 - `/better-test protocol-update [text]` — 升级测试认知约束：用户输入新原则或自动总结会话经验，确认后写入 protocol.md + changelog
 - `/better-test reflect [scope]` — 从历史数据提取经验：impact-map 验证、稳定性趋势、bug 热点、经验综合、耗时校准、模式提炼。增量版在每次测试后自动执行
@@ -46,6 +46,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
     ├── known-issues.md                        ← derived view（coordinator 写，tester 只读）
     ├── env-config.md                          ← 共享知识：测试环境配置
     ├── surface-manifest.md                    ← 共享知识：接口清单 SSOT
+    ├── project-profile.json                   ← 可选：Provider/能力/信任边界/results feature flags
     ├── release-set-policy.json                ← 可选：跨 run 环境/配置/gate 分母
     ├── escapes.json                           ← post-ship escape 机器账本（SSOT）
     ├── escapes.md                             ← escape 人类视图
@@ -69,8 +70,12 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
             │   ├── progress.md                ← 断点（checkpoint 写入）
             │   ├── status.md                  ← 此 tester 本 run 的测试结果
             │   ├── results.json               ← 结构化结果
+            │   ├── capabilities.json          ← hybrid run-local 能力快照
+            │   ├── source-map.json            ← hybrid run-local 源码事实缓存（非人工 SSOT）
+            │   ├── source-impact.json         ← hybrid run-local 影响与 selection 证据
             │   ├── process-log.md             ← 过程日志
             │   ├── summary.md                 ← 2 分钟速览
+            │   ├── FULL-TEST-REPORT.md        ← 开发者唯一交付（含全部完整 Bug Reports）
             │   ├── execution-log.md + l2-findings.md + audit-report.md
             │   ├── bugs/                      ← 此 tester 发现的 bug（run 内编号）
             │   │   └── BUG-NNN-<slug>.md
@@ -84,6 +89,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
             │   ├── verdict-challenge.md       ← 独立 adversarial 对 coordinator 暂定结论的挑战与处置
             │   ├── merged-summary.md          ← 统一结论
             │   ├── merged-results.json        ← 聚合结果
+            │   ├── FULL-TEST-REPORT.md        ← 合并后的唯一开发者交付
             │   └── bugs/                      ← 校验后的 bug（项目级编号）
             │       └── BUG-<version>-NNN-<slug>.md
             │
@@ -124,6 +130,12 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 16. run 目录缺少 `results.json`（只有 markdown 无结构化数据） → 不完整，机器可解析的结果是跨 session 自动对比的前提
 17. strategy 阶段 changelog 条目未逐一映射到测试项且未映射条目无显式标注 `⏭️ 不需要测: <原因>` → 违规，不允许静默跳过
 18. 已知有 bug 的功能点标 pass（用 trivial case 凑）或用 skip 掩盖已知缺陷 → 违规，已知缺陷应标 fail + 注明 pre-existing
+19. 把 `summary.md`、`bugs/`、`results.json` 等多个文件分别交给开发者 → 违规；它们是内部源，默认只提交通过机器校验的 `FULL-TEST-REPORT.md`
+20. `FULL-TEST-REPORT.md` 只放 Bug 摘要、列表或链接，或任一 Bug 缺少 8 节正文/完整 YAML 元数据 → 违规；必须逐字嵌入本轮全部完整 Bug Reports
+21. 用源码、compile、unit、mutation 证据宣称进程 ready、业务路径生效或 release GO → 违规；claim 不能超过 evidence subject
+22. source/build/artifact/process/session 身份被版本号合并，或 dirty source 缺 staged/unstaged/untracked fingerprint → 违规；身份 relation 必须可复核
+23. Provider/impact 不确定或失败时缩小测试范围、清空 required selection 或删除项目 hard gate → 违规；unknown/low confidence 只能 expand-safe-default
+24. source-map 被人工维护为项目 SSOT，或项目专属 test group/gate/ledger 泄漏进通用 Provider → 违规；通用协议与项目知识必须分层
 
 ## Acceptance Criteria
 
@@ -133,10 +145,24 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 4. `checkpoint` + `resume` 后，agent 能准确复述上次跑到哪个组的哪个 ID（resume 时列出所有 tester，用户选择要恢复的 tester）。如有 `strategy-plan.md`（status: confirmed 或 in-progress），resume 可跳过重跑 strategy 直接从计划续跑
 5. `references/adapters.md` 为每个支持平台（Claude/Cursor/Gemini/Codex/OpenCode/OpenClaw）都给出**可粘贴执行**的注入语法（@ 引用 vs 内容嵌入），无 placeholder 占位
 6. 多 tester 并发测试时，各 tester 只写自己的 `run-<自己>-*/` 目录和 `testers/<自己>/registry.md`，互不干扰。`/better-test merge` 能从多个 run 目录正确生成聚合 status.md、bugs-index.md、conflict-log.md 和 verdict-challenge.md；最终结论只能在独立 challenge 全部处置后发布
-7. 新 run 的 schema v3 `results.json` 必须通过 `scripts/validate-results.sh`；confirmed
+7. 新 run 必须按外部 canonical project profile 写结果并验证（run 内 profile 副本不是信任根）：`results_v4=default` 时主 `results.json` 为 v4 并继续
+   双写 v3 兼容结果；否则主结果为 schema v3/v3.1。两版都必须通过各自 validator 与 semantic
+   diff；confirmed
    要有两个不同 independence key 和两个不同 run-local artifact 文件，proven 要有
    source/proto/multi-version basis（functional 结论另有独立 runtime artifact），gate /
    package DoD / release readiness 机器闭环，跨环境要求由 release-set validator 对账
+8. 每个 run/merge 完成 L2 和 challenge 后，必须用 `scripts/build-full-report.py` 生成并以
+   `--validate-only` 复核 `FULL-TEST-REPORT.md`；所有 bug_id 均映射到完整 Bug Report，
+   `bugs/` 中每份报告只嵌入一次且正文逐字一致。开发者默认只接收这一份文件
+9. 启用 hybrid 的项目必须通过 project profile、capabilities、source map、source impact 和
+   results v4 validator；unknown change 必须扩围，七条 coverage lane 可复算，source-only
+   negative fixture 不能形成 runtime/release claim
+10. results v4 shadow/default 都必须双写并运行 semantic diff；无法从 v3 恢复 typed runtime
+    identity 时旧 GO 必须被 capped，不得为兼容而捏造 process/session。停止 v3 新写入必须另有
+    明确的人类批准，不能随 v4 default 自动发生
+11. 多 tester 的 v4 default 合并必须运行 `validate-merged-results-v4.py`，逐来源保留 subject、
+    relation、typed item/evidence、gate、caveat 和 readiness occurrence；v3 merged validator
+    仅用于历史兼容，不能作为 v4 主合并路径
 
 ## References
 
@@ -160,6 +186,8 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 | `references/templates.md` | 生成输出文件时 | 核心文件的模板 + 质量标准 |
 | `references/team-role-presets.md` | strategy / merge 遇到多 tester 组队时 | 可扩展 role schema + preset 库 + coordinator dispatch / merge protocol |
 | `references/adapters.md` | 多平台注入 | Claude / Cursor / Gemini / Codex 适配 |
+| `references/source-provider-contract.md` | init / strategy / execution 遇到 Provider | 四合同、信任边界、身份、降级与版本兼容 |
+| `references/v3-deprecation.md` | execution / merge / reflect 读写 v3/v4 | v4 default、v3 兼容写入、退场条件与回滚 |
 
 ### Tier 2: 扩展流程（条件触发加载）
 
@@ -172,9 +200,10 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 | `references/procedures/hypothesis-investigation.md` | test-execution | 错误解读三问无法定位（3 问都答了仍不确定） | 3-假设法 + 调查阶梯 + 证据分级完整定义 + bug 分类 |
 | `references/procedures/mutation-testing.md` | strategy | full/targeted **且** 有代码变更 **且** 项目有变异测试工具 | 增量变异测试 |
 | `references/procedures/flakiness-scoring.md` | update / strategy | update 检测到 flaky 信号；或推荐组含 known-issues Flaky 项 | 稳定性评分 |
-| `references/procedures/bug-report.md` | test-execution | 发现 bug 需要写报告 | 7 节标准格式 + yaml 元数据 |
+| `references/procedures/bug-report.md` | test-execution | 发现 bug 需要写报告 | 8 节标准格式 + 完整 yaml 元数据 + 单文件嵌入合同 |
 | `references/procedures/longrun-testing.md` | strategy | strategy 包含 24h+ 长跑；或用户要求稳定性/耐久性测试 | 长跑监控：canary/采样器/三层健康验证/daemon 身份 6 元组 |
 | `references/procedures/combinatorial-testing.md` | strategy | 2+ 个输入因子且穷举成本高；或需要证明 pairwise / 等价类覆盖 | 2-way 覆盖、等价类显式化、高风险 canary 与机器校验 |
+| `references/procedures/hybrid-testing.md` | init / strategy | project profile 启用 hybrid，或发现可读源码/构建图能力 | 目标×能力策略、七 lane、claim 上限、v3/v4 双写 |
 
 ### Tier 3: 设计文档（面向人类，agent 不加载）
 

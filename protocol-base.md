@@ -17,6 +17,9 @@
 
 ## 思维纪律
 - 推测必须标"推测"**并立即验证**（查基准/查 log/重复实验）——标了不验证 = 隐患
+- 先按测试目标探测能力，再选 blackbox / whitebox / hybrid；能力缺失要降级并显式写出
+- 源码/compile/unit/mutation 只能证明 source/build claim，不能替代 artifact/process/session/runtime 证据
+- source/build/artifact/install/process/session 身份分别冻结；unknown/低置信度影响只允许扩围，不允许删 hard gate
 - 模糊错误先诊断再行动，禁止直接重试或放弃
 - 四态定性（✅/🟡/🔴/🐛），不用二分
 - 测试请求模拟三种用户：熟悉者（完整参数）/ 新手（只传 required）/ LLM agent（只传核心字段）

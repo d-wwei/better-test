@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "contract_version": "1.0.0",
+  "source_map_sha256": "75cac5b4ced4a85b41c5959ac7fc955adcf15156c9481b40947520a5ef71a2e6",
+  "base": "fixture",
+  "head": "fixture",
+  "changed_units": [],
+  "impacted_risk_units": [],
+  "selections": {
+    "required": [],
+    "recommended": [],
+    "excluded": [
+      {
+        "id": "fixture-noop",
+        "kind": "fixture",
+        "reason": "no changed source units in the deterministic contract fixture",
+        "unit_ids": [],
+        "risk_ids": []
+      }
+    ]
+  },
+  "required_lanes": [
+    "surface",
+    "inventory",
+    "code",
+    "diff",
+    "risk",
+    "invariant",
+    "selection"
+  ],
+  "required_gates": [
+    "source-closure"
+  ],
+  "mutation_triggers": [],
+  "confidence": {
+    "score": 1,
+    "level": "high",
+    "reasons": [
+      "deterministic fixture"
+    ]
+  },
+  "unknown_changes": [],
+  "fallback_policy": "none",
+  "provider_metadata": {}
+}

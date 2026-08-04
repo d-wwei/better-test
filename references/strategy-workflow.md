@@ -29,7 +29,7 @@ strategy 是 tester 自动注册的触发点。首次执行 strategy 时：
 
   示例：
     "当前活跃 tester:
-      claude-a3f2: daemon port 11111, PID 12345
+      worker-a3f2: local service port 18111, PID 12345
      本 tester 将使用: daemon port 11112"
 
 资源变更时（如重启 daemon 换端口），tester 更新自己的 registry.md Resources 段。
@@ -269,6 +269,20 @@ git diff <prev_version_tag>..HEAD → 读实际变更内容（不只是文件名
 
 如果**所有信号源都为空** → strategy 推荐 `smoke`（最低成本验证基线）。
 
+## Step 1.5: 目标 × 能力策略解析（resolve_mode）
+
+1. 把目标归为 `source_change / package_validation / behavior_regression / release_decision`。
+2. 有 `project-profile.json` 时校验 profile，经受信 runner `probe`，冻结 source/build/artifact/
+   process/session 独立身份；dirty source 必须含 staged/unstaged/untracked fingerprint。
+3. Provider `inventory` 生成 run-local `source-map.json`，`impact` 生成 `source-impact.json`；
+   两者校验、hash 后才能进入 strategy。相同输入重复运行不一致视为 Provider error。
+4. 用 `resolve-hybrid-strategy.py` 计算 blackbox / whitebox / hybrid、七条 coverage lane、missing
+   capabilities 和 max claim scope。source 能力不可用时自动退回黑盒；未知/低置信度只扩围。
+5. 加载 `references/procedures/hybrid-testing.md`。源码分析提高 selection/diagnosis 精度，不删除
+   项目 hard gate、negative、recovery、用户路径或 runtime 验证。
+
+无 profile 的项目继续原流程，mode=blackbox；不得因“仓库目录存在”假装 Provider 已配置。
+
 ## Step 2: 影响分析（analyze_impact）
 
 两层分析：关键词匹配（粗）+ 函数级分析（精）。
@@ -292,15 +306,17 @@ git diff <prev_version_tag>..HEAD → 读实际变更内容（不只是文件名
 对 Step 1 C+ 的函数级变更清单：
   1. 每个变更的函数 → 搜索 test-groups 中哪些测试项调用了这个函数
   2. 签名变更 → 所有调用方的测试都受影响
-  3. 内部实现变更 → 只有直接测试该函数行为的测试受影响
+  3. 内部实现变更 → 沿调用、数据、状态、错误和依赖边传播到 risk unit；至少覆盖直接测试与
+     反向依赖，禁止假设“只有直接单测受影响”
   4. 新增函数 → 检查是否有测试覆盖（没有 → 标为覆盖缺口）
 
 输出：比关键词匹配更精准的 affected_items（测试项级别，不只是组级别）
 ```
 
-两层取并集：关键词匹配的组 ∪ 函数级分析的项 = 最终影响范围。
+三类取安全并集：关键词匹配的组 ∪ 函数级/Provider risk propagation ∪ 项目 hard gates =
+最终影响范围。Provider unknown 或 low confidence 时再加入 profile safe-default lanes。
 
-> **不内置 ">50% 升级 full" 规则**。futu-tester 源材料无此阈值，本 skill 也不擅自加。如果项目需要这种升级策略，应该在 `impact-map.md` 的"全量触发条件"段（见 templates.md）显式列出，不靠隐式阈值。
+> **不内置 ">50% 升级 full" 规则**。通用测试协议没有可靠依据支持固定阈值，本 skill 也不擅自加。如果项目需要这种升级策略，应该在 `impact-map.md` 的"全量触发条件"段（见 templates.md）显式列出，不靠隐式阈值。
 
 ## Step 3: 读历史（read_history）
 
@@ -354,8 +370,9 @@ IF 项目知识库存在 release-gate / critical-matrix 类文件（如 trading-
   RC 级       → 全域 gate + dirty/recovery + full 集合 + 覆盖率分母 + L2 审计
   non-release → 目标验收（不形成发版批准）
 
-  → 新 run 一律写 results schema v3 的 package_type / environment / dod /
-    release_readiness；required check ID 使用 templates.md 的固定枚举
+  → `results_v4=default` 时主结果写 typed v4，并双写含 package_type/environment/dod 的 v3
+    compatibility 结果；其他项目主结果仍为 schema v3/v3.1。required check ID 使用
+    templates.md 的固定枚举，两版必须 semantic diff
   → mode/config 相关 claim 必须给每个 run 写稳定 config_profile；多配置要求在 merge
     按 config_profile 去重核对，不能把同一配置重复跑两次写成双配置覆盖
   → 若 gate 要求双配置 / 双环境 / 双机，按 templates.md 生成 release-set-policy.json；
@@ -407,10 +424,19 @@ IF 旧版本仍可用且未保存过基线：
 5. 测试方案可行性: 不只检查环境，还要检查"这个测试方案能不能做"
    → 需要交易密码但没有？需要特定账号类型但没有？需要 real 市场但今天周末？
    → 不是测到一半才发现不可能——Setup 阶段就排除不可执行的项
+   → `dedicated-real-test` 的账号/交易账户 ID 若能从持久会话或 strict-ready 账户列表派生，
+     必须由 Agent 在内部自动获取，不得把它们列成用户输入或人工配合项
+   → 同时写明本轮验证的第一方用户入口。broker/wrapper 只能处理 secret/session，
+     不能被计划成用户入口，也不能替代产品的 GUI/官方 CLI/官方配置路径
 
 6. destructive 分级 + 授权
    → D0 无损 read-only；D1 低成本负向；D2 消耗性；D3 账号状态风险；D4 高风险 lockout / quota 风险
-   → D3 需要明确说明代价，D4 必须用户显式授权
+   → D3 需要明确说明代价，D4 必须有可验证授权
+   → 若 env-config 把账号标记为 `dedicated-real-test` 且
+     `authorization_mode=standing-all-actions`，账号所有者已在账号层承担风险：
+     登录、解锁、下单、改单、撤单、cancel-all 和清理均默认允许，不得再按动作、run 或
+     session 请求人工确认；standing 授权本身就是 D4 的显式授权
+   → 普通/生产账号仍按项目声明的交互式授权策略处理，不得把专用测试账号规则外溢
    → 有内部可重置账号时，不要沿用生产账号的保守 skip 逻辑
 
 6.5 证据分层调度: 诊断与定位优先走最便宜层（log / binary / offline harness），
@@ -435,6 +461,11 @@ IF 旧版本仍可用且未保存过基线：
 ### 分阶段计划生成
 
 基于 Step 1-3 的输入，生成 5 阶段执行计划：
+
+hybrid 计划必须额外列出：typed subjects/relations、七条 coverage lane 分母、required /
+recommended / excluded selection 及理由、missing capability、max claim scope、v3/v4 shadow
+开关。source/build 检查只能回答源码层问题；package/release 目标仍必须绑定 artifact/process/
+session 和适用的业务 canary。
 
 ```
 每个可执行 claim 的默认验证顺序（不是新的成熟度评分）：
@@ -832,8 +863,8 @@ test-groups.md 中需要定义测试目标：
 
 | 目标名 | 二进制/地址 | 端口 | 说明 |
 |--------|-----------|------|------|
-| rust-new | ./futu-opend | 11111 | 新 Rust 实现（被测对象） |
-| cpp-old | ./moomoo_OpenD | 11112 | 旧 C++ 实现（对照基准） |
+| candidate | ./candidate-service | 18111 | 新实现（被测对象） |
+| baseline | ./reference-service | 18112 | 参考实现（基线） |
 ```
 
 如果没有定义测试目标，用户可以在 strategy 选择 compare 时临时指定。
@@ -899,7 +930,7 @@ test-groups.md 中需要定义测试目标：
 
 ## 跨项目通用化要点
 
-futu-tester 原版用 toml profile + bash 脚本实现。本 skill 把这些能力**提炼为知识文件 + workflow 描述**：
+早期项目适配器常用 profile + shell 脚本实现。本 skill 把这些能力**提炼为知识文件 + workflow 描述**：
 
 - ❌ 不再生成 toml profile —— 改为 markdown 知识文件（test-groups.md、impact-map.md），人类可读可改
 - ❌ 不再用 bash 执行决策树 —— 改为 agent 按本文档的决策逻辑思考并报告

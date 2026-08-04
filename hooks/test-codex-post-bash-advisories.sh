@@ -30,6 +30,8 @@ EOF
 
 CHECKLIST_OUT=$(run_post_bash "$SCRIPT_DIR/codex/post-test-checklist.sh" 'printf "{}" > .better-work/test/history/v1/run-codex-a3f2-001-1234/results.json')
 printf '%s\n' "$CHECKLIST_OUT" | jq -e '.hookSpecificOutput.additionalContext | contains("post-completion checklist")' >/dev/null
+printf '%s\n' "$CHECKLIST_OUT" | jq -e '.hookSpecificOutput.additionalContext | contains("FULL-TEST-REPORT.md")' >/dev/null
+printf '%s\n' "$CHECKLIST_OUT" | jq -e '.hookSpecificOutput.additionalContext | contains("8 节正文")' >/dev/null
 
 CHECKLIST_MULTI_OUT=$(run_post_bash "$SCRIPT_DIR/codex/post-test-checklist.sh" 'cp notes.md /tmp/checklist-copy && printf "{}" > .better-work/test/history/v1/run-codex-a3f2-001-1234/results.json')
 printf '%s\n' "$CHECKLIST_MULTI_OUT" | jq -e '.hookSpecificOutput.additionalContext | contains("post-completion checklist")' >/dev/null

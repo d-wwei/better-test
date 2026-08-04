@@ -60,6 +60,25 @@ json.load(sys.stdin, parse_constant=reject_constant)
 
   schema_version=$(printf '%s\n' "$content" | jq -r '(.schema_version // 1) | tostring' 2>/dev/null)
 
+  if [[ "$schema_version" == "4" ]]; then
+    local repo_dir=""
+    repo_dir="$(cd "$BT_RESULTS_VALIDATION_RULES_DIR/../../.." && pwd)"
+    semantic_issues=$(python3 "$repo_dir/scripts/validate-results-v4.py" "$file_path" 2>&1) || {
+      errors=$'\n'"$semantic_issues"
+    }
+    if [[ -z "$errors" ]]; then
+      return 0
+    fi
+    context="❌ results.json 字段检查失败（schema v4 validation failed）:${errors}\n\n修复后重新写入；schema v4 错误不能作为有效测试结果继续流转。"
+    jq -n --arg context "$context" '{
+      hookSpecificOutput: {
+        hookEventName: "PostToolUse",
+        additionalContext: $context
+      }
+    }'
+    return 2
+  fi
+
   for field in version run_id mode summary; do
     val=$(printf '%s\n' "$content" | jq -r --arg field "$field" '.[$field] // empty' 2>/dev/null)
     if [[ -z "$val" || "$val" == "null" ]]; then
@@ -129,7 +148,7 @@ json.load(sys.stdin, parse_constant=reject_constant)
       errors="${errors}"$'\n'"$semantic_issues"
     fi
   elif [[ "$schema_version" != "1" ]]; then
-    errors="${errors}"$'\n'"- 不支持的 schema_version: $schema_version（当前支持 1、2、3）"
+    errors="${errors}"$'\n'"- 不支持的 schema_version: $schema_version（当前支持 1、2、3、4）"
   fi
 
   if [[ "$items_count" != "0" ]]; then

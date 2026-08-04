@@ -1,0 +1,149 @@
+{
+  "schema_version": 4,
+  "contract_version": "1.0.0",
+  "version": "1.0.0",
+  "tester_id": "fixture-tester",
+  "run_id": "run-fixture-001",
+  "mode": "whitebox",
+  "objective": "source_change",
+  "started_at": "2026-08-01T10:00:00+08:00",
+  "finished_at": "2026-08-01T10:01:00+08:00",
+  "subjects": [
+    {
+      "id": "source:fixture",
+      "type": "source",
+      "identity": {"vcs": "git", "commit": "fixture", "dirty": false}
+    }
+  ],
+  "relations": [],
+  "summary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "blocked": 0,
+    "skipped": 0,
+    "excluded": 0,
+    "pending": 0,
+    "partial": 0
+  },
+  "coverage_by_lane": {
+    "surface": {
+      "numerator": 1,
+      "denominator": 1,
+      "pct": 100,
+      "subject_refs": ["source:fixture"],
+      "tool": "source fixture inventory",
+      "conditions": "source-only public surface",
+      "disposition": "measured",
+      "item_refs": ["SRC-UNIT.01"],
+      "evidence_refs": ["EVIDENCE.SRC-01"]
+    },
+    "inventory": {
+      "numerator": 1,
+      "denominator": 1,
+      "pct": 100,
+      "subject_refs": ["source:fixture"],
+      "tool": "cargo metadata",
+      "disposition": "measured",
+      "item_refs": ["SRC-UNIT.01"],
+      "evidence_refs": ["EVIDENCE.SRC-01"]
+    },
+    "code": {
+      "numerator": 1,
+      "denominator": 1,
+      "pct": 100,
+      "subject_refs": ["source:fixture"],
+      "tool": "cargo test",
+      "disposition": "measured",
+      "item_refs": ["SRC-UNIT.01"],
+      "evidence_refs": ["EVIDENCE.SRC-01"]
+    },
+    "diff": {
+      "numerator": 1,
+      "denominator": 1,
+      "pct": 100,
+      "subject_refs": ["source:fixture"],
+      "tool": "git diff",
+      "disposition": "measured",
+      "item_refs": ["SRC-UNIT.01"],
+      "evidence_refs": ["EVIDENCE.SRC-01"]
+    },
+    "risk": {
+      "numerator": 1,
+      "denominator": 1,
+      "pct": 100,
+      "subject_refs": ["source:fixture"],
+      "tool": "source impact",
+      "disposition": "measured",
+      "item_refs": ["SRC-UNIT.01"],
+      "evidence_refs": ["EVIDENCE.SRC-01"]
+    },
+    "invariant": {
+      "numerator": 1,
+      "denominator": 1,
+      "pct": 100,
+      "subject_refs": ["source:fixture"],
+      "tool": "cargo test",
+      "disposition": "measured",
+      "item_refs": ["SRC-UNIT.01"],
+      "evidence_refs": ["EVIDENCE.SRC-01"]
+    },
+    "selection": {
+      "numerator": 1,
+      "denominator": 1,
+      "pct": 100,
+      "subject_refs": ["source:fixture"],
+      "tool": "strategy resolver",
+      "disposition": "measured",
+      "item_refs": ["SRC-UNIT.01"],
+      "evidence_refs": ["EVIDENCE.SRC-01"]
+    }
+  },
+  "items": [
+    {
+      "id": "SRC-UNIT.01",
+      "name": "source unit behavior",
+      "status": "pass",
+      "test_kind": "unit",
+      "subject_refs": ["source:fixture"],
+      "claim_scope": "source_correctness",
+      "evidence_strength": "direct",
+      "assertion": {"field": "exit_code", "value": 0},
+      "selection_refs": [],
+      "evidence_sources": [
+        {
+          "id": "EVIDENCE.SRC-01",
+          "independence_key": "cargo-test",
+          "artifact_ref": "artifact.txt",
+          "kind": "source-test"
+        }
+      ],
+      "bug_ids": []
+    }
+  ],
+  "gates": [
+    {
+      "id": "source-closure",
+      "verdict": "pass",
+      "reason": "selected source check passed",
+      "item_ids": ["SRC-UNIT.01"],
+      "evidence_refs": ["EVIDENCE.SRC-01"],
+      "required_subject_types": ["source"]
+    }
+  ],
+  "max_claim_scope": "source_correctness",
+  "missing_capabilities": ["runtime-probe", "artifact-identity", "process-identity", "session-readiness"],
+  "input_refs": {
+    "project_profile": {"artifact_ref": "project-profile.json", "sha256": "58dcdf69712ae91e1e40915b9643e258cd25eb919b1dbb62c84071452ec87606"},
+    "capabilities": {"artifact_ref": "capabilities.json", "sha256": "52f717bd79d08d11f085a58f861c9b1614b1f9c49df5083e900000388b8e4c75"},
+    "strategy": {"artifact_ref": "strategy.json", "sha256": "d4e38d6f846ef1abd968334effc4d77d519518d5ac7e144c78acdf25e0a06a94"},
+    "source_map": {"artifact_ref": "source-map.json", "sha256": "75cac5b4ced4a85b41c5959ac7fc955adcf15156c9481b40947520a5ef71a2e6"},
+    "source_impact": {"artifact_ref": "source-impact.json", "sha256": "12aa0a5506fb5ea230c3ef583c1b6f57b3fbb1f3cf4b532989dee179595857fa"}
+  },
+  "source_impact_ref": {"artifact_ref": "source-impact.json", "sha256": "12aa0a5506fb5ea230c3ef583c1b6f57b3fbb1f3cf4b532989dee179595857fa"},
+  "compatibility": {"semantic_diff": "not_run"},
+  "release_readiness": {
+    "verdict": "not_applicable",
+    "reason": "source-only evidence cannot decide runtime release readiness"
+  }
+}

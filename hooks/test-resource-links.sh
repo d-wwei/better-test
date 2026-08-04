@@ -26,7 +26,7 @@ if [[ -d "$ROOT_DIR/procedures" ]]; then
   exit 1
 fi
 
-expected_count=10
+expected_count=11
 actual_count="$(find "$ROOT_DIR/references/procedures" -maxdepth 1 -type f -name '*.md' | wc -l | tr -d ' ')"
 if [[ "$actual_count" != "$expected_count" ]]; then
   echo "FAIL: expected $expected_count Tier-2 procedures, found $actual_count" >&2

@@ -1,0 +1,97 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://better-test.local/schemas/project-profile.schema.json",
+  "title": "Better Test Project Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "contract_version", "project_id", "result_versions", "providers", "evidence_policy", "features"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "contract_version": {"const": "1.0.0"},
+    "project_id": {"type": "string", "minLength": 1},
+    "result_versions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"enum": [3, 4]}
+    },
+    "providers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "command", "capabilities", "trust"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "kind": {"enum": ["source", "build", "artifact", "runtime", "oracle"]},
+          "command": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+          "capabilities": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "trust": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["path_scope", "source_access", "network", "external_writes"],
+            "properties": {
+              "path_scope": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?![A-Za-z]:)"}
+              },
+              "version": {"type": "string", "minLength": 1},
+              "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+              "dependencies": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["path", "sha256"],
+                  "properties": {
+                    "path": {"type": "string", "minLength": 1},
+                    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+                  }
+                }
+              },
+              "source_access": {"const": "read-only"},
+              "network": {"enum": ["deny", "explicit"]},
+              "external_writes": {"enum": ["deny", "explicit"]}
+            },
+            "anyOf": [{"required": ["version"]}, {"required": ["sha256"]}]
+          }
+        }
+      }
+    },
+    "evidence_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unknown_impact", "safe_default_lanes", "release_required_claim_scopes"],
+      "properties": {
+        "unknown_impact": {"const": "expand-safe-default"},
+        "safe_default_lanes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "release_required_claim_scopes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "mutation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["required_for", "survivor_disposition_required"],
+          "properties": {
+            "required_for": {"type": "array", "items": {"type": "string", "minLength": 1}},
+            "minimum_score": {"type": "number", "minimum": 0, "maximum": 1},
+            "survivor_disposition_required": {"type": "boolean"}
+          }
+        }
+      }
+    },
+    "features": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hybrid_testing", "results_v4", "dual_write"],
+      "properties": {
+        "hybrid_testing": {"type": "boolean"},
+        "results_v4": {"enum": ["off", "shadow", "default"]},
+        "dual_write": {"type": "boolean"}
+      }
+    },
+    "extensions": {"type": "object"}
+  }
+}

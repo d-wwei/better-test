@@ -20,6 +20,9 @@ v3.0：多 Agent 并行测试 + tester/coordinator 两角色架构。
 v3.1：Hook 强制执行、Protocol 拆分、Skill 升级管线。
 v3.1.2：可扩展 team-role preset，用于多 tester 计划和 merge。
 v3.2：严格 results/gate/DoD 校验、可独立审计的证据、完整 Tier-2 资源与确定性 CI。
+v4：按目标与实际能力自动选择黑盒/白盒/混合策略；Provider 合同、typed evidence、七条
+coverage lane、无损历史投影与 v3/v4 安全双写。项目通过自己的审计观察窗口后从 shadow
+切到 default。
 
 核心能力：
 
@@ -28,10 +31,26 @@ v3.2：严格 results/gate/DoD 校验、可独立审计的证据、完整 Tier-2
 - **Tester 隔离** — 并行 agent 各自写 `run-<tester-id>-NNN/`。`/better-test merge` 生成统一结果
 - **可扩展 team-role preset** — 固定的是 role schema，不固定唯一编制；内置 `release-4way`、`api-3way`、`single-plus-l2`
 - **4 层约束框架**（L0 目标校准、L1 Hook、L2 子 Agent 独立验证、L3 人类审计面板）
-- **49 条实战经验** 从真实项目测试中提炼并融入（futu-opend-rs v1.4.26-v1.4.59）
+- **49 条实战经验** 从多轮真实项目测试中提炼并融入
 - **Skill 升级管线** — medium 风险经验在会话内当场审核并原子落地；只有明确延后或 high 风险项进入 `pending-skill-upgrades.md`
 - **经验提取**（`/better-test reflect`）— 从测试历史中学习
 - **差异测试**（`compare` 模式）— Rust 重写 vs C++ 原版对照
+- **能力驱动的混合测试** — 先识别 `source/build/artifact/process/session` 能力与身份，再选择
+  blackbox / whitebox / hybrid；没有源码或 Provider 出错时自动保留并扩展安全黑盒集合
+- **通用层/项目层隔离** — Better Test 定义合同、策略和通用 Rust/Cargo Provider；项目仓库只
+  保存自己的 package/risk/test-group/gate/ledger/历史知识，动态 source-map 不作人工 SSOT
+- **结果 v4 default + v3 compatibility** — typed v4 主结果与 v3 兼容结果原子双写、各自校验、
+  semantic diff；停止 v3 必须另获明确批准，source-only 证据不能冒充 runtime/release 证明
+- **无损 v4 多 tester 合并** — 来源 hash 不可变绑定，逐来源保留 typed subject/relation、
+  item/evidence、gate、caveat 与 readiness；v3 merge 仅作历史兼容
+- **专用实盘账号自动化** — `dedicated-real-test` + `standing-all-actions` 将登录、解锁、下单、
+  改单、撤单、cancel-all 和 cleanup 视为账号级持续授权，不再逐动作、逐 run 或逐 session
+  询问；自动复用持久会话，并在 strict-ready 后自动发现交易账户
+- **第一方用户路径证据** — Agent 直接通过产品正常 GUI、官方 CLI 或官方配置启动和登录；
+  credential broker/wrapper 只在幕后处理凭据，不能变成第二套用户登录流程，也不能替代产品证据
+- **开发者单文件交付** — 每个 run/merge 只交付一份经过机器校验的
+  `FULL-TEST-REPORT.md`，其中包含结论、审计、完整机器结果，以及所有带完整元数据的
+  8 节 Bug Report；摘要或链接不能替代正文
 - **Bug 生命周期管理** — OPEN → CONFIRMED → FIXED → VERIFIED → CLOSED
 
 ## 工作原理
@@ -48,9 +67,10 @@ v3.2：严格 results/gate/DoD 校验、可独立审计的证据、完整 Tier-2
 
 ```
 /better-test strategy
-  → 读 impact-map + known-issues + bugs-index + git diff
+  → 先判定 objective + probe capabilities，再读 impact-map + known-issues + source impact + git diff
   → 推荐："跑 A、B、D 组 — 22 项，约 8 分钟"
   → 解释："src/auth/session.rs 命中 impact-map 关键词 'auth' → A 组"
+  → unknown/low-confidence 只扩围；项目 hard gate 不因白盒选择而减少
   → 检查：凭证就绪？变更批量？金字塔结构？
 
 # 按项目专属计划执行：
@@ -139,7 +159,7 @@ Cursor、Gemini CLI、OpenCode、OpenClaw 的适配安装命令见 `references/a
 | `/better-test update` | 信号驱动的增量更新（新测试、新映射、用户提供的新材料） |
 | `/better-test reflect [scope]` | 从历史中提取经验：映射验证、稳定性趋势、bug 热点、经验综合 |
 | `/better-test protocol-update [text]` | 从用户输入或会话总结升级认知约束 |
-| `/better-test merge` | 合并多 tester 结果 — 交互式选择 run，冲突检测，统一报告 |
+| `/better-test merge` | 合并多 tester 结果 — 交互式选择 run，冲突检测，生成一份自包含开发者报告 |
 | `/better-test checkpoint` | 保存当前测试任务进度 |
 | `/better-test resume` | 从上次断点恢复 |
 

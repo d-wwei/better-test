@@ -123,6 +123,9 @@
 - 断言值: <必填：实际值，如 "153.2">
 - 状态: <✅ / 🟡 / 🔴 / ⏭️>
 - 证据级别: <indirect / direct / binary / confirmed / proven>
+- Evidence subject: <source / build / artifact / installation / process / session / external_service>
+- Claim scope: <本证据实际支持的最大结论>
+- Identity/ref: <subject id；relation 到上一层身份的本地证据>
 ```
 
 **验证规则（状态 ≤ 字段组合约束）**：
@@ -135,6 +138,10 @@
 | `对比` = mismatch | ✅ | 🔴 |
 
 **这不是建议，是结构约束**——模板的必填字段跳不过，违反验证规则的组合不允许。
+
+启用 hybrid 时再执行三条机器约束：source-only test kind 不得支持 runtime/release claim；
+build identity 必须绑定 source ref/toolchain/lock/features/profile/output hash；artifact/process/session
+relation 缺证据时对应 claim 标 blocked，而不是把版本号相同当成同一对象。
 
 ### 🟡 升级路径（产生时就地解决，不积累）
 
@@ -157,7 +164,7 @@ grep daemon/service log 查 error code
   ret_type=-1  → 通用错误，看 daemon log 详情
   ret_type=-8  → 需要 OTP 二次验证
   ret_type=-15 → 重试间隔过短或 session 冲突
-  ret_type=-20011 → 功能不支持（如 moomoo 端 unlock）
+  ret_type=-20011 → 某平台端能力不支持
   
   先读 hint/error_code → 判断根因 → 针对性处理。不要看到 error 就重试。
 ```
@@ -412,6 +419,16 @@ happy path 通过后，对每个接口主动尝试 break——silent failure 最
 ```
 - 不把账号/密码/token 写入任何 .better-work/ 文件
 - 不可逆操作按用户在"环境确认"中选择的策略执行
+- 产品登录、启动和关键用户旅程必须使用被测产品的第一方标准入口（GUI、官方 CLI 或官方配置）。
+  credential broker、wrapper 或测试 harness 只能在 Agent 内部提供 secret/session，不能成为
+  用户需要学习或执行的第二套登录流程，也不能替代普通用户路径的产品证据
+- Agent 自己完成凭据准备、产品启动和登录验证；不得把自定义脚本或终端命令交给用户执行。
+  若第一方路径失败，按产品/UX 问题记录，不能回退到 wrapper 成功后把产品路径标为 PASS
+- `dedicated-real-test` + `standing-all-actions` 是账号级持续授权：所有产品动作直接执行，
+  不得在动作、run 或 session 边界重复询问；凭据可由本机 secret store/credential broker
+  在 Agent 内部注入，但产品进程仍通过第一方标准入口启动
+- 专用账号 campaign 必须优先复用本机持久会话，并在 strict-ready 后从账户列表自动发现
+  可派生的交易账户 ID；禁止把账号、密码或账户 ID 重新变成用户逐 run 输入步骤
 - 即使用户允许全执行，也优先用安全方式（sim 账户 + 远离市价 + 立即撤单）
 ```
 
@@ -421,10 +438,11 @@ happy path 通过后，对每个接口主动尝试 break——silent failure 最
 测试完成或 session 结束前：
 1. 只清理本 run 登记的进程。kill 前同时核对 PID、binary、启动时间、端口和 tester/run
    owner；PID 文件单独不能证明归属。任何一项不符就不 kill，记录并交给用户处理
-2. 只删除本 run 创建并登记的精确临时路径；禁止 `futu-pwd-*` 等跨 tester glob，也不能删
+2. 只删除本 run 创建并登记的精确临时路径；禁止 `<product>-pwd-*` 等跨 tester glob，也不能删
    其他 run 或用户创建的文件
-3. 只撤销本 run 下单账本中记录的 order ID。`cancel-all` 默认禁止；只有用户针对本次清理
-   重新明确授权、且确认测试账户在该时段为独占范围时才能执行，并保存取消前后的订单清单
+3. 普通/生产账号只撤销本 run 下单账本中记录的 order ID；`cancel-all` 仍按项目授权策略执行。
+   对 `dedicated-real-test` + `standing-all-actions`，可自动执行单笔或批量撤单，无需重新授权；
+   保存调用前后的订单清单并自动核对清理结果
 4. 副作用作为 bug 的"外部性成本"显式列出 → 如"测试消耗了 $X margin"
 
 敏感文件最佳实践：创建本 run 独占 tempdir，并在启动时用 trap 删除这个已解析的精确路径；
@@ -463,7 +481,7 @@ Agent 需要做的记录：
 
 ```
 1. 加载 references/procedures/bug-report.md 模板
-2. 按 7 节格式写 bug report（两层结构：先大白话说影响，再技术细节）
+2. 按 8 节格式写完整 bug report（两层结构：先大白话说影响，再技术细节）
 3. 先分 Observation / Interpretation / Impact 三层
    → 观测是什么，和你如何解读、谁会受影响，必须分开写
 4. severity 用"最坏场景下谁受影响"定，不用自己碰到的场景。pre-existing 记在 fix_note 不降 severity
@@ -538,23 +556,32 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 1. 写入 results.json → history/<version>/run-<tester-id>-NNN-<ts>/results.json
 1.5 结构化结果强制校验（所有新 run 必做）：
     → 运行 `<skill-root>/scripts/validate-results.sh <run>/results.json`
+   - `results_v4=shadow`：先写 v3（可带 v3.1 `hybrid` 扩展），再原子写 v4 shadow；分别校验，
+     最后运行 `hybrid-results.py semantic-diff`。profile/capabilities/map/impact/v4 都归档 run-local
+     并记录 hash。任何 diff 未处置，run 不得 completed。
+   - `results_v4=default`：主 `results.json` 写 v4，v3 compatibility 继续双写并校验；无法恢复
+     typed runtime identity 的旧 GO 必须 capped，不能伪造 process/session。停止 v3 新写入不是
+     default 切换的一部分，须满足 `references/v3-deprecation.md` 并另获明确批准。
     → 非零退出 = evidence / gate / DoD / release-readiness 未闭合 → 测试未完成，不得进入步骤 2
     → 项目另有 `test/gates.json` / applicability 校验器时，再运行项目校验器
       （传入 run 目录 + 包类型 + 变更关键词）；两道校验都必须通过
     → 补跑缺失 gate 或对确实无法执行的标 blocked/skip + reason 后重新校验
     → 这是确定性代码关口：不同 agent（Claude/Codex/任意平台）跑结果一致，
       不依赖任何 agent 的记忆或阅读理解——"关键节点漏测"和伪 confirmed 的机器层堵口
-2. 生成 2 分钟速览 → run 目录内 summary.md
-3. 汇总 bug reports → run 目录内 bugs/（每个 bug 独立文件，run 内编号 BUG-NNN）
+2. 生成内部 2 分钟速览 → run 目录内 summary.md
+3. 汇总完整 bug reports → run 目录内 bugs/（每个 bug 独立源文件，run 内编号 BUG-NNN；
+   必须满足 `references/procedures/bug-report.md` 的 8 节 + 完整元数据）
 4. 触发 L2 独立验证（读 references/l2-audit-prompts.md，spawn 子 Agent）
    → 子 Agent 读 run 目录内 execution-log + results + manifest + known-issues
    → 输出 run 目录内 l2-findings.md
 5. 基于 l2-findings 生成 run 目录内 audit-report.md
-6. 所有文件已直接在 run 目录内产出，无需归档复制步骤
-7. 向用户呈现（按顺序）：
-   a. 先呈现 2 分钟速览（用户第一时间看到核心结论）
-   b. 再呈现审计面板（用户确认质量 → 通过 / 打回 / 调查）
-   c. 过程日志和 bug report 不主动呈现，用户需要时 Read
+6. 生成唯一开发者交付文件：
+   → `python3 <skill-root>/scripts/build-full-report.py --run-dir <run> --output <run>/FULL-TEST-REPORT.md`
+   → 主报告必须包含 summary、审计材料、完整机器结果，以及 `bugs/` 中每一份 Bug Report 的
+     8 节正文和完整元数据；不允许摘要替代、截断或仅链接
+6.5 再运行一次 `--validate-only`；任一 bug 正文/数量/hash/元数据不一致时测试未完成
+7. 向用户和开发者只呈现 `FULL-TEST-REPORT.md` 这一份文件。聊天中可以先说一句结论，
+   但不能再把 summary、audit、bugs 作为需要开发者分别打开的交付物
 9. 如有 bug-retest 中的项复测通过 → 更新 bugs-index.md 对应 bug 为 VERIFIED
 10. 增量 reflect（自动执行，见下方）
 11. 建议 /better-test update 更新知识（如有新发现）
@@ -567,13 +594,14 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 |------|------|------|-----------|
 | `execution-log.md` | L2 审计员 + 人复盘 | **Hook 自动生成** | 是（Hook 部署后） |
 | `results.json` | Agent + L2 | Agent 写入 | 是 |
-| `summary.md` | 所有人（2 分钟） | Agent 写入 | 是 |
-| `bugs/BUG-*.md` | 开发者 | Agent 写入 | 是（有 bug 时） |
+| `summary.md` | 内部组装源（2 分钟速览） | Agent 写入 | 是 |
+| `bugs/BUG-*.md` | 内部完整 Bug Report 源 | Agent 写入 | 是（有 bug 时） |
 | `l2-findings.md` | 审计面板 + 人 | L2 子 Agent 写入 | 是（full/targeted） |
 | `audit-report.md` | 人（30 秒判断） | 主 Agent 组装 | 是（有 L2 时） |
 | `process-log.md` | 人复盘 | Agent 手写 | **否**（鼓励但不强制，execution-log 是底线） |
+| `FULL-TEST-REPORT.md` | **开发者唯一交付物** | 机器组装 + 校验 | **是；含全部完整 Bug Reports** |
 
-### 2 分钟速览模板（summary.md）
+### 2 分钟速览模板（summary.md，内部组装源）
 
 ```markdown
 # 测试速览 — v<X.Y.Z> <mode>
@@ -615,10 +643,8 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 <本 run 中测试者自己踩的坑 = 产品改进信号（更好的错误信息/预校验/文档能否避免）。
 可以为空但不可缺节；为空写"本轮无"。格式沿用 feedback-workflow 的 UX-NNN。>
 
-## 详细信息在哪
-- 完整过程: process-log.md（包含每一步的推理和转折）
-- Bug 详情: bugs/BUG-<NNN>.md（可复现步骤 + 对照 + root cause）
-- 原始数据: results.json
+## 主报告
+本速览会被嵌入 `FULL-TEST-REPORT.md`；开发者只接收主报告，完整 Bug Reports 和机器结果都在其中。
 ```
 
 **速览的写作原则**：
@@ -630,6 +656,20 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 - **外部自包含**：给开发者的报告不能引用本地路径。复现步骤、证据、对照全部在一个文件内
 - **先列表再数**：写"一共 X 个"之前，先输出编号列表逐个确认状态（active/推翻/合并），从列表机械地数
 - **边跑边写**：results.json / process-log 每跑完一项就写一条，不攒到最后补
+
+### 完整开发者报告（FULL-TEST-REPORT.md）
+
+这是唯一对外交付文件，不设总字数上限。完整性优先于篇幅：
+
+1. 开头保留 `summary.md` 的决策结论与数字；
+2. 嵌入 `audit-report.md` / `l2-findings.md` 等适用审计材料；
+3. `## 完整 Bug Reports` 下按编号嵌入 `bugs/BUG-*.md` **全部正文和全部元数据**；
+4. `## 完整机器结果` 下嵌入 `results.json`；
+5. 无 bug 时也必须明确写“本轮无 Bug Report”；
+6. 只允许通过 `scripts/build-full-report.py` 生成并校验，不手工复制后直接交付。
+
+主报告缺任一 Bug Report、缺任一 Schedule 章节、正文与源文件不一致，或 results 中存在无对应
+报告的 `bug_id`，一律视为交付失败。
 
 ---
 
@@ -787,3 +827,4 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 - ❌ 不要在一个组全部跑完前跳到下一个组 — 组内连续执行，组间有序推进
 - ❌ 不要忽略 known-issues — 已知 suppress 项不算 active fail，已知 flaky 项要标注
 - ❌ 不要修改本文件而不做一致性检查 — 孤立修改会引入文件间矛盾
+- ❌ 不要把 credential broker / wrapper / harness 当作普通用户登录入口或产品登录通过证据

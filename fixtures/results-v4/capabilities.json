@@ -1,0 +1,12 @@
+{
+  "provider": {"id": "better-test.rust-cargo", "version": "1.0.0", "implementation_sha256": "7596b24065295fa088181f0c80f834b57542f073e0f0bc94d3ba90bb247e8f9d"},
+  "capabilities": [
+    {"name": "source-map", "status": "available", "evidence": "cargo metadata available"},
+    {"name": "source-impact", "status": "available", "evidence": "git diff available"},
+    {"name": "typed-subject-identity", "status": "available", "evidence": "results v4 typed subjects"},
+    {"name": "runtime-probe", "status": "unavailable", "evidence": "not provided by source provider"}
+    ,{"name": "artifact-identity", "status": "unconfigured", "evidence": "artifact is supplied per test run"}
+    ,{"name": "process-identity", "status": "unconfigured", "evidence": "candidate process is supplied per test run"}
+    ,{"name": "session-readiness", "status": "unavailable", "evidence": "source provider does not establish sessions"}
+  ]
+}

@@ -1,0 +1,11 @@
+[package]
+name = "fixture-app"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+fixture-core = { path = "../core" }
+
+[features]
+default = []
+alternate-answer = ["fixture-core/alternate-answer"]

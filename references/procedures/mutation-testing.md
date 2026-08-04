@@ -13,8 +13,9 @@
 1. 识别本次变更的文件（来自 strategy Step 1）
 2. 仅对变更文件生成变异体（增量式，不对全量代码）
 3. 对每个变异体运行受影响的测试组
-4. 统计：杀死变异体 / 总变异体 = 变异测试得分
-5. 存活的变异体 = 测试盲区 → 建议补充测试
+4. 分开统计 killed / survived / timeout / unviable；score 的分母和工具版本必须写明
+5. 每个 survived 变异体必须处置：测试盲区 / equivalent / out-of-scope / tool limitation，附证据
+6. 将结果绑定 source/build subject；mutation 不能支持 runtime/release claim
 
 ## 工具（按语言）
 
@@ -28,11 +29,9 @@
 
 ## 结果解读
 
-```
-变异测试得分 > 87% → 良好（Google 实践基准）
-变异测试得分 70-87% → 可接受，关注存活变异体
-变异测试得分 < 70% → 测试套件需要加强
-```
+不存在通用固定分数线。若 `project-profile.evidence_policy.mutation.minimum_score` 明确配置，按项目
+阈值判 gate；未配置时只报告完整分类和 survivor disposition，不把任何百分比自动翻译成
+“良好/可接受/失败”。即使达到项目阈值，关键风险上的单个未处置 survivor 仍可阻断 source gate。
 
 ## 不做的事
 

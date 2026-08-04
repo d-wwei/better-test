@@ -31,7 +31,7 @@
 - 当前版本: v<version>
 - 测试模式: <smoke / full / targeted:X Y / bug-retest>
 - 启动方式: <bring-your-own / managed / 其他>
-- 关键环境变量: <如 FUTU_DIR / DAEMON_LOG_PATH，但不要写凭证！>
+- 关键环境变量: <如 PROJECT_ROOT / DAEMON_LOG_PATH，但不要写凭证！>
 
 ## 已完成
 - [x] [组 + 项 ID + 简要结果，如 "A 组全部 pass (9/9)"]
@@ -56,7 +56,7 @@
 ## 恢复上下文
 [给下一个 session 的交接信息：]
 - 当前 daemon 状态: [running PID xxxx / not running / managed by skill]
-- 测试输出目录: [/tmp/futu-test-xxx/ 或对应项目的位置]
+- 测试输出目录: [/tmp/project-test-xxx/ 或对应项目的位置]
 - 上次 results.json 路径: [.better-work/test/history/<ver>/run-<tester-id>-NNN-*/results.json]
 - 需要参考的 known-issues 条目: [test_ids]
 - 用户尚未回复的问题: [如有]
@@ -79,7 +79,7 @@
 |---------|-----------|
 | "B 组前 4 项 pass，B-05 fail (no match for 'power')，待录 feedback" | "B 组跑了一半" |
 | "卡在 D-03：WebSocket 订阅 5s 后无 push，daemon log 显示 CMD3020 未触发" | "WS 那个挂了" |
-| "下一步：等用户提供 FUTU_TEST_API_KEY 后跑 F 组" | "等用户给点东西" |
+| "下一步：等用户提供 SERVICE_TEST_API_KEY 后跑 F 组" | "等用户给点东西" |
 
 ### 多任务情况
 

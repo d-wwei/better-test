@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "contract_version": "1.0.0",
+  "generated_at": "2026-08-01T10:00:00+08:00",
+  "provider": {
+    "id": "better-test.rust-cargo",
+    "version": "1.0.0"
+  },
+  "source": {
+    "subject_id": "source:fixture",
+    "type": "source",
+    "identity": {
+      "vcs": "git",
+      "commit": "fixture",
+      "dirty": false
+    }
+  },
+  "native_assets": [],
+  "units": [],
+  "risk_units": [],
+  "checks": [],
+  "edges": [],
+  "provider_metadata": {
+    "generation_binding": {
+      "provider_implementation_sha256": "7596b24065295fa088181f0c80f834b57542f073e0f0bc94d3ba90bb247e8f9d",
+      "hybrid_core_sha256": "e39ad433274312fad41d37c5e23848041caebecd5d4c9204d39655bc81149978"
+    }
+  }
+}

@@ -27,6 +27,10 @@ Agent 回顾当前会话，提取所有候选经验：
 - 覆盖缺口
 - 结构性变化（新测试组、新映射）
 
+同时检查 hybrid 漂移信号：Provider 脚本/version/hash、源码布局、Cargo/build graph、native
+inventory/ledger、project profile feature flags 和最近 source-map 生成错误。通用合同变化走 skill
+升级；项目 unit/risk/gate 映射变化只更新项目 profile/provider/source-model，禁止跨层复制。
+
 ### 模式 B：用户显式输入
 
 ```
@@ -138,6 +142,9 @@ Q4（对所有进 protocol 的）: 具体到 agent 能对照自检吗？
 
 ```
 □ protocol ↔ test-execution-workflow（新规则和执行纪律不矛盾）
+□ project-profile ↔ Provider 输出（id/version/hash/capabilities/path_scope 一致）
+□ source-model ↔ test-groups/impact-map/gates（项目映射闭合；动态 source-map 不是人工 SSOT）
+□ 低置信度/Provider error 仍保留 hard gate，并按 expand-safe-default 扩围
 □ test-groups ↔ impact-map（新测试项有没有对应的映射）
 □ known-issues ↔ feedback-rules.json（lessons 和 suppress 不冲突）
 □ surface-manifest ↔ test-groups（新接口有没有对应测试项）

@@ -18,6 +18,9 @@ v3.0: Multi-agent parallel testing + tester/coordinator two-role architecture.
 v3.1: Hook enforcement, protocol split, skill upgrade pipeline.
 v3.1.2: Extensible team-role presets for multi-tester planning and merge.
 v3.2: Strict results/gate/DoD validation, independently auditable evidence, complete Tier-2 resources, and deterministic CI.
+v4: Objective- and capability-driven black-box/white-box/hybrid strategy, versioned Provider
+contracts, typed evidence, seven coverage lanes, lossless legacy projection, and safe v3/v4
+dual-write migration. Projects graduate from shadow to default through their own audited window.
 
 Key capabilities:
 
@@ -26,10 +29,33 @@ Key capabilities:
 - **Tester isolation** — parallel agents write to separate `run-<tester-id>-NNN/` directories. `/better-test merge` produces unified results
 - **Extensible team-role presets** — stable role schema, replaceable presets (`release-4way`, `api-3way`, `single-plus-l2`, custom)
 - **4-layer constraint framework** (L0 goal calibration, L1 hooks, L2 independent sub-agent verification, L3 human audit panel)
-- **49 field-tested lessons** integrated from real project testing (futu-opend-rs v1.4.26-v1.4.59)
+- **49 field-tested lessons** distilled from multiple real-world testing campaigns
 - **Skill upgrade pipeline** — medium-risk lessons are reviewed in-session and promoted atomically; only deferred or high-risk changes enter `pending-skill-upgrades.md`
 - **Experience extraction** (`/better-test reflect`) — learns from test history
 - **Differential testing** (`compare` mode) — test a Rust rewrite against the C++ original
+- **Capability-driven hybrid testing** — resolves objective plus observed source/build/artifact/runtime
+  capability into black-box, white-box, or hybrid execution; errors and unknown impact expand the
+  safe black-box set instead of weakening it
+- **Generic/project layer separation** — Better Test owns contracts, resolution, and a neutral
+  Rust/Cargo Provider; each project owns its package/risk/test-group/gate/ledger/history knowledge
+- **Results v4 default with v3 compatibility** — typed v4 subjects and relations, strict validation,
+  atomic dual-write and semantic diff; v3 stays supported until an explicit retirement approval,
+  and source-only checks cannot become runtime or release evidence
+- **Lossless v4 multi-tester merge** — immutable source hashes plus exact typed subject, relation,
+  item/evidence, gate, caveat and readiness occurrences; v3 merge remains compatibility-only
+- **Dedicated real-account automation** — `dedicated-real-test` +
+  `standing-all-actions` treats login, unlock, order, modify, cancel,
+  cancel-all, and cleanup as standing account-level authorization with no
+  per-action, per-run, or per-session prompt; persistent sessions are reused
+  and trading-account identifiers are discovered automatically
+- **First-party user-path evidence** — the agent launches and validates the
+  product through its normal GUI, official CLI, or official configuration;
+  credential brokers and wrappers stay internal and never become a second
+  user login flow or substitute product evidence
+- **One-file developer handoff** — each run/merge produces one validated
+  `FULL-TEST-REPORT.md` containing the conclusion, audits, complete machine
+  ledger, and every full 8-section Bug Report with metadata; summaries or
+  links cannot substitute for the Bug Report body
 - **Bug lifecycle management** — OPEN → CONFIRMED → FIXED → VERIFIED → CLOSED
 
 ## How it works
@@ -139,7 +165,7 @@ The skill classifies the project (11 types: library, daemon, API, CLI, mobile ap
 | `/better-test update` | Signal-driven incremental update (new tests, new mappings, new materials from user) |
 | `/better-test reflect [scope]` | Extract experience from history: impact-map validation, stability trends, bug hotspots, lessons |
 | `/better-test protocol-update [text]` | Upgrade cognitive constraints from user input or session summary |
-| `/better-test merge` | Merge results from multiple testers — interactive run selection, conflict detection, unified report |
+| `/better-test merge` | Merge results from multiple testers — interactive run selection, conflict detection, one self-contained developer report |
 | `/better-test checkpoint` | Save current test task state |
 | `/better-test resume` | Read progress and continue |
 

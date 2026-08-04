@@ -265,3 +265,43 @@
 | U1 | hooks 不能只识别 `.better-work/test/` | `hooks/lib/common.sh` + 全部路径敏感规则 + flat fixture | promoted 2026-07-18（支持 repo 内 `.better-test-root`、`BETTER_TEST_DIR` 与 marker-validated flat `test/`） |
 | U2 | results schema 必须防止全量缺 `status` 漏检 | `references/templates.md` + `results-validation` + v1/v2 fixtures | promoted 2026-07-18（v2 strict；v1 `verdict` read compatibility） |
 | U3 | 多平台安装来源不可追溯 | `install.sh` + README + adapters | promoted 2026-07-18（单一 canonical Git checkout + 同源 symlink + commit/dirty provenance） |
+
+---
+
+## 2026-08-04 批次（futu-opend-rs v1.5.1 run023-run026 复盘）
+
+### [2026-08-04] Dedicated profile 无人值守测试合同
+- **来源项目**: futu-opend-rs (v1.5.1 run023-run026)
+- **来源**: 用户反馈 + 实盘回归复盘
+- **建议目标**: strategy-workflow.md + test-execution-workflow.md + templates.md
+- **风险等级**: medium
+- **内容**: 对明确归类为 `dedicated-real-test` 且授权模式为 `standing-all-actions` 的测试 profile，Better Test 应默认无人值守执行登录、设备态、解锁、place、modify、cancel、cancel-all、成交类用例和 cleanup。人工控制点应前置到账号/券商/权限/资金/风险限额；测试过程中不再请求 action/run/session 级授权。执行产物必须包含 profile contract、lease、consumption receipt、write ownership fingerprint、before/after reconcile 和 cleanup attestation。
+- **证据**: v1.5.1 多轮实盘回归中，人工登录/解锁配合成为主要低效点；项目 protocol 已将 dedicated profile 设为 standing policy，但通用 Better Test workflow 还没有把它建模为默认执行合同。
+- **状态**: pending
+
+### [2026-08-04] Credential/session broker 接口只传 profile_id
+- **来源项目**: futu-opend-rs (v1.5.1 run023-run026)
+- **来源**: 实盘登录、解锁、subagent 并行测试复盘
+- **建议目标**: test-execution-workflow.md + templates.md
+- **风险等级**: medium
+- **内容**: Better Test 对真实账号自动化应定义 broker 接口：plan、subagent 和工具参数只传 `profile_id`、case id、端口和脱敏边界；通过 `ensure-session(profile_id)`、`ensure-unlocked(profile_id, scope)`、`ensure-clean(profile_id, ownership)` 操作，不在 argv、公开日志、run artifacts、HTTP body 或 subagent prompt 中传播账号、密码、OTP、交易密码、cipher、cookie/session。公开报告引用 broker receipt 和脱敏 evidence ref，raw evidence 固定 Git 外。
+- **证据**: Rust OpenD 已经需要同时管理第一方 `futu-opend --config`、Keychain、持久 HOME、临时 0600 credential file、opend_rst 和多 subagent；只靠人工输入无法规模化，也容易污染日志。
+- **状态**: pending
+
+### [2026-08-04] Readiness lane split 与 flaky closure 规则
+- **来源项目**: futu-opend-rs (v1.5.1 run023-run026)
+- **来源**: crypto QOT/static、US underlying static、real-write lifecycle 复盘
+- **建议目标**: test-execution-workflow.md + templates.md
+- **风险等级**: medium
+- **内容**: Better Test 应把 readiness 拆成 process、platform session、QOT static/stock-list、QOT quote/kline、TRD unlock/account、business canary 等 lane 分别记账。任一 lane 的 pass 不得覆盖另一 lane。cache/static/readiness 类 bug 如果同一 run 内出现 pass 后 fail，不能关闭；至少需要两个独立窗口稳定通过，并覆盖原失败 canary，才能从 open/flaky 退出。
+- **证据**: v1.5.1 中交易 write 可以成功但 QOT static/underlying 查询失败；crypto 一次 transient quote 成功不能关闭后续显式 unlock + 长窗口失败。
+- **状态**: pending
+
+### [2026-08-04] Fix-directed retest 必须覆盖开发者声明的 exact 输入
+- **来源项目**: futu-opend-rs (v1.5.1 retest3)
+- **来源**: Leaf 关于 batch cancel 非法 market 的修复说明
+- **建议目标**: strategy-workflow.md + test-execution-workflow.md
+- **风险等级**: medium
+- **内容**: 当开发者说明修复了具体非法参数、具体枚举或具体边界值时，Better Test 的 bug-retest 计划必须把这些 exact 输入逐项映射成测试 case，并验证 runtime side effect。只跑泛化 happy path 或只看 source diff 不能关闭该修复声明。
+- **证据**: Leaf 指出 backend 会传非法 market `113/124/123`；有效复测需要同时验证 source filter 覆盖 exact 值、account auth 中确实含这些值、runtime cancel-all 后订单状态实际改变。
+- **状态**: pending

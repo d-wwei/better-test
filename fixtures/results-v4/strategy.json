@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "objective": "source_change",
+  "normalized_objective": "source_change",
+  "mode": "whitebox",
+  "max_claim_scope": "source_correctness",
+  "missing_capabilities": [],
+  "required_lanes": [
+    "surface",
+    "inventory",
+    "code",
+    "diff",
+    "risk",
+    "invariant",
+    "selection"
+  ],
+  "required_gates": [
+    "source-closure"
+  ],
+  "feature_flags": {
+    "hybrid_testing": true,
+    "results_v4": "shadow",
+    "dual_write": true
+  },
+  "mutation_required_for": ["high-risk-source-change"],
+  "mutation_required": false,
+  "mutation_triggers": []
+}

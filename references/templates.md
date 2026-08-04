@@ -454,17 +454,18 @@ estimated_time: <分钟>
 
 ## 测试账号
 
-| 账号名/类型 | 用途 | 状态 | 获取方式 | 注意事项 |
-|------------|------|------|---------|---------|
-| sim-account-01 | 模拟交易测试 | 可用 | 联系 XX 申请 | 无持仓时 funds 返回空是预期 |
-| real-account-01 | 真实行情验证 | 可用 | 用户提供 | 禁止下单！只做查询 |
-| test-api-key | API 鉴权 | 过期需续 | 在 XX 平台申请 | 有 rate limit 100 req/min |
+| Profile alias / 类型 | 用途 | 状态 | 授权模式 | 凭据来源 | 注意事项 |
+|---------------------|------|------|---------|---------|---------|
+| sim-account-01 | 模拟交易测试 | 可用 | project-policy | local secret store | 无持仓时 funds 返回空是预期 |
+| dedicated-real-01 | 专用实盘自动化 | 可用 | standing-all-actions | Agent 内部复用 persistent session/local secret store | 产品第一方入口启动；strict-ready 后自动发现账户；全动作零输入、零审批 |
+| real-readonly-01 | 普通真实行情验证 | 可用 | interactive-scoped | 用户提供 | 禁止下单，只做查询 |
+| test-api-key | API 鉴权 | 过期需续 | project-policy | local secret store | rate limit 100 req/min |
 
 ## 服务与环境
 
 | 服务 | 地址/端口 | 启动方式 | 健康检查 | 注意事项 |
 |------|---------|---------|---------|---------|
-| daemon | localhost:11111 | `./futu-opend --port 11111` | `curl localhost:11111/health` | 确保只有一个实例（lsof 端口清场） |
+| daemon | localhost:18111 | `./sample-service --port 18111` | `curl localhost:18111/health` | 确保只有一个实例（lsof 端口清场） |
 | 数据库 | localhost:5432 | docker-compose up db | `pg_isready` | 测试用独立 schema，不动生产数据 |
 
 ## 环境变量
@@ -473,7 +474,7 @@ estimated_time: <分钟>
 |--------|------|--------|--------|
 | TEST_ACCOUNT | 测试账号 ID | 12345678 | A/B/C 组需要 |
 | DAEMON_LOG_PATH | daemon 日志路径 | /tmp/daemon.log | 调查时需要 |
-| API_ENDPOINT | API 地址 | http://localhost:11111 | 所有组需要 |
+| API_ENDPOINT | API 地址 | http://localhost:18111 | 所有组需要 |
 
 ## 时间依赖
 
@@ -502,6 +503,9 @@ estimated_time: <分钟>
 |------|---------|
 | 不含凭证 | 密码/token/API key 不写入此文件，只写"去哪获取" |
 | 账号状态 | 标注可用/过期/受限，不要假设"还能用" |
+| 授权模式 | 明确 `standing-all-actions` / `interactive-scoped` / `project-policy`；专用实盘账号不得退化成逐动作询问 |
+| 账户发现 | 专用账号的可派生 login/trade account ID 由 Agent 内部自动发现；不得写成每 run 用户输入 |
+| 用户入口 | 登录/启动默认写产品第一方 GUI、官方 CLI 或官方配置；broker/wrapper 只作幕后凭据处理，不得要求用户执行，也不得作为产品通过证据 |
 | 注意事项 | 每条来自实际踩坑（evidence: direct+），不是猜测 |
 | 及时更新 | 账号过期/服务迁移/新增环境变量时通过 update 同步 |
 
@@ -551,7 +555,7 @@ estimated_time: <分钟>
 
 | 工具名 | 必选参数 | 说明 | 覆盖状态 |
 |--------|---------|------|---------|
-| get_warrant | symbols | 窝轮查询 | ✅ I-04 |
+| resource_query | resource_ids | 资源查询 | ✅ I-04 |
 
 ## 未覆盖接口
 
@@ -860,6 +864,20 @@ total_items: <N>
 - Active failures: <N>（suppress 后）
 - Bug retest candidates: <BUG-xxx-NNN 列表>
 
+## Hybrid Strategy（未启用写 not applicable）
+
+- Objective: <source_change | package_validation | behavior_regression | release_decision>
+- Capability snapshot: <run-local capabilities.json + sha256>
+- Mode: <blackbox | whitebox | hybrid>
+- Typed subjects: <source/build/artifact/installation/process/session/external_service ids>
+- Required / recommended / excluded: <每项 ID + reason>
+- Required lanes: <surface/inventory/code/diff/risk/invariant/selection>
+- Required gates: <project gate ids>
+- Missing capabilities: <...>
+- Impact confidence / fallback: <high|medium|low> / <none|expand-safe-default>
+- Max claim scope: <...>
+- Results feature: <v3 | v3.1+v4-shadow | v4-default>
+
 ## Team Contract
 
 - Coordination mode: <solo | preset | custom>
@@ -985,6 +1003,7 @@ test/
 │       │   ├── results.json                ← 测试结果（结构化数据）
 │       │   ├── process-log.md              ← 过程日志（流水账）
 │       │   ├── summary.md                  ← 2 分钟速览
+│       │   ├── FULL-TEST-REPORT.md         ← 开发者唯一交付物（含全部完整 Bug Reports）
 │       │   ├── execution-log.md            ← 执行日志（Hook 自动生成）
 │       │   ├── l2-findings.md              ← L2 独立验证结果
 │       │   ├── audit-report.md             ← L3 审计面板
@@ -999,6 +1018,7 @@ test/
 │           ├── conflict-log.md             ← tester 间差异和冲突记录
 │           ├── verdict-challenge.md        ← tentative verdict 的独立挑战与处置
 │           ├── merged-summary.md           ← 统一结论
+│           ├── FULL-TEST-REPORT.md         ← 合并后的唯一开发者交付物
 │           ├── merged-results.json         ← 聚合结果
 │           └── bugs/                       ← 校验后的 bug（项目级编号）
 │               └── BUG-<version>-NNN-<slug>.md
@@ -1021,15 +1041,16 @@ history/ **只放测试运行产出和版本级材料**。以下不属于 histor
 - **边跑边写**：process-log / results.json 每跑完一项就写一条。攒到最后补的后果：格式不统一、细节遗漏、赶工质量下降
 - **数量机械对齐**：声称 X 个 bug 就写 X 个文件。分类用 found_in / bug_type 字段，不用"写不写文件"来做分类
 
-### 三份核心输出文件
+### 内部源文件与唯一开发者交付物
 
-每次测试运行产出三份面向不同受众的文件：
+每次测试运行继续保留结构化内部源文件，但对开发者只提交一份 `FULL-TEST-REPORT.md`：
 
 | 文件 | 受众 | 目的 | 生成时机 |
 |------|------|------|---------|
 | `process-log.md` | 测试者（复盘） | 试了什么/发现什么/卡在哪/推翻了什么 | 测试过程中增量追加 |
-| `bugs/BUG-NNN-<slug>.md` | 开发者（修 bug） | 每个 bug 的完整技术细节，结构化 | 发现 bug 时写入 |
-| `summary.md` | 所有人（2 分钟了解） | 核心结论 + 关键证据，大白话 | 测试完成后生成 |
+| `bugs/BUG-NNN-<slug>.md` | 内部组装源 | 每个 bug 的完整技术细节，结构化 | 发现 bug 时写入 |
+| `summary.md` | 内部组装源 | 核心结论 + 关键证据，大白话 | 测试完成后生成 |
+| `FULL-TEST-REPORT.md` | **开发者** | 测试结论 + 审计 + 全部完整 Bug Reports + 完整机器结果 | 最后机器组装并校验 |
 
 ### process-log.md（过程日志）
 
@@ -1088,38 +1109,36 @@ history/ **只放测试运行产出和版本级材料**。以下不属于 histor
 回归: BUG-<NNN> VERIFIED / 仍失败
 
 ## 详细信息
-- 完整过程: process-log.md
-- Bug 详情: bugs/BUG-<NNN>.md
-- 原始数据: results.json
+本速览将嵌入 `FULL-TEST-REPORT.md`。开发者只接收该主报告，完整 Bug Reports 和机器结果均在其中。
 ```
 
 写作原则：
 - **大白话 = 零技术术语**：不是"加几句解释"，是完整词汇替换。"完全修好了 / 主体修了但留了尾巴 / 测不完还等着 / 吹牛说修了其实没修"比"8 fully + 6 main-met-with-side-gap"好。测试方法：读给非技术朋友听，听不懂就改
 - **只讲结论不讲过程**（过程在 process-log）
 - **证据只放最关键一条**（不是"我做了 5 步调查"，是"log 里看到 code=-1001"）
-- **影响用"谁受影响"表达**（"量化策略用户"比"option_chain API consumers"好）
+- **影响用"谁受影响"表达**（"批处理用户"比"resource_query API consumers"好）
 - **2 分钟能读完**——超过就砍
 
-**报告分层标准**（不同读者需要不同深度）：
+**报告阅读分层**（全部在同一个 `FULL-TEST-REPORT.md` 内）：
 
-| 层级 | 字数上限 | 受众 | 内容 |
+| 层级 | 位置 | 受众 | 内容 |
 |------|---------|------|------|
-| L0 极简 | ≤500 字 | 决策者（30 秒扫）| 一句话结论 + bug 数 + 是否可发布 |
-| L1 速览 | ≤1500 字 | 项目经理（2 分钟）| summary.md = 这一层 |
-| L2 完整 | ≤8000 字 | 开发者（深究）| bugs/ 目录每个 bug 独立文件 |
+| L0 极简 | 主报告开头 ≤500 字 | 决策者（30 秒扫）| 一句话结论 + bug 数 + 是否可发布 |
+| L1 速览 | 主报告前部 ≤1500 字 | 项目经理（2 分钟）| `summary.md` 的完整嵌入 |
+| L2 完整 | 主报告 `完整 Bug Reports`，不设上限 | 开发者（深究）| 每个 bug 的 8 节正文 + 完整元数据 |
 
-### 质量标准（三份文件）
+### 质量标准（内部源 + 单文件交付）
 
-| 项目 | process-log | bugs/BUG-NNN-slug | summary |
-|------|------------|--------------|---------|
-| 长度 | 不限 | 不限（但精炼） | 不超过 30 行 |
-| 证据级别 | 包含所有级别（含推测） | 只含 direct+ | 只含 confirmed |
-| 推翻记录 | 保留（⟲ 标记） | 不含（只有最终结论） | 不含 |
-| 技术深度 | 完整 | 完整（可复现级） | 只放核心证据 |
-| 语言 | 技术语言 OK | 结构化技术语言 | 大白话 |
+| 项目 | process-log | bugs/BUG-NNN-slug | summary | FULL-TEST-REPORT |
+|------|------------|--------------|---------|------------------|
+| 长度 | 不限 | 不限（但精炼） | 不超过 30 行 | 不设上限，不得因长度截断 bug |
+| 证据级别 | 包含所有级别（含推测） | 只含 direct+ | 只含 confirmed | 保留各源文件原证据等级 |
+| 推翻记录 | 保留（⟲ 标记） | 不含（只有最终结论） | 不含 | 嵌入最终结论与审计 |
+| 技术深度 | 完整 | 完整（可复现级） | 只放核心证据 | 完整可复现 + 完整机器结果 |
+| 语言 | 技术语言 OK | 结构化技术语言 | 大白话 | 前部大白话，后部技术完整 |
 
-**summary 额外规则**：
-- **外部自包含**：给开发者的报告不能引用本地路径。复现步骤、证据、对照全部在一个文件内
+**主报告额外规则**：
+- **外部自包含**：给开发者的报告不能要求打开本地路径。复现步骤、证据、对照和完整 Bug Reports 全部在一个文件内
 - **编号统一**：bug 编号使用单一连续序列（#1, #2, #3...），不区分旧/新来源。术语自解释——如果一个词需要额外解释，用解释替换该词
 - **先列表再数**：写"一共 X 个"之前，先输出编号列表逐个确认状态（active/推翻/合并），从列表机械地数。不凭记忆报数字
 - **Denominator clarity**：每个 X/Y 比率先显式定义分子分母 universe（"14 项 in Leaf 20 scope" vs "10 个 in 我们 13 bugs"）。多 universe 数学必须分开
@@ -1130,14 +1149,57 @@ history/ **只放测试运行产出和版本级材料**。以下不属于 histor
 - **Calibration shift 显式声明**：修改计数方法论时（如"pass 17"改为"confirmed 11 + direct 4"），必须声明"原按 X 定义计 Y，修正后按 Z 定义计 W"。方法论变更本身是信息，不标注 = 读者困惑
 - **并发 tester 文件含 tester-id**：`BUG-<tester-id>-NNN.md`，避免多 tester 文件名冲突
 
-**Deliverables 4 tier**（Leaf/上游默认收 Tier 1）：
+**Deliverables 4 tier**（Leaf/上游默认只提交 Tier 1 的单文件）：
 
 | Tier | 内容 | 何时交付 |
 |------|------|---------|
-| 1 mandatory | 主报告 + 核心 bug files + daemon log 证据 | 默认交付 |
+| 1 mandatory | **仅 `FULL-TEST-REPORT.md`**；内含全部完整 Bug Reports、审计和机器结果 | 默认交付 |
 | 2 support | 证据目录（curl output、log grep、screenshot）| 深究时 |
 | 3 history | cross-verify 产物、roundtrip 记录 | 审计时 |
 | 4 prohibited | 密码、token、API key | 永不交付 |
+
+### FULL-TEST-REPORT.md（开发者唯一交付物）
+
+由 `scripts/build-full-report.py` 从 run/merge 内部源机械组装，不手工复制：
+
+```markdown
+# 完整测试报告 — <run-id | merge-id>
+
+> Developer deliverable: single self-contained file
+
+## 测试结论
+<完整嵌入 summary.md / merged-summary.md>
+
+## 附加审计材料
+<完整嵌入适用的 status / audit / l2 / conflict / verdict-challenge>
+
+## 完整 Bug Reports
+
+### Bug Report 1/N — BUG-001-<slug>.md
+<完整嵌入 8 节正文 + 完整 YAML 元数据，不能摘要或截断>
+
+### Bug Report 2/N — BUG-002-<slug>.md
+<完整嵌入 8 节正文 + 完整 YAML 元数据>
+
+## 完整机器结果
+<完整嵌入 results.json / merged-results.json>
+```
+
+生成与终门：
+
+```bash
+python3 <skill-root>/scripts/build-full-report.py \
+  --run-dir <run-or-merge-dir> \
+  --output <run-or-merge-dir>/FULL-TEST-REPORT.md
+
+python3 <skill-root>/scripts/build-full-report.py \
+  --run-dir <run-or-merge-dir> \
+  --output <run-or-merge-dir>/FULL-TEST-REPORT.md \
+  --validate-only
+```
+
+Builder 对每个 bug 源计算 SHA-256，并验证主报告中的完整正文逐字一致。任何缺节、缺元数据、
+`bug_id` 无报告、正文截断、重复或遗漏都会非零退出。无 bug 时必须显式写“本轮无 Bug Report”。
 
 ### 归档
 
@@ -1229,7 +1291,104 @@ python3 <skill-root>/scripts/validate-release-set.py \
   --policy test/release-set-policy.json <run-a>/results.json <run-b>/results.json
 ```
 
-### results.json（每次测试运行的结果）
+### project-profile.json（hybrid 项目，git-tracked）
+
+```json
+{
+  "schema_version": 1,
+  "contract_version": "1.0.0",
+  "project_id": "<stable-project-id>",
+  "result_versions": [3, 4],
+  "providers": [
+    {
+      "id": "<provider-id>",
+      "kind": "source",
+      "command": ["python3", "{project_root}/test/tools/<provider>.py"],
+      "capabilities": ["source-map", "source-impact"],
+      "trust": {
+        "path_scope": ["<relative-source-scope>"],
+        "version": "1.0.0",
+        "source_access": "read-only",
+        "network": "deny",
+        "external_writes": "deny"
+      }
+    }
+  ],
+  "evidence_policy": {
+    "unknown_impact": "expand-safe-default",
+    "safe_default_lanes": ["surface", "inventory", "risk", "invariant", "selection"],
+    "release_required_claim_scopes": ["runtime_readiness", "release_gate"],
+    "mutation": {"required_for": [], "survivor_disposition_required": true}
+  },
+  "features": {"hybrid_testing": true, "results_v4": "shadow", "dual_write": true}
+}
+```
+
+Profile 不含 secret、个人绝对路径或动态 source map。写后运行
+`validate-provider-output.py project-profile`。Provider 输出和信任边界详见
+`references/source-provider-contract.md`。
+
+### results schema v3.1 additive extension（shadow 兼容期）
+
+`schema_version` 仍为整数 `3`；旧 reader 可忽略 `hybrid`。所有引用必须复制到 run 内并记录
+真实 SHA-256：
+
+```json
+{
+  "hybrid": {
+    "contract_version": "1.0.0",
+    "mode": "blackbox | whitebox | hybrid",
+    "objective": "<objective>",
+    "max_claim_scope": "<claim>",
+    "missing_capabilities": [],
+    "semantic_diff": "pass | fail | not_run",
+    "artifacts": {
+      "project_profile": {"artifact_ref": "hybrid/project-profile.json", "sha256": "<sha256>"},
+      "capabilities": {"artifact_ref": "hybrid/capabilities.json", "sha256": "<sha256>"},
+      "source_map": {"artifact_ref": "hybrid/source-map.json", "sha256": "<sha256>"},
+      "source_impact": {"artifact_ref": "hybrid/source-impact.json", "sha256": "<sha256>"},
+      "results_v4": {"artifact_ref": "hybrid/results-v4.json", "sha256": "<sha256>"}
+    }
+  }
+}
+```
+
+### results schema v4（shadow/default）
+
+完整机器合同见 `schemas/results-v4.schema.json`。核心结构：
+
+```json
+{
+  "schema_version": 4,
+  "contract_version": "1.0.0",
+  "version": "<version>",
+  "tester_id": "<tester-id>",
+  "run_id": "<run-id>",
+  "mode": "blackbox | whitebox | hybrid",
+  "objective": "<objective>",
+  "started_at": "<ISO8601+timezone>",
+  "finished_at": "<ISO8601+timezone>",
+  "subjects": [{"id": "<typed-id>", "type": "source | build | artifact | installation | process | session | external_service | unknown", "identity": {}}],
+  "relations": [{"type": "built_from | produced_by | installed_from | launched_from | connected_to | observed_by", "from": "<id>", "to": "<id>", "evidence_refs": ["<evidence-id>"]}],
+  "summary": {"total": 0, "passed": 0, "failed": 0, "blocked": 0, "skipped": 0, "excluded": 0, "pending": 0, "partial": 0},
+  "coverage_by_lane": {
+    "risk": {"numerator": 0, "denominator": 0, "pct": 0, "subject_refs": ["<id>"], "tool": "<tool>"}
+  },
+  "items": [{"id": "SRC-CHECK.01", "name": "<name>", "status": "pass", "test_kind": "unit", "subject_refs": ["<source-id>"], "claim_scope": "source_correctness", "evidence_strength": "direct", "assertion": {"field": "exit_code", "value": 0}, "evidence_sources": [], "bug_ids": []}],
+  "gates": [],
+  "max_claim_scope": "<claim>",
+  "missing_capabilities": [],
+  "source_impact_ref": null,
+  "compatibility": {"semantic_diff": "not_run"},
+  "release_readiness": {"verdict": "not_applicable", "reason": "<reason>"}
+}
+```
+
+示例为字段形状，不是可直接通过的空结果。items/evidence 必须非空、artifact 必须 run-local、
+summary 和每条 lane 必须可复算。source-only test 不能 claim runtime/release；GO 必须有 process/
+session subject 和闭合 gate。写后仍统一运行 `scripts/validate-results.sh`。
+
+### results schema v3（兼容格式；可叠加上方 v3.1 extension）
 
 ```json
 {
@@ -1409,7 +1568,7 @@ RESULT_FILE: <子 Agent 写入的文件路径>
 
 每个 bug 一个文件，存放在 tester 的 run 目录内 `bugs/`。文件名格式 `BUG-NNN-<slug>.md`，NNN 在 run 内递增。Coordinator merge 后分配项目级编号 `BUG-<version>-NNN`。
 
-使用 `references/procedures/bug-report.md` 的 7 节模板写正文。**写作规则**：
+使用 `references/procedures/bug-report.md` 的 8 节模板写正文。**写作规则**：
 
 - **两层结构**：第一层用非技术人员能看懂的大白话（问题是什么、影响谁、有多严重），第二层是开发者需要的技术细节（复现步骤、log 证据、根因分析）
 - **pre-existing 标注**：found_in 字段标注首次出现版本。不标注 → 开发者误判为回归，排查方向错误
@@ -1422,6 +1581,8 @@ RESULT_FILE: <子 Agent 写入的文件路径>
 - **P0 门槛**：severity 想标 P0 → 必须附"证否此 finding 的实验设计"。写不出 = 证据不足 → 降级
 - **Origin attribution 3 层归因**：来源归因不清（daemon / tester 脚本 / 历史残留）时走 3 层链——时间戳 vs ship date、跨版本 binary literal、历史 session 对账。任一层不吻合 → severity 写 undetermined
 - **证据文件命名**：`BUG-001-scenario-artifact.txt`（按 bug-id 命名），不按 phase 命名。方便最终 bug report 组装
+- **单文件交付**：`bugs/` 是内部源目录；每个完整正文和 YAML 元数据必须由
+  `scripts/build-full-report.py` 逐字嵌入 `FULL-TEST-REPORT.md`。摘要、链接或省略任一节都不合格
 
 底部附 yaml 元数据管理 bug 生命周期：
 
@@ -1429,23 +1590,30 @@ RESULT_FILE: <子 Agent 写入的文件路径>
 bug:
   id: BUG-NNN                # run 内编号；merge 后由 coordinator 分配 BUG-<version>-NNN
   title: <简短标题>
-  status: OPEN            # OPEN → CONFIRMED → FIXED → VERIFIED → CLOSED
-  severity: P1 | P2 | P3
+  status: OPEN               # OPEN → CONFIRMED → FIXED → VERIFIED → CLOSED
+  severity: P0 | P1 | P2 | P3 | undetermined
+  evidence_level: indirect | direct | binary | confirmed | proven
+  evidence_refs: [<results source-id 或脱敏 artifact ref>]
+  bug_type: regression | integration | edge_case | environment | data | concurrency
+  affected_groups: [<group-id>, ...]
+  affected_scenarios: [<scenario-id>, ...]
   found_in: v<X.Y.Z>
   found_by_tester: <tester-id>
   found_by_run: run-<tester-id>-<NNN>-<ts>
   related_tests: [<Letter>-<NN>, ...]
-  bug_type: regression | integration | edge_case | environment | data | concurrency
+  version_found: v<X.Y.Z>
+  version_fixed: null
+  regression_canary: false
+  post_ship: false
+  escape_id: null             # post_ship=true 时必须是 ESC-NNN
 
   # 开发者修复后填入
   fix_commit: null
-  fix_version: null
   fix_note: null          # 开发者对修复的说明
 
   # 验证修复后填入
   verified_in_run: null
   verified_at: null       # <YYYY-MM-DDTHH:MM:SS±HH:MM> when verified
-  regression_canary: false # 是否已加入回归 canary
 ```
 
 ### Bug 生命周期
@@ -1459,10 +1627,10 @@ bug:
 
 2. 开发者确认
    → 更新 status: CONFIRMED
-   → 可选：开发者补充 root cause 信息到 bug report 第 5 节
+   → 可选：开发者补充 root cause 信息到 bug report 第 6 节
 
 3. 开发者修复
-   → 更新 status: FIXED + fix_commit + fix_version + fix_note
+   → 更新 status: FIXED + fix_commit + version_fixed + fix_note
    → 下次 strategy 自动推荐 bug-retest 覆盖 related_tests
 
 4. 复测验证
@@ -1496,7 +1664,7 @@ bug 可能跨版本（v1.4.28 发现，v1.4.29 修复，v1.4.30 验证），需�
 
 | ID | 标题 | 状态 | 类型 | 严重 | 发现版本 | 修复版本 | 关联测试 | 来源 run | 回归 canary |
 |----|------|------|------|------|---------|---------|---------|---------|------------|
-| BUG-v1.4.28-001 | option chain 窝轮返回空 | VERIFIED | integration | P1 | v1.4.28 | v1.4.29 | C-05, C-07 | run-claude-a3f2-002 | ✓ |
+| BUG-v1.4.28-001 | resource query 对边界资源返回空 | VERIFIED | integration | P1 | v1.4.28 | v1.4.29 | C-05, C-07 | run-worker-a3f2-002 | ✓ |
 | BUG-v1.4.28-002 | auth timeout on slow net | OPEN | environment | P2 | v1.4.28 | — | A-03 | run-codex-c9d4-001 | — |
 ```
 
@@ -1608,7 +1776,7 @@ created: <YYYY-MM-DDTHH:MM:SS±HH:MM>
 Unresolved count: 0
 ```
 
-### merged-summary.md（统一结论）
+### merged-summary.md（统一结论内部源）
 
 ```markdown
 # 合并测试速览 — v<X.Y.Z>
@@ -1639,10 +1807,9 @@ Unresolved count: 0
 ## Minor Findings Bucket
 - <P3 / consistency / schema 小问题；本轮不单独立 bug，但下轮优先复查>
 
-## 详细信息
-- 冲突记录: conflict-log.md
-- 聚合结果: merged-results.json
-- 各 tester 原始数据: [run 目录列表]
+## 开发者交付
+本速览将完整嵌入 FULL-TEST-REPORT.md。开发者只接收该主报告；冲突记录、全部完整
+Bug Reports 和聚合机器结果都已嵌入，不需要打开第二份文件。
 ```
 
 ### merged-results.json（聚合结果）
@@ -1753,7 +1920,8 @@ challenge 或引用断链也会失败。若 challenger 不属于 source tester�
 |------|---------|
 | conflict-log.md | 每个冲突有 Analysis + Resolution；Coverage Gaps 逐项列出 |
 | verdict-challenge.md | coordinator 先写 tentative；challenger 与 coordinator 不同；每条 challenge 都有 evidence-based disposition；未处置为 0 |
-| merged-summary.md | ≤ 35 行；每个 bug 标注来源 run；含 Cross-Verify 采信统计和 Minor Findings Bucket |
+| merged-summary.md | 内部速览源，≤ 35 行；每个 bug 标注来源 run；含 Cross-Verify 采信统计和 Minor Findings Bucket |
 | merged-results.json | source path+SHA+strict validator 全绑定；每个 source item/gate/DoD occurrence 完整聚合且语义 identity 不漂移；source readiness、environment、challenge 全闭合；通过 `validate-merged-results.py` 才可 GO |
-| bugs/ 目录 | 项目级编号（BUG-\<version\>-NNN）；每个 bug 有 source 字段指向原始 run |
+| bugs/ 目录 | 内部完整源；项目级编号（BUG-\<version\>-NNN）；每个 bug 有 source 字段指向原始 run；每份满足 8 节 + 完整元数据 |
+| FULL-TEST-REPORT.md | 开发者唯一交付；逐字包含 merged-summary、适用审计材料、所有 bugs/ 完整正文和 merged-results；通过 build + `--validate-only` |
 | 不含凭证 | 同其他文件规则 |
