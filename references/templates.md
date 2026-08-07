@@ -1284,7 +1284,11 @@ evidence；`closed` 只在全部 action 都为 `verified` 且 `closure_evidence`
 ```
 
 只有项目的 release gate 明确要求双配置 / 双环境 / 双机时才提高对应分母；不要为了数字好看
-虚构要求。合并前先逐个运行 `validate-results.sh`，再运行：
+虚构要求。多平台 release 的 `environment_id` 应稳定描述 `os-arch-runtime`，例如
+`macos-arm64-local`、`linux-x86_64-systemd`、`linux-x86_64-docker`；
+`machine_id` 才记录具体本机、云主机、self-hosted runner 或 CI runner。远端 runner 与长期
+测试机是合法环境，不要求在协调者本机安装所有系统 VM。单一平台结果只能证明该平台，不能
+外推为全部发布包通过。合并前先逐个运行 `validate-results.sh`，再运行：
 
 ```bash
 python3 <skill-root>/scripts/validate-release-set.py \

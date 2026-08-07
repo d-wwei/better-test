@@ -52,6 +52,10 @@ Key capabilities:
   product through its normal GUI, official CLI, or official configuration;
   credential brokers and wrappers stay internal and never become a second
   user login flow or substitute product evidence
+- **Multi-platform release sets** — release evidence is scoped by OS, architecture,
+  and runtime. Remote runners, CI jobs, self-hosted runners, long-lived test machines,
+  and cloud hosts are valid environments; a local VM farm is not required, and one
+  platform's GREEN cannot approve every artifact
 - **One-file developer handoff** — each run/merge produces one validated
   `FULL-TEST-REPORT.md` containing the conclusion, audits, complete machine
   ledger, and every full 8-section Bug Report with metadata; summaries or

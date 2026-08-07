@@ -48,6 +48,9 @@ coverage lane、无损历史投影与 v3/v4 安全双写。项目通过自己的
   询问；自动复用持久会话，并在 strict-ready 后自动发现交易账户
 - **第一方用户路径证据** — Agent 直接通过产品正常 GUI、官方 CLI 或官方配置启动和登录；
   credential broker/wrapper 只在幕后处理凭据，不能变成第二套用户登录流程，也不能替代产品证据
+- **多平台 release-set** — 发版证据按 OS、架构和运行时分别记账。远端 runner、CI、
+  self-hosted runner、长期测试机和云主机都是合法环境；不要求本机安装全套 VM，也不能用
+  一个平台的 GREEN 批准全部发布包
 - **开发者单文件交付** — 每个 run/merge 只交付一份经过机器校验的
   `FULL-TEST-REPORT.md`，其中包含结论、审计、完整机器结果，以及所有带完整元数据的
   8 节 Bug Report；摘要或链接不能替代正文

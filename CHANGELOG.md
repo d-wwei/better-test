@@ -41,6 +41,10 @@ All notable changes to **better-test** (Better-Work series testing subskill) are
   first-party GUI, official CLI, or official configuration. Agents perform setup
   and launch themselves; brokers/wrappers remain internal credential plumbing and
   cannot be handed to users or counted as substitute product evidence.
+- Multi-platform release evidence is now scoped by OS, architecture, and runtime.
+  Remote runners, CI jobs, self-hosted runners, long-lived test machines, and cloud
+  hosts are valid release-set environments; a single local platform can no longer
+  be generalized to every shipped artifact.
 
 ### Added
 

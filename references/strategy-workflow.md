@@ -379,6 +379,23 @@ IF 项目知识库存在 release-gate / critical-matrix 类文件（如 trading-
     分母来自实际 gate 要求，不自行加码
 ```
 
+### 多平台 / 多运行时 release-set
+
+```
+IF release 产物按 OS / arch / runtime 交付（例如 macOS、Linux、Docker、systemd）：
+  → 每个被支持平台都必须作为独立 environment_id 进入计划和 results
+  → environment_id 至少表达 os + arch + runtime，如 linux-x86_64-systemd、
+    linux-x86_64-docker、macos-arm64-local；machine_id 记录具体 runner
+  → 不要求 tester 在本机安装所有 VM。remote runner、CI job、self-hosted runner、
+    长期测试机和云主机都可以作为一等执行环境，只要能保存 run-local 证据
+  → 单平台 GREEN 只能批准该平台；不能把 macOS 结果外推为 Linux、Docker 或 arm64 结果
+  → 启动类产品必须给每个运行时记录 process → listener → liveness → readiness
+    阶梯；登录/warmup 后 listener 未出现或 CPU watchdog 触发，应归为该平台 FAIL/BLOCKED，
+    不能由其他平台通过抵消
+  → 若项目声明多平台 release gate，生成 release-set-policy.json 并在 merge 阶段验证
+    min_distinct_environments / min_distinct_machines / required_gate_ids
+```
+
 ### Changelog 逐条匹配
 
 ```

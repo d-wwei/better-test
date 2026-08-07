@@ -136,6 +136,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 22. source/build/artifact/process/session 身份被版本号合并，或 dirty source 缺 staged/unstaged/untracked fingerprint → 违规；身份 relation 必须可复核
 23. Provider/impact 不确定或失败时缩小测试范围、清空 required selection 或删除项目 hard gate → 违规；unknown/low confidence 只能 expand-safe-default
 24. source-map 被人工维护为项目 SSOT，或项目专属 test group/gate/ledger 泄漏进通用 Provider → 违规；通用协议与项目知识必须分层
+25. 多平台发布只用单一 OS/arch/runtime 的 GREEN 外推到全部包 → 违规；支持的平台必须分别绑定 artifact/process/session 证据，远端 runner/CI/长期测试机是合法环境，本机 VM 不是默认要求
 
 ## Acceptance Criteria
 
