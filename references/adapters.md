@@ -4,7 +4,7 @@
 
 ## 设计原则
 
-- 每个项目只允许一个测试知识根目录；默认是 `.better-work/test/`
+- 每个项目只允许一个测试知识根目录；任何平台都先解析 `TEST_ROOT`，不得从示例猜路径
 - adapters 是薄胶水，只引用不复制（除非平台不支持引用）
 - 与 better-code 的注入并存：注入逻辑应**追加**而非覆盖现有引用
 - 团队成员各用不同 agent 平台时，从同一套文件读取
@@ -30,7 +30,7 @@ Codex 额外有可选的第三层：
 
 ## 测试根目录解析
 
-新项目继续使用 `.better-work/test/`。已有项目若把知识直接放在 `test/`，在项目根提交
+默认布局可以使用 `.better-work/test/`。已有项目若把知识直接放在 `test/`，在项目根提交
 `.better-test-root`，内容只写一行仓库相对路径：
 
 ```text
@@ -45,9 +45,11 @@ test
 export BETTER_TEST_DIR=/absolute/path/to/project/test-assets
 ```
 
-解析顺序是：`BETTER_TEST_DIR` → 最近的 `.better-test-root` → 最近的 `.better-work/test/` → 带上述标记的 flat `test/` →
-`~/.better-work/<project>/test/`。一个项目不要同时维护 `.better-work/test/` 和 `test/` 两套内容。
-下文示例默认写 `.better-work/test/`；flat 项目应把项目级引用替换为 `test/...`。Skill 自身路径不变。
+解析顺序是：`BETTER_TEST_DIR` → 最近的 `.better-test-root` → 最近的 `.better-work/test/` →
+带上述标记的 flat `test/` → `~/.better-work/<project>/test/`。通过
+`scripts/resolve-test-root.sh` 得到绝对 `TEST_ROOT` 后，再计算仓库相对引用
+`TEST_ROOT_REL`。一个项目不要同时维护两套内容；若历史空目录仍存在，marker 必须优先。
+下文统一使用 `<TEST_ROOT>`，不得替换成默认布局字面量。
 
 ---
 
@@ -84,7 +86,7 @@ canonical 路径都必须是指向同一 checkout 的 symlink；不要把仓库�
 ```
 @.better-work/shared/index.md                          ← 项目知识入口
 @~/.claude/skills/better-test/protocol-base.md         ← skill 级通用原则（L0 + 思维纪律），随 skill 自动更新
-@.better-work/test/protocol.md                          ← 项目级扩展（安全纪律 + 项目纪律）
+@<TEST_ROOT>/protocol.md                               ← 项目级扩展（仓库相对 resolved root）
 ```
 
 ### 注入步骤
@@ -92,18 +94,18 @@ canonical 路径都必须是指向同一 checkout 的 symlink；不要把仓库�
 1. 检查项目根 `CLAUDE.md` 是否存在；不存在则创建
 2. 检查是否已含 `@.better-work/shared/index.md`；缺少则追加
 3. 检查是否已含 `@~/.claude/skills/better-test/protocol-base.md`；缺少则追加（**新增**）
-3. 检查是否已含 `@.better-work/test/protocol.md`；缺少则追加
+4. 检查是否已含 `@<TEST_ROOT>/protocol.md`；缺少则追加
 4. 如果 `.better-work/code/protocol.md` 存在但 CLAUDE.md 没引用 → 提示用户："better-code 的 protocol 也未注入，要一并加吗？"（不擅自加，避免越权）
 
 ### 按需读取的文件
 
 Agent 在需要时通过 Read 工具读：
-- `.better-work/test/test-groups.md` — strategy 时读
-- `.better-work/test/impact-map.md` — strategy 时读
-- `.better-work/test/known-issues.md` — strategy / feedback 时读
-- `.better-work/test/status.md` — 每次会话开始可主动读一次
-- `.better-work/test/progress.md` — resume 时读
-- `.better-work/test/history/` — 调研历史时读
+- `<TEST_ROOT>/test-groups.md` — strategy 时读
+- `<TEST_ROOT>/impact-map.md` — strategy 时读
+- `<TEST_ROOT>/known-issues.md` — strategy / feedback 时读
+- `<TEST_ROOT>/status.md` — 每次会话开始可主动读一次
+- `<TEST_ROOT>/progress.md` — resume 时读
+- `<TEST_ROOT>/history/` — 调研历史时读
 
 `@` 引用只用于 protocol.md（自动加载，约束始终生效）。其他按需，避免污染对话。
 
@@ -124,11 +126,11 @@ alwaysApply: true
 [protocol.md 完整内容嵌入此处]
 
 ## 知识文件位置（agent 按需读）
-- .better-work/test/test-groups.md — 测试组定义和运行命令
-- .better-work/test/impact-map.md — 变更→测试组映射
-- .better-work/test/known-issues.md — 已知问题
-- .better-work/test/status.md — 当前测试状态
-- .better-work/test/progress.md — 上次进度
+- <TEST_ROOT>/test-groups.md — 测试组定义和运行命令
+- <TEST_ROOT>/impact-map.md — 变更→测试组映射
+- <TEST_ROOT>/known-issues.md — 已知问题
+- <TEST_ROOT>/status.md — 当前测试状态
+- <TEST_ROOT>/progress.md — 上次进度
 ```
 
 ### 同步策略
@@ -146,7 +148,7 @@ alwaysApply: true
 ### 注入步骤
 
 1. 找 GEMINI.md（项目根 或 `~/.gemini/GEMINI.md`）
-2. 追加 `@.better-work/test/protocol.md`
+2. 追加 `@<TEST_ROOT>/protocol.md`
 
 ---
 
@@ -198,10 +200,10 @@ Skill 注册让 Codex 能执行命令，但 protocol.md 的认知约束需要 al
 [protocol.md 内容]
 
 知识文件位置（按需读）:
-- .better-work/test/test-groups.md
-- .better-work/test/impact-map.md
-- .better-work/test/known-issues.md
-- .better-work/test/status.md
+- <TEST_ROOT>/test-groups.md
+- <TEST_ROOT>/impact-map.md
+- <TEST_ROOT>/known-issues.md
+- <TEST_ROOT>/status.md
 <!-- BETTER-TEST:END -->
 ```
 
@@ -261,10 +263,10 @@ Codex 旁载文件，已包含在 skill 目录中（`agents/openai.yaml`）。�
 [protocol.md 内容]
 
 知识文件位置（按需读）:
-- .better-work/test/test-groups.md
-- .better-work/test/impact-map.md
-- .better-work/test/known-issues.md
-- .better-work/test/status.md
+- <TEST_ROOT>/test-groups.md
+- <TEST_ROOT>/impact-map.md
+- <TEST_ROOT>/known-issues.md
+- <TEST_ROOT>/status.md
 <!-- BETTER-TEST:END -->
 ```
 
@@ -278,9 +280,9 @@ Codex 旁载文件，已包含在 skill 目录中（`agents/openai.yaml`）。�
 
 1. 找该 agent 的系统提示词或启动配置
 2. 加入：
-   > "在涉及测试的任务前，先读取 `.better-work/test/protocol.md`。
-   > 跑测试前先读 `.better-work/test/status.md` 了解上次状态。
-   > 推荐策略时读 `.better-work/test/impact-map.md` 和 `.better-work/test/test-groups.md`。"
+   > "在涉及测试的任务前，先解析 TEST_ROOT 并读取 `<TEST_ROOT>/protocol.md`。
+   > 跑测试前先读 `<TEST_ROOT>/status.md` 了解上次状态。
+   > 推荐策略时读 `<TEST_ROOT>/impact-map.md` 和 `<TEST_ROOT>/test-groups.md`。"
 3. 或直接把 protocol.md 内容嵌入系统提示词
 
 ---
@@ -293,7 +295,7 @@ Claude Code 示例（`@` 引用）：
 ```
 @.better-work/shared/index.md         # 由 better-code 创建/更新
 @.better-work/code/protocol.md        # 由 better-code 创建/更新
-@.better-work/test/protocol.md        # 由 better-test 创建/更新
+@<TEST_ROOT>/protocol.md              # 由 better-test 创建/更新
 ```
 
 Codex 示例（内容嵌入，各自 BEGIN/END 段）：
@@ -310,7 +312,7 @@ Codex 示例（内容嵌入，各自 BEGIN/END 段）：
 每条引用/嵌入段对应一个独立的 skill，独立 update，独立失效。
 
 幂等规则：
-- Claude Code：CLAUDE.md 已有 `@.better-work/test/protocol.md` → 跳过
+- Claude Code：CLAUDE.md 已有 resolved `@<TEST_ROOT>/protocol.md` → 跳过
 - Codex：AGENTS.md 已有 `<!-- BETTER-TEST:BEGIN -->` → 定位 BEGIN/END 整体替换（而非重复添加）
 
 如果 CLAUDE.md 中存在旧的 `@.project-memory/cognitive-protocol.md` 引用（来自旧版 project-memory skill）→ **不要擅自删除**，提示用户："检测到旧版 project-memory 的引用，建议手动迁移到 .better-work/code/protocol.md"。
@@ -328,7 +330,7 @@ Codex 示例（内容嵌入，各自 BEGIN/END 段）：
 
 init 的注入步骤（agent 内部执行）：
 
-1. 验证 `.better-work/test/protocol.md` 存在
+1. 运行 resolver 并验证 `${TEST_ROOT}/protocol.md` 存在
 2. 检测当前平台（项目根有 CLAUDE.md → claude；有 .cursor/ → cursor；有 AGENTS.md 或 `.codex/` → codex；等）
 3. 选对应适配策略（本文档前面各小节）：
    - Claude Code → `@` 引用追加到 CLAUDE.md

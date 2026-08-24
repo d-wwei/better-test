@@ -277,7 +277,7 @@
 - **风险等级**: medium
 - **内容**: 对明确归类为 `dedicated-real-test` 且授权模式为 `standing-all-actions` 的测试 profile，Better Test 应默认无人值守执行登录、设备态、解锁、place、modify、cancel、cancel-all、成交类用例和 cleanup。人工控制点应前置到账号/券商/权限/资金/风险限额；测试过程中不再请求 action/run/session 级授权。执行产物必须包含 profile contract、lease、consumption receipt、write ownership fingerprint、before/after reconcile 和 cleanup attestation。
 - **证据**: v1.5.1 多轮实盘回归中，人工登录/解锁配合成为主要低效点；项目 protocol 已将 dedicated profile 设为 standing policy，但通用 Better Test workflow 还没有把它建模为默认执行合同。
-- **状态**: pending
+- **状态**: promoted 2026-08-17（strategy / execution / templates 已建模并进入 CHANGELOG）
 
 ### [2026-08-04] Credential/session broker 接口只传 profile_id
 - **来源项目**: futu-opend-rs (v1.5.1 run023-run026)
@@ -286,7 +286,7 @@
 - **风险等级**: medium
 - **内容**: Better Test 对真实账号自动化应定义 broker 接口：plan、subagent 和工具参数只传 `profile_id`、case id、端口和脱敏边界；通过 `ensure-session(profile_id)`、`ensure-unlocked(profile_id, scope)`、`ensure-clean(profile_id, ownership)` 操作，不在 argv、公开日志、run artifacts、HTTP body 或 subagent prompt 中传播账号、密码、OTP、交易密码、cipher、cookie/session。公开报告引用 broker receipt 和脱敏 evidence ref，raw evidence 固定 Git 外。
 - **证据**: Rust OpenD 已经需要同时管理第一方 `futu-opend --config`、Keychain、持久 HOME、临时 0600 credential file、opend_rst 和多 subagent；只靠人工输入无法规模化，也容易污染日志。
-- **状态**: pending
+- **状态**: promoted-modified 2026-08-17（稳定 Keychain broker + profile_id-only + 0600 lease 已落 macOS；其他 OS provider 仍待实现）
 
 ### [2026-08-04] Readiness lane split 与 flaky closure 规则
 - **来源项目**: futu-opend-rs (v1.5.1 run023-run026)

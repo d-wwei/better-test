@@ -52,7 +52,7 @@
 ### 信号源 D：已有测试历史（如有）
 
 ```
-如果存在 ~/.<project>-test-history/ 或类似目录 → 迁移到 .better-work/test/history/
+如果存在 ~/.<project>-test-history/ 或类似目录 → 迁移到 ${TEST_ROOT}/history/
 如果没有 → 创建空 history/ 目录 + 初始化 _meta.json + feedback-rules.json
 ```
 
@@ -102,6 +102,7 @@
 | **历史 bug 报告** | feedback | known-issues（风险区域标注）、impact-map（历史关联） |
 | **日志格式文档** | 测试执行中 | investigation（调查阶梯中读 log 的依据） |
 | **合规要求**（GDPR/金融监管） | init | test-groups（合规必测项，标记为不可跳过） |
+| **官方/上游测试仓** | init 或 update | 加载 `references/procedures/reference-suite-intake.md`，生成来源身份、危险扫描和全量 case map |
 
 **分阶段收集策略**：不在 init 一次全收。
 
@@ -371,7 +372,7 @@ projects:
 ```
 @.better-work/shared/index.md                          # 项目知识入口
 @~/.claude/skills/better-test/protocol-base.md         # skill 级通用原则（自动跟随 skill 升级）
-@.better-work/test/protocol.md                          # 项目级扩展（安全纪律 + 项目纪律）
+@<TEST_ROOT>/protocol.md                               # 项目级扩展（使用仓库相对 resolved root）
 ```
 
 注入策略（Step 3.0 已确保 `shared/index.md` 始终存在）：
@@ -384,13 +385,13 @@ projects:
 
 ```markdown
 <!-- BETTER-TEST:BEGIN -->
-[读取 .better-work/test/protocol.md 的实际内容嵌入此处]
+[读取 ${TEST_ROOT}/protocol.md 的实际内容嵌入此处]
 
 知识文件位置（按需读）:
-- .better-work/test/test-groups.md
-- .better-work/test/impact-map.md
-- .better-work/test/known-issues.md
-- .better-work/test/status.md
+- ${TEST_ROOT}/test-groups.md
+- ${TEST_ROOT}/impact-map.md
+- ${TEST_ROOT}/known-issues.md
+- ${TEST_ROOT}/status.md
 <!-- BETTER-TEST:END -->
 ```
 

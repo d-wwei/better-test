@@ -9,6 +9,7 @@ CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 CONFIG_FILE="$CODEX_HOME/config.toml"
 MANAGED_PREFIX="better-test:"
 COMMAND_ROOT="$SKILL_ROOT/hooks/codex/"
+NO_MATCHER_SENTINEL="__BETTER_TEST_NO_MATCHER__"
 
 COMMAND="${1:-install}"
 shift || true
@@ -155,8 +156,9 @@ list_registry_bindings() {
           {
             status: $hook.platforms.codex.status,
             event: $hook.platforms.codex.event,
-            matcher: $hook.platforms.codex.matcher,
+            matcher: ($hook.platforms.codex.matcher // ""),
             entrypoint: $hook.platforms.codex.entrypoint,
+            timeout: ($hook.platforms.codex.timeout // 0),
             note: ($hook.platforms.codex.note // "")
           }
         else
@@ -167,9 +169,10 @@ list_registry_bindings() {
         $hook.id,
         (.status // $hook.platforms.codex.status // ""),
         (.event // ""),
-        (.matcher // ""),
+        (if (.matcher // "") == "" then "__BETTER_TEST_NO_MATCHER__" else .matcher end),
         (.entrypoint // ""),
         ($hook.rule_path // ""),
+        ((.timeout // 0) | tostring),
         (.note // $hook.platforms.codex.note // "")
       ]
     | @tsv
@@ -178,9 +181,9 @@ list_registry_bindings() {
 
 validate_active_entries() {
   local missing=0
-  local id status event matcher entrypoint rule_path note
+  local id status event matcher entrypoint rule_path timeout note
 
-  while IFS=$'\t' read -r id status event matcher entrypoint rule_path note; do
+  while IFS=$'\t' read -r id status event matcher entrypoint rule_path timeout note; do
     [[ "$status" == "active" ]] || continue
 
     if [[ ! -f "$SKILL_ROOT/$rule_path" ]]; then
@@ -231,37 +234,47 @@ clean_managed_hooks() {
 
 build_desired_groups() {
   local desired='{}'
-  local id status event matcher entrypoint rule_path note
+  local id status event matcher entrypoint rule_path timeout note
   local group_json
+  local matcher_key
 
-  while IFS=$'\t' read -r id status event matcher entrypoint rule_path note; do
+  while IFS=$'\t' read -r id status event matcher entrypoint rule_path timeout note; do
     [[ "$status" == "active" ]] || continue
 
+    matcher_key="$matcher"
     group_json=$(jq -n \
       --arg id "$id" \
       --arg matcher "$matcher" \
+      --arg no_matcher "$NO_MATCHER_SENTINEL" \
       --arg command "$SKILL_ROOT/$entrypoint" \
-      '{
-        matcher: $matcher,
-        hooks: [
-          {
-            type: "command",
-            command: $command,
-            statusMessage: ("better-test: " + $id)
-          }
-        ]
-      }')
+      --argjson timeout "$timeout" \
+      '(
+        {
+          hooks: [
+            (
+              {
+                type: "command",
+                command: $command,
+                statusMessage: ("better-test: " + $id)
+              }
+              + if $timeout > 0 then {timeout: $timeout} else {} end
+            )
+          ]
+        }
+        + if $matcher == $no_matcher then {} else {matcher: $matcher} end
+      )')
 
     desired=$(jq \
       --arg event "$event" \
-      --arg matcher "$matcher" \
+      --arg matcher "$matcher_key" \
+      --arg no_matcher "$NO_MATCHER_SENTINEL" \
       --argjson group "$group_json" \
       '
         .[$event] = (.[$event] // []) |
-        if any(.[$event][]?; .matcher == $matcher) then
+        if any(.[$event][]?; ((.matcher // $no_matcher) == $matcher)) then
           .[$event] = [
             .[$event][] |
-            if .matcher == $matcher then
+            if ((.matcher // $no_matcher) == $matcher) then
               .hooks += $group.hooks
             else
               .
@@ -286,18 +299,20 @@ merge_hooks() {
 
   while IFS= read -r event; do
     while IFS= read -r group; do
-      matcher=$(jq -r '.matcher' <<< "$group")
+      matcher=$(jq -r --arg no_matcher "$NO_MATCHER_SENTINEL" \
+        '.matcher // $no_matcher' <<< "$group")
       result_json=$(jq \
         --arg event "$event" \
         --arg matcher "$matcher" \
+        --arg no_matcher "$NO_MATCHER_SENTINEL" \
         --argjson group "$group" \
         '
           .hooks = (.hooks // {}) |
           .hooks[$event] = (.hooks[$event] // []) |
-          if any(.hooks[$event][]?; .matcher == $matcher) then
+          if any(.hooks[$event][]?; ((.matcher // $no_matcher) == $matcher)) then
             .hooks[$event] = [
               .hooks[$event][] |
-              if .matcher == $matcher then
+              if ((.matcher // $no_matcher) == $matcher) then
                 .hooks += $group.hooks
               else
                 .

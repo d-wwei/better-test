@@ -30,6 +30,7 @@ an absolute, temporary override.
 | derived-view-guard | active | active |
 | registration-gate | active | active |
 | session-write-guard | active | active |
+| stop-gate | deferred | active |
 
 ## Installation (Recommended: gate.sh global)
 
@@ -69,9 +70,9 @@ Codex hooks are installed per project and managed separately from `install.sh`.
 Both `install` and `status` print the resolved `test root:`. Treat an unresolved or unexpected root as an
 installation failure before running tests.
 
-Current Codex-active hook set: `execution-log`, `credential-scan`, `feedback-rules-guard`, `derived-view-guard`, `session-write-guard`, `post-test-checklist`, `results-validation`, and `registration-gate`.
+Current Codex-active hook set: `execution-log`, `credential-scan`, `feedback-rules-guard`, `derived-view-guard`, `session-write-guard`, `post-test-checklist`, `results-validation`, `registration-gate`, and `stop-gate`.
 These were runtime-verified on `codex-cli 0.125.0`, `0.145.0-alpha.18`, and
-`0.146.0-alpha.3.1` with the renamed `hooks` feature and hook-trust requirement.
+`0.146.0-alpha.3.1`; Stop behavior was additionally verified on `codex-cli 0.146.0`.
 `execution-log` runs on `PostToolUse/Bash`.
 `credential-scan`, `feedback-rules-guard`, `derived-view-guard`, and `session-write-guard` each run on both `PreToolUse/Bash` and `PreToolUse/Write`.
 `post-test-checklist`, `results-validation`, and `registration-gate` each run on both `PostToolUse/Bash` and `PostToolUse/Write`.
@@ -85,6 +86,8 @@ Notes:
 - it detects the current runtime feature name (`hooks` on Codex 0.145+, legacy `codex_hooks` on older builds) and also accepts a runtime-enabled stable default
 - it does not touch the feature flag unless you pass `--enable-feature-flag`
 - install / uninstall preserve unrelated hook entries already present in `.codex/hooks.json`
+- matcher-less events such as `Stop` are emitted without a `matcher` field and merge with an
+  existing matcher-less group, preserving RNR and other unrelated commands
 - Codex now covers both shell write-intent and built-in `apply_patch`/`file_change` for all active guards and advisories except `execution-log`, which remains `PostToolUse/Bash` only
 - The Bash path still matters: shell writes and built-in `apply_patch` writes are separate runtime surfaces, and both stay installed
 - `hooks/test-codex-runtime.sh` is the manual runtime smoke for current Codex behavior
@@ -158,10 +161,10 @@ Replace `<SKILL_PATH>` with the actual path to the better-test skill directory.
 ### Phase A: Core Discipline
 
 #### credential-scan.sh
-- **Type**: PreToolUse on Edit|Write
-- **What it does**: Scans content being written to the resolved test root for credential patterns (password, token, api_key, secret, Bearer tokens)
-- **Action on match**: Blocks the write (exit 2)
-- **Codex note**: Codex now runs this on both `PreToolUse/Bash` and `PreToolUse/Write`. The Bash path scans command text for explicit credential-like literals; the native Write path scans added `apply_patch` lines. External file copies such as `cp leaked-creds.txt ...` remain outside this guard on the Bash path.
+- **Type**: PreToolUse on Bash|Edit|Write
+- **What it does**: Scans writes for credential patterns and blocks interactive `rotate/enroll/set-*-pwd` bootstrap commands in Better Test projects
+- **Action on match**: Blocks the write or command (exit 2)
+- **Codex note**: Codex runs this on both `PreToolUse/Bash` and `PreToolUse/Write`. Bash also blocks password bootstrap even when no test-root write target is present; native Write scans added `apply_patch` lines. External file copies such as `cp leaked-creds.txt ...` remain outside the content guard.
 
 #### feedback-rules-guard.sh
 - **Type**: PreToolUse on Edit|Write
@@ -198,10 +201,33 @@ Replace `<SKILL_PATH>` with the actual path to the better-test skill directory.
     caveats/skips, and invalid GO decisions fail closed or require a traceable human override
 - **Portable hard gate**: run `scripts/validate-results.sh <run>/results.json`; unlike a post-write
   advisory, this command propagates the validator's non-zero exit code.
+- **Run-level hard gate**: new runs use
+  `python3 scripts/validate-run.py --run-dir <run> --intake-policy required`.
+  It composes results validation with the hash-bound `intake.json` contract and optional full-report
+  validation. Platform Stop hooks are optional adapters and are not the authority.
 - **Codex note**: Codex runs this on both `PostToolUse/Bash` and `PostToolUse/Write`. Both paths re-read
   `results.json` after the write and inject validation context. A PostToolUse hook cannot undo the
   completed write and some runtimes do not propagate its exit status, so release workflows must use
   the portable hard-gate command.
+
+#### stop-gate.sh
+- **Type**: Codex Stop, matcher omitted
+- **Trigger**: The PID-bound active run has `FULL-TEST-REPORT.md`, or its `strategy-plan.md`
+  frontmatter has `status: completed`
+- **What it does**: Calls `scripts/validate-run.py --intake-policy required --validate-report`
+  before Codex stops. Invalid finalizing runs are blocked at most three times in one `turn_id`;
+  a new turn gets a new three-block budget.
+- **Session lifecycle**: A finalizing run keeps its PID-bound `.active-sessions` file until the
+  portable gate passes. The hook removes that exact file on success and keeps a same-turn temporary
+  binding so a concurrent RNR block still causes the next Stop attempt to revalidate the run.
+- **Fail-open boundary**: malformed payloads, missing IDs, validator crashes, and hook-internal
+  failures are logged to `~/.better-test/logs/stop-gate-errors.log` and do not trap the session.
+  `BETTER_TEST_STOP_GATE=0` is the emergency disable switch.
+- **Authority**: This adapter can prevent an early conversational stop, but it does not replace the
+  portable validator. Reaching the rate limit permits the conversation to end without converting an
+  invalid run into a valid verdict.
+- **Coexistence**: Codex 0.146.0 executes matcher-less global and project Stop hooks together.
+  Ordering is not stable, so Better Test does not depend on running before or after RNR.
 
 ### Phase B: Tester/Coordinator Isolation (v3.0)
 
@@ -237,8 +263,10 @@ Agent starts
          {"tester_id":"claude-a3f2","run_dir":"history/v1.4.28/run-claude-a3f2-002-..."}
       └→ session-write-guard.sh now enforces cross-tester isolation
 
-Agent completes testing
-  └→ deletes .active-sessions/<PID>.json
+Agent reaches finalization
+  └→ portable validate-run gate passes
+      ├→ Codex Stop adapter deletes the exact matched session file
+      └→ without Stop adapter, tester deletes it after the portable gate
 ```
 
 ## Merge Lockfile Lifecycle

@@ -119,6 +119,7 @@
         }
       ]
     },
+    "intake_ref": {"$ref": "#/$defs/intake_ref"},
     "compatibility": {
       "type": "object",
       "additionalProperties": false,
@@ -151,6 +152,15 @@
     "provider_metadata": {"type": "object"}
   },
   "$defs": {
+    "intake_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intake_id", "sha256"],
+      "properties": {
+        "intake_id": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
     "input_ref": {
       "type": "object",
       "additionalProperties": false,

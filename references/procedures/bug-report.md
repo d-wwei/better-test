@@ -137,11 +137,14 @@ bug:
   regression_canary: true  # 是否已加入回归 canary
   post_ship: false
   escape_id: null  # post_ship=true 时必须是 ESC-NNN
+  submission_key: <stable-project-bug-key>  # 项目启用 issue policy 时必填
 ```
 
 bug_type 和 evidence_level 取值见
 `references/procedures/hypothesis-investigation.md`；confirmed 的 evidence refs 必须能回到
 两个不同 independence key。post_ship=true 时同步更新并校验 `test/escapes.json`。
+`submission_key` 是跨 run/版本稳定的 tracker 身份，不能用会重复的 run-local `BUG-001`
+代替；未启用外部 issue policy 的项目可省略。
 
 ---
 

@@ -63,6 +63,11 @@ run_expect_allow() {
 run_expect_block "$SCRIPT_DIR/codex/credential-scan.sh" 'printf "token=supersecrettoken123456" > .better-work/test/reference/notes.md'
 run_expect_allow "$SCRIPT_DIR/codex/credential-scan.sh" 'printf "token=<redacted>" > .better-work/test/reference/notes.md'
 run_expect_allow "$SCRIPT_DIR/codex/credential-scan.sh" 'printf "token=supersecrettoken123456" > ./notes.md'
+run_expect_block "$SCRIPT_DIR/codex/credential-scan.sh" '$HOME/.local/libexec/better-test/macos-credential-broker rotate dedicated-real-primary'
+run_expect_block "$SCRIPT_DIR/codex/credential-scan.sh" 'futucli set-login-pwd --account 123456'
+run_expect_block "$SCRIPT_DIR/codex/credential-scan.sh" 'python3 test/tools/dedicated-test-account.py enroll --profile dedicated-real-primary'
+run_expect_allow "$SCRIPT_DIR/codex/credential-scan.sh" '$HOME/.local/libexec/better-test/macos-credential-broker status dedicated-real-primary'
+run_expect_allow "$SCRIPT_DIR/codex/credential-scan.sh" '$HOME/.local/libexec/better-test/macos-credential-broker materialize-login dedicated-real-primary /tmp/lease'
 
 run_expect_block "$SCRIPT_DIR/codex/feedback-rules-guard.sh" 'printf "x" > .better-work/test/history/feedback-rules.json'
 run_expect_allow "$SCRIPT_DIR/codex/feedback-rules-guard.sh" 'cat .better-work/test/history/feedback-rules.json'

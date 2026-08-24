@@ -1,7 +1,7 @@
 #!/bin/bash
 # better-test L1 Hook: Credential Scan
-# Blocks writes to a resolved better-test root that contain credential patterns.
-# PreToolUse on Edit|Write
+# Blocks credential writes and interactive credential setup in a resolved
+# Better Test project. PreToolUse on Bash|Edit|Write.
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -12,6 +12,14 @@ INPUT=$(cat)
 TOOL_NAME=$(printf '%s' "$INPUT" | jq -r '.tool_name // empty' 2>/dev/null)
 FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
 CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty' 2>/dev/null)
+COMMAND=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // empty' 2>/dev/null)
+
+if [[ "$TOOL_NAME" == "Bash" ]]; then
+  if bt_resolve_test_dir "$CWD" >/dev/null 2>&1; then
+    bt_credential_scan_interactive_command "$COMMAND" "a Better Test project"
+  fi
+  exit 0
+fi
 
 if ! bt_is_test_path "$FILE_PATH" "$CWD"; then
   exit 0

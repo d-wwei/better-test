@@ -1,6 +1,6 @@
 # Templates & Quality Standards
 
-每个 `.better-work/test/` 文件的模板和质量标准。
+每个 resolver 返回的 `${TEST_ROOT}/` 文件的模板和质量标准。
 
 ---
 
@@ -31,13 +31,13 @@ Protocol 拆分为两层注入，skill 升级自动传播基座，项目自定�
 ```
 CLAUDE.md（或 AGENTS.md/GEMINI.md）注入两行：
   @~/.claude/skills/better-test/protocol-base.md    ← skill 级（L0 + 思维纪律），随 skill 自动更新
-  @.better-work/test/protocol.md                     ← 项目级（安全纪律 + 项目纪律），项目自己维护
+  @<TEST_ROOT>/protocol.md                           ← 项目级（仓库相对 resolved root）
 ```
 
 | 文件 | 内容 | 谁维护 | 升级时 |
 |------|------|--------|--------|
 | `protocol-base.md`（skill 仓库根目录） | L0 目标校准 + 思维纪律 | skill 维护者 | 自动传播到所有项目 |
-| `protocol.md`（项目 .better-work/test/） | 安全纪律 + 项目纪律 | 项目 protocol-update | 项目独立维护 |
+| `protocol.md`（项目 `${TEST_ROOT}/`） | 安全纪律 + 项目纪律 | 项目 protocol-update | 项目独立维护 |
 
 ### 项目 protocol.md 模板
 
@@ -621,6 +621,43 @@ estimated_time: <分钟>
 
 ---
 
+## reference-suite-map.json（可选：外部测试仓映射）
+
+回答“上游有哪些测试、各自会做什么、如何进入本项目”。使用
+`schemas/reference-suite-map.schema.json` 的结构，并运行：
+
+```bash
+python3 <skill-root>/scripts/validate-reference-suite-map.py \
+  test/reference/<suite>-case-map.json
+```
+
+核心字段：
+
+| 字段 | 作用 |
+|------|------|
+| `suite` | repo URL、实际分支、commit、dirty identity |
+| `summary` | 文件、静态函数、side-effect、adoption status 分母 |
+| `danger_scan` | autouse/process/credential/network/write/random/sleep/skip 风险 |
+| `cases[].id` | upstream 静态 node identity |
+| `cases[].side_effect` | none/read/write/destructive |
+| `cases[].execution_level` | L0-L4 |
+| `cases[].adoption_status` | direct/adapted/oracle-only/duplicate/blocked/not-applicable/rejected |
+| `cases[].target_test_ids` | 项目 test ID 映射，不能为空 |
+| `cases[].evidence_boundary` | source-only 与 runtime/release claim 的边界 |
+
+### 质量标准
+
+| 项目 | 必须满足 |
+|------|---------|
+| 来源身份 | commit 为完整 40 位 SHA；branch 名不能代替 identity |
+| 全量映射 | summary 与 cases 可机械重算，case ID 无重复 |
+| 危险扫描 | `danger_scan.completed=true` 才允许 activation |
+| 不丢 case | 暂不可运行的 case 标 oracle-only/blocked/not-applicable，不删除 |
+| 项目分层 | 通用 map 不含账号凭证；市场、券商、gate 写入项目知识 |
+| 同步 | upstream SHA 变化先生成 diff，不自动前移 pinned SHA |
+
+---
+
 ## status.md（derived view，面向 agent）
 
 **项目级** `test/status.md` 是 derived view，由 coordinator 通过 `/better-test merge` 生成。单 tester 场景由 tester 在 run 完成后自行生成。不应人手编辑（会被覆盖）。
@@ -1004,6 +1041,7 @@ test/
 │       │   ├── process-log.md              ← 过程日志（流水账）
 │       │   ├── summary.md                  ← 2 分钟速览
 │       │   ├── FULL-TEST-REPORT.md         ← 开发者唯一交付物（含全部完整 Bug Reports）
+│       │   ├── bug-issue-submissions.json  ← 可选：外部 tracker 编号/URL/fingerprint ledger
 │       │   ├── execution-log.md            ← 执行日志（Hook 自动生成）
 │       │   ├── l2-findings.md              ← L2 独立验证结果
 │       │   ├── audit-report.md             ← L3 审计面板
@@ -1019,6 +1057,7 @@ test/
 │           ├── verdict-challenge.md        ← tentative verdict 的独立挑战与处置
 │           ├── merged-summary.md           ← 统一结论
 │           ├── FULL-TEST-REPORT.md         ← 合并后的唯一开发者交付物
+│           ├── bug-issue-submissions.json  ← 可选：外部 tracker 关联 ledger
 │           ├── merged-results.json         ← 聚合结果
 │           └── bugs/                       ← 校验后的 bug（项目级编号）
 │               └── BUG-<version>-NNN-<slug>.md
@@ -1213,6 +1252,55 @@ Builder 对每个 bug 源计算 SHA-256，并验证主报告中的完整正文�
   "project": "<project-name>",
   "test_target": "<被测对象描述>",
   "created_at": "<YYYY-MM-DDTHH:MM:SS±HH:MM>"
+}
+```
+
+### intake.json
+
+新 run 在执行前冻结被测物身份，`results.json.intake_ref` 同时绑定 `intake_id` 与本文件
+SHA-256。历史 run 缺失时只作 advisory。
+
+```json
+{
+  "schema_version": 1,
+  "intake_id": "intake-<run-id>",
+  "produced_by": "manual",
+  "attested_at": "<YYYY-MM-DDTHH:MM:SS±HH:MM>",
+  "subjects": [
+    {
+      "id": "source",
+      "type": "source",
+      "identity": {"commit": "<git-sha>", "dirty": false}
+    }
+  ],
+  "relations": [],
+  "notes": ""
+}
+```
+
+### metrics.json
+
+`scripts/build-run-metrics.py` 生成的 run-local 非裁决性指标。它用于观察并发、恢复、耗时和
+intake 采用情况，不能改变 item、gate 或 release verdict。
+
+```json
+{
+  "schema_version": 1,
+  "run_id": "<run-id>",
+  "recorded_at": "<YYYY-MM-DDTHH:MM:SS±HH:MM>",
+  "results_schema_version": 3,
+  "mode": "full",
+  "tester_count": 1,
+  "wall_clock_minutes": 30,
+  "unattended_minutes": null,
+  "resume_count": null,
+  "resume_failed": null,
+  "validator_blocks": null,
+  "verdict": "BLOCKED",
+  "verdict_overridden": null,
+  "resource_conflicts_detected": null,
+  "intake_present": true,
+  "intake_binding": "valid"
 }
 ```
 
@@ -1610,6 +1698,7 @@ bug:
   regression_canary: false
   post_ship: false
   escape_id: null             # post_ship=true 时必须是 ESC-NNN
+  submission_key: <stable-project-bug-key>  # 项目启用 issue policy 时必填
 
   # 开发者修复后填入
   fix_commit: null
@@ -1628,6 +1717,7 @@ bug:
    → status: OPEN
    → results.json 中相关 items 的 bug_ids 填入 BUG-NNN
    → 单 tester: 直接更新 bugs-index.md；多 tester: 由 coordinator merge 时合并
+   → 项目启用 issue policy 时，confirmed/proven 后按 submission_key 幂等创建独立 Issue
 
 2. 开发者确认
    → 更新 status: CONFIRMED

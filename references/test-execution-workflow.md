@@ -7,7 +7,7 @@
 固定流程无法适应所有项目。一个金融 daemon 的测试执行和一个 CLI 工具的测试执行差异巨大。本 workflow 提供：
 
 1. **通用框架**（本文件）— 所有项目共用的执行纪律和标记规则
-2. **项目知识注入点**（标记为 `[PROJECT]`）— agent 从 `.better-work/test/` 读取项目专属信息填入
+2. **项目知识注入点**（标记为 `[PROJECT]`）— agent 从 `${TEST_ROOT}/` 读取项目专属信息填入
 3. **生成的执行计划**（输出到对话中）— 结合 1+2 为当次测试生成具体步骤
 
 ## 执行计划生成
@@ -429,6 +429,9 @@ happy path 通过后，对每个接口主动尝试 break——silent failure 最
   在 Agent 内部注入，但产品进程仍通过第一方标准入口启动
 - 专用账号 campaign 必须优先复用本机持久会话，并在 strict-ready 后从账户列表自动发现
   可派生的交易账户 ID；禁止把账号、密码或账户 ID 重新变成用户逐 run 输入步骤
+- active run 不得调用 `rotate/enroll/set-login-pwd/set-trade-pwd`、生成 password bootstrap
+  或等待用户输入；profile 缺失、服务端拒绝或 runner 无 secret provider 时写
+  `BLOCKED_CREDENTIAL_PROFILE`，继续不依赖凭据的安全子集
 - 即使用户允许全执行，也优先用安全方式（sim 账户 + 远离市价 + 立即撤单）
 ```
 
@@ -554,8 +557,11 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 
 ```
 1. 写入 results.json → history/<version>/run-<tester-id>-NNN-<ts>/results.json
+   → 新 run 必须包含同目录 `intake.json`，且 `results.json.intake_ref` 同时绑定
+     `intake_id` 与 intake 文件 SHA-256
 1.5 结构化结果强制校验（所有新 run 必做）：
-    → 运行 `<skill-root>/scripts/validate-results.sh <run>/results.json`
+    → 运行 `python3 <skill-root>/scripts/validate-run.py --run-dir <run>
+      --intake-policy required --project-root <project-root>`
    - `results_v4=shadow`：先写 v3（可带 v3.1 `hybrid` 扩展），再原子写 v4 shadow；分别校验，
      最后运行 `hybrid-results.py semantic-diff`。profile/capabilities/map/impact/v4 都归档 run-local
      并记录 hash。任何 diff 未处置，run 不得 completed。
@@ -580,10 +586,21 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
    → 主报告必须包含 summary、审计材料、完整机器结果，以及 `bugs/` 中每一份 Bug Report 的
      8 节正文和完整元数据；不允许摘要替代、截断或仅链接
 6.5 再运行一次 `--validate-only`；任一 bug 正文/数量/hash/元数据不一致时测试未完成
+    → 最终交付前再运行 `validate-run.py` 并追加 `--validate-report`
+    → 安装了 Codex Stop adapter 时，它会在 active run 进入交付阶段后重复调用同一 portable
+      gate；每个 turn 最多阻断 3 次，限次退出不等于验证通过
+6.6 如果项目存在启用的 `bug-issue-policy.json`，加载
+    `references/procedures/bug-issue-submission.md`：
+    → 单 tester run 可直接提交；多 tester 任务必须等待 merge，只由 coordinator 提交
+    → 先 `--validate-only --offline`，再 `--dry-run` 做权限和远端 fingerprint 查重
+    → 对 validated results 中 evidence=confirmed/proven 的新 Bug 执行 `--submit`
+    → 每个 Bug 一个 Issue；direct/binary/blocked 不提交；secret/PII 命中立即阻断
+    → 创建或关联后保留 run-local `bug-issue-submissions.json`
 7. 向用户和开发者只呈现 `FULL-TEST-REPORT.md` 这一份文件。聊天中可以先说一句结论，
    但不能再把 summary、audit、bugs 作为需要开发者分别打开的交付物
 9. 如有 bug-retest 中的项复测通过 → 更新 bugs-index.md 对应 bug 为 VERIFIED
 10. 增量 reflect（自动执行，见下方）
+10.5 生成 run-local `metrics.json`；metrics 仅用于演进决策，不参与 release verdict
 11. 建议 /better-test update 更新知识（如有新发现）
 12. 建议 /better-test checkpoint（如任务未完成）
 ```
@@ -600,6 +617,7 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 | `audit-report.md` | 人（30 秒判断） | 主 Agent 组装 | 是（有 L2 时） |
 | `process-log.md` | 人复盘 | Agent 手写 | **否**（鼓励但不强制，execution-log 是底线） |
 | `FULL-TEST-REPORT.md` | **开发者唯一交付物** | 机器组装 + 校验 | **是；含全部完整 Bug Reports** |
+| `bug-issue-submissions.json` | 外部 tracker 关联 ledger | issue submitter | 项目启用 policy 且有 eligible Bug 时 |
 
 ### 2 分钟速览模板（summary.md，内部组装源）
 
@@ -806,7 +824,7 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
 
 ### 变更日志
 
-本文件的每次修改记录到 `.better-work/test/execution-changelog.md`（格式同 protocol-changelog.md）：
+本文件的每次修改记录到 `${TEST_ROOT}/execution-changelog.md`（格式同 protocol-changelog.md）：
 
 ```markdown
 ## [YYYY-MM-DD] <操作>

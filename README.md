@@ -61,6 +61,14 @@ Key capabilities:
   ledger, and every full 8-section Bug Report with metadata; summaries or
   links cannot substitute for the Bug Report body
 - **Bug lifecycle management** — OPEN → CONFIRMED → FIXED → VERIFIED → CLOSED
+- **Run intake binding** — new runs bind `results.json` to a run-local `intake.json` by ID and
+  SHA-256, while historical runs remain readable in advisory mode
+- **Portable run completion gate** — `scripts/validate-run.py` composes results, intake, and
+  optional full-report validation without relying on platform hook exit semantics
+- **Bounded Codex Stop adapter** — finalizing runs invoke the portable gate before conversation
+  stop, with per-turn loop limits and fail-open logging; it remains an adapter, not the authority
+- **Tracker delivery** — policy-enabled projects submit each confirmed/proven Bug Report as one
+  deduplicated GitHub Issue after report, evidence, and secret/PII validation
 
 ## How it works
 
@@ -200,7 +208,13 @@ references/
 │   ├── procedures/flakiness-scoring.md     when flaky signal detected
 │   ├── procedures/bug-report.md            when bug found during testing
 │   ├── procedures/longrun-testing.md       for 24h+ stability testing
-│   └── procedures/combinatorial-testing.md for pairwise/equivalence coverage
+│   ├── procedures/combinatorial-testing.md for pairwise/equivalence coverage
+│   ├── procedures/hybrid-testing.md        when source/build capabilities are available
+│   ├── procedures/reference-suite-intake.md when importing an upstream test repository
+│   ├── procedures/dynamic-fixture-reproducibility.md for dynamic selectors and data pools
+│   ├── procedures/imported-skip-taxonomy.md for upstream conditional skips
+│   ├── procedures/agent-intent-projection.md for Agent/MCP user-language smoke
+│   └── procedures/bug-issue-submission.md for confirmed/proven GitHub issue delivery
 │
 └── Tier 3: Design docs (human reference, agent doesn't load)
     └── methodologies/design-rationale.md   all research citations + design reasoning

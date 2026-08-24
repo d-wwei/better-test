@@ -14,8 +14,14 @@ fail() {
 }
 
 if git -C "$ROOT_DIR" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  if git -C "$ROOT_DIR" ls-files scripts hooks | rg '(^|/)__pycache__/|\.pyc$'; then
+  set +e
+  git -C "$ROOT_DIR" ls-files scripts hooks | grep -E '(^|/)__pycache__/|\.pyc$'
+  guard_rc=$?
+  set -e
+  if [[ "$guard_rc" -eq 0 ]]; then
     fail "tracked Python bytecode is present in the distributable tree"
+  elif [[ "$guard_rc" -ge 2 ]]; then
+    fail "tracked Python bytecode guard failed (exit $guard_rc)"
   fi
 elif find "$ROOT_DIR/scripts" "$ROOT_DIR/hooks" -type f -name '*.pyc' -print -quit | grep -q .; then
   fail "generated Python bytecode is present in the distributable snapshot"
@@ -43,7 +49,8 @@ python3 -m json.tool "$ROOT_DIR/schemas/merged-results-v4.schema.json" >/dev/nul
 
 # The reusable layer must not absorb product-specific constants or operational
 # examples from a project adapter/knowledge repository.
-if rg -n -i 'futu([^[:alnum:]]|$)|opend([^[:alnum:]]|$)|moomoo([^[:alnum:]]|$)|option_chain|窝轮|11111' \
+set +e
+grep -r -n -i -E 'futu([^[:alnum:]]|$)|opend([^[:alnum:]]|$)|moomoo([^[:alnum:]]|$)|option_chain|窝轮|11111' \
   "$ROOT_DIR/SKILL.md" \
   "$ROOT_DIR/protocol-base.md" \
   "$ROOT_DIR/README.md" \
@@ -59,8 +66,13 @@ if rg -n -i 'futu([^[:alnum:]]|$)|opend([^[:alnum:]]|$)|moomoo([^[:alnum:]]|$)|o
   "$ROOT_DIR/schemas" \
   "$ROOT_DIR/fixtures/generic-rust" \
   "$ROOT_DIR/fixtures/providers" \
-  "$ROOT_DIR/fixtures/results-v4"; then
+  "$ROOT_DIR/fixtures/results-v4"
+guard_rc=$?
+set -e
+if [[ "$guard_rc" -eq 0 ]]; then
   fail "generic layer contains project-specific operational knowledge"
+elif [[ "$guard_rc" -ge 2 ]]; then
+  fail "generic-layer knowledge guard failed (exit $guard_rc)"
 fi
 
 python3 "$ROOT_DIR/scripts/validate-provider-output.py" \
@@ -979,13 +991,19 @@ expect_fail "caveat/legacy pass requires a complete override" \
   python3 "$ROOT_DIR/scripts/validate-results-v4.py" "$TMP_DIR/caveat/unsafe-go.json"
 
 # Generic layer purity: product-specific knowledge belongs in project profiles/providers.
-if rg -i '\bfutu\b|\bopend\b|\bmoomoo\b' \
+set +e
+grep -r -i -E '(^|[^[:alnum:]_])(futu|opend|moomoo)([^[:alnum:]_]|$)' \
   "$ROOT_DIR/schemas" \
   "$ROOT_DIR/scripts/hybrid_core.py" \
   "$ROOT_DIR/scripts/rust-cargo-provider.py" \
   "$ROOT_DIR/scripts/run-source-provider.py" \
-  "$ROOT_DIR/scripts/resolve-hybrid-strategy.py" >/dev/null; then
+  "$ROOT_DIR/scripts/resolve-hybrid-strategy.py" >/dev/null
+guard_rc=$?
+set -e
+if [[ "$guard_rc" -eq 0 ]]; then
   fail "product-specific knowledge leaked into the generic layer"
+elif [[ "$guard_rc" -ge 2 ]]; then
+  fail "generic-layer purity guard failed (exit $guard_rc)"
 fi
 
 echo "PASS: hybrid contracts, provider, strategy, migration, and trust-boundary fixtures"

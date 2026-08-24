@@ -118,7 +118,8 @@ Q4: 具体到 agent 能对照自检吗？
 1. 保存当前 protocol.md 全文到 protocol-versions/v<X.Y.Z>.md
 2. 修改 protocol.md
 3. 在 protocol-changelog.md 追加记录（叙事+KAC 格式）
-4. 项目 protocol.md 通过 `@.better-work/test/protocol.md` 注入 CLAUDE.md（配合 skill 的 `@protocol-base.md`），变更下次会话自动生效
+4. 项目 protocol.md 通过 resolver 得到的仓库相对 `@<TEST_ROOT>/protocol.md` 注入
+   CLAUDE.md（配合 skill 的 `@protocol-base.md`），变更下次会话自动生效
 ```
 
 ### 项目纪律段满 5 行的处理

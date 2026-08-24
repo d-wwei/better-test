@@ -21,6 +21,10 @@ COMMAND=$(printf '%s' "$INPUT" | jq -r '.tool_input.command // .tool_input.cmd /
 PROTECTED_TARGET=""
 CONTENT=""
 
+if [[ "$TOOL_NAME" == "Bash" ]] && bt_resolve_test_dir "$CWD" >/dev/null 2>&1; then
+  bt_credential_scan_interactive_command "$COMMAND" "a Better Test project"
+fi
+
 while IFS= read -r target; do
   [[ -n "$target" ]] || continue
   if bt_is_test_path "$target" "$CWD"; then

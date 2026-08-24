@@ -29,3 +29,29 @@ bt_credential_scan_content() {
 
   return 0
 }
+
+bt_credential_scan_interactive_command() {
+  local command="$1"
+  local context="$2"
+  local pattern
+  local patterns=(
+    'macos-credential-broker[^;&|]*[[:space:]]rotate([[:space:]]|$)'
+    '\$[{]?BROKER[}]?["'"'"']?[[:space:]]+rotate([[:space:]]|$)'
+    '(^|[;&|[:space:]])([^;&|[:space:]]*/)?futucli[^;&|]*(set-login-pwd|set-trade-pwd)([[:space:]]|$)'
+    'dedicated-test-account\.py[^;&|]*[[:space:]]enroll([[:space:]]|$)'
+    '(^|[/[:space:]])(password-bootstrap|broker-rotate)\.command([[:space:]]|$)'
+  )
+
+  if [[ -z "$command" ]]; then
+    return 0
+  fi
+
+  for pattern in "${patterns[@]}"; do
+    if printf '%s\n' "$command" | grep -qE "$pattern"; then
+      echo "better-test L1 Hook: Interactive credential setup is forbidden in $context. Active test work must use profile_id-only status/materialize/unlock flows; missing or rejected credentials become BLOCKED_CREDENTIAL_PROFILE instead of a password prompt." >&2
+      return 2
+    fi
+  done
+
+  return 0
+}

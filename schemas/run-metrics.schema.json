@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://better-test.local/schemas/run-metrics.schema.json",
+  "title": "Better Test Run Metrics",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "run_id",
+    "recorded_at",
+    "results_schema_version",
+    "mode",
+    "tester_count",
+    "wall_clock_minutes",
+    "unattended_minutes",
+    "resume_count",
+    "resume_failed",
+    "validator_blocks",
+    "verdict",
+    "verdict_overridden",
+    "resource_conflicts_detected",
+    "intake_present",
+    "intake_binding"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "run_id": {"type": "string", "minLength": 1},
+    "recorded_at": {"type": "string", "format": "date-time"},
+    "results_schema_version": {
+      "type": ["integer", "number", "string", "null"]
+    },
+    "mode": {"type": ["string", "null"]},
+    "tester_count": {"type": "integer", "minimum": 0},
+    "wall_clock_minutes": {"type": ["number", "null"], "minimum": 0},
+    "unattended_minutes": {"type": ["number", "null"], "minimum": 0},
+    "resume_count": {"type": ["integer", "null"], "minimum": 0},
+    "resume_failed": {"type": ["boolean", "null"]},
+    "validator_blocks": {"type": ["integer", "null"], "minimum": 0},
+    "verdict": {"type": ["string", "null"]},
+    "verdict_overridden": {"type": ["boolean", "null"]},
+    "resource_conflicts_detected": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "intake_present": {"type": "boolean"},
+    "intake_binding": {
+      "enum": ["valid", "missing", "invalid", "not_applicable"]
+    }
+  }
+}

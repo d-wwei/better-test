@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://better-test.local/schemas/reference-suite-map.schema.json",
+  "title": "Better Test Reference Suite Map",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "suite",
+    "summary",
+    "danger_scan",
+    "cases"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "suite": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "repo_url",
+        "branch",
+        "commit",
+        "dirty"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "repo_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "dirty": {
+          "type": "boolean"
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "files",
+        "static_tests",
+        "cases",
+        "side_effects",
+        "adoption_statuses"
+      ],
+      "properties": {
+        "files": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "static_tests": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "cases": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "side_effects": {
+          "$ref": "#/$defs/counts"
+        },
+        "adoption_statuses": {
+          "$ref": "#/$defs/counts"
+        }
+      }
+    },
+    "danger_scan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "completed",
+        "findings"
+      ],
+      "properties": {
+        "completed": {
+          "type": "boolean"
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "severity",
+              "path",
+              "line",
+              "message"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "minLength": 1
+              },
+              "severity": {
+                "enum": [
+                  "info",
+                  "warning",
+                  "high"
+                ]
+              },
+              "path": {
+                "type": "string",
+                "minLength": 1
+              },
+              "line": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "message": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/case"
+      }
+    }
+  },
+  "$defs": {
+    "counts": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "integer",
+        "minimum": 0
+      }
+    },
+    "stringArray": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "file",
+        "class",
+        "function",
+        "markers",
+        "fixtures",
+        "call_names",
+        "side_effect",
+        "execution_level",
+        "adoption_status",
+        "target_test_ids",
+        "oracle_type",
+        "environment",
+        "skip_categories",
+        "evidence_boundary",
+        "source_hash"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "file": {
+          "type": "string",
+          "minLength": 1
+        },
+        "class": {
+          "type": "string"
+        },
+        "function": {
+          "type": "string",
+          "pattern": "^test_"
+        },
+        "markers": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "fixtures": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "call_names": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "side_effect": {
+          "enum": [
+            "none",
+            "read",
+            "write",
+            "destructive"
+          ]
+        },
+        "execution_level": {
+          "enum": [
+            "L0",
+            "L1",
+            "L2",
+            "L3",
+            "L4"
+          ]
+        },
+        "adoption_status": {
+          "enum": [
+            "direct",
+            "adapted",
+            "oracle-only",
+            "duplicate",
+            "blocked",
+            "not-applicable",
+            "rejected"
+          ]
+        },
+        "target_test_ids": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "oracle_type": {
+          "enum": [
+            "reference_implementation",
+            "cross_api_invariant",
+            "schema_contract",
+            "behavioral_baseline",
+            "none"
+          ]
+        },
+        "environment": {
+          "$ref": "#/$defs/stringArray"
+        },
+        "skip_categories": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "missing_capability",
+              "missing_entitlement",
+              "missing_account",
+              "market_closed",
+              "data_unavailable",
+              "rate_limited",
+              "upstream_not_implemented",
+              "unsafe_without_approval",
+              "fixture_failure",
+              "product_behavior",
+              "unclassified"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "evidence_boundary": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

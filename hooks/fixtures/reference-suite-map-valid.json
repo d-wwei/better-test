@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-14T09:00:00+08:00",
+  "suite": {
+    "id": "official-openapi-test",
+    "repo_url": "git@example.invalid:team/openapi_test.git",
+    "branch": "test",
+    "commit": "01f59e6542bf6f880dbf7c266eea1c830c829185",
+    "dirty": false
+  },
+  "summary": {
+    "files": 1,
+    "static_tests": 1,
+    "cases": 1,
+    "side_effects": {
+      "read": 1
+    },
+    "adoption_statuses": {
+      "adapted": 1
+    }
+  },
+  "danger_scan": {
+    "completed": true,
+    "findings": []
+  },
+  "cases": [
+    {
+      "id": "testcases/quote/test_global.py::TestGlobal::test_state",
+      "file": "testcases/quote/test_global.py",
+      "class": "TestGlobal",
+      "function": "test_state",
+      "markers": [
+        "integration"
+      ],
+      "fixtures": [
+        "quote_ctx"
+      ],
+      "call_names": [
+        "get_global_state"
+      ],
+      "side_effect": "read",
+      "execution_level": "L1",
+      "adoption_status": "adapted",
+      "target_test_ids": [
+        "Q-GLOBAL-001"
+      ],
+      "oracle_type": "reference_implementation",
+      "environment": [
+        "opend",
+        "quote"
+      ],
+      "skip_categories": [],
+      "evidence_boundary": "Runtime behavior after adapter execution.",
+      "source_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ]
+}

@@ -3,8 +3,8 @@ name: better-test
 description: |
   黑盒 + 白盒混合测试知识管理：按目标和实际能力自动选择 blackbox / whitebox / hybrid 策略，为项目构建持久化测试组、源码影响映射、已知问题库和测试认知约束。支持安全降级、typed evidence、跨 session 反馈和断点续传。Better-Work 系列子技能。
   触发场景：发布新版本前回归、修了 bug 想验证、变更后想知道跑哪些测试、录入开发者反馈避免重复提报。独立命令 /better-test，或作为子技能 /better-work test。
-  Subcommands: init, update, strategy, feedback, protocol-update, reflect, checkpoint, resume, merge
-argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-update [text] | reflect [scope] | checkpoint | resume | merge"
+  Subcommands: init, update, strategy, feedback, protocol-update, reflect, checkpoint, resume, merge, submit-bugs
+argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-update [text] | reflect [scope] | checkpoint | resume | merge | submit-bugs <run-dir>"
 ---
 
 # Better Test
@@ -15,9 +15,21 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 
 像一个资深测试工程师在做交接——只讲能防止"白跑测试"和"重复提报已知问题"的关键信息。pass 必须基于返回值字段验证而非状态码；skip 必须醒目；feedback 提炼成规则而非沉没在历史里。
 
+## Test Root Contract
+
+任何读取、注册、执行、merge 或写入前，先从当前已加载的 Better Test skill 根目录执行：
+
+```bash
+TEST_ROOT="$("<skill-root>/scripts/resolve-test-root.sh" "$PWD")"
+```
+
+后续所有项目测试路径都相对 `${TEST_ROOT}`。解析顺序是 `BETTER_TEST_DIR` →
+最近的 `.better-test-root` → `.better-work/test` → marker-validated flat `test/` → 用户级
+registry。存在 `.better-test-root` 时，禁止再直接读取字面量 `.better-work/test`。
+
 ## Commands
 
-- `/better-test init` — 探索测试结构，生成 `.better-work/test/` 知识文件
+- `/better-test init` — 探索测试结构，在 `${TEST_ROOT}` 生成测试知识文件
 - `/better-test update` — 信号驱动的增量更新（新测试、新 bug、新组）
 - `/better-test strategy` — 先判定目标和能力，再推荐 blackbox / whitebox / hybrid 下的 smoke / targeted / bug-retest / full
 - `/better-test feedback <id> <verdict> [--note "..."]` — 录入反馈，提炼为 known-issues 规则。verdict ∈ `not-a-bug` / `fixed` / `fixed-differently` / `wontfix` / `deferred` / `revoke`
@@ -26,6 +38,7 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 - `/better-test checkpoint` — 保存当前测试任务进度
 - `/better-test resume` — 从上次断点恢复
 - `/better-test merge` — 合并多个 tester 的测试结果（交互式选择 run，校验冲突，生成统一报告）
+- `/better-test submit-bugs <run-dir>` — 按项目 policy 将 confirmed/proven Bug Reports 幂等提交到 GitHub Issues
 
 ## Output Structure
 
@@ -66,16 +79,19 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
         └── <version>/
             ├── run-<tester-id>-NNN-<ts>/      ← tester 的完整工作目录（自包含）
             │   ├── bio.md                     ← 此 run 的 tester 身份快照（不可变）
+            │   ├── intake.json                ← 被测物身份声明；results 以 ID + SHA-256 绑定
             │   ├── strategy-plan.md           ← 此 run 的分阶段执行计划
             │   ├── progress.md                ← 断点（checkpoint 写入）
             │   ├── status.md                  ← 此 tester 本 run 的测试结果
             │   ├── results.json               ← 结构化结果
+            │   ├── metrics.json               ← 非裁决性运行指标（可选）
             │   ├── capabilities.json          ← hybrid run-local 能力快照
             │   ├── source-map.json            ← hybrid run-local 源码事实缓存（非人工 SSOT）
             │   ├── source-impact.json         ← hybrid run-local 影响与 selection 证据
             │   ├── process-log.md             ← 过程日志
             │   ├── summary.md                 ← 2 分钟速览
             │   ├── FULL-TEST-REPORT.md        ← 开发者唯一交付（含全部完整 Bug Reports）
+            │   ├── bug-issue-submissions.json ← 可选：Issue 编号/URL/fingerprint ledger
             │   ├── execution-log.md + l2-findings.md + audit-report.md
             │   ├── bugs/                      ← 此 tester 发现的 bug（run 内编号）
             │   │   └── BUG-NNN-<slug>.md
@@ -108,7 +124,14 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 
 **时间戳规范**：所有时间戳统一为 ISO 8601 + 时区偏移，三档精度：Full `2026-04-21T14:23:07+08:00`、Compact `04-21 14:23:07+08`、Date-only `2026-04-21`。详见 `references/templates.md` 的 Timestamp Format Specification。
 
-**注入**（Claude Code 示例）：项目 CLAUDE.md 中追加两行 protocol 注入：`@~/.claude/skills/better-test/protocol-base.md`（skill 级通用原则，自动跟随 skill 升级）+ `@.better-work/test/protocol.md`（项目级安全纪律 + 项目纪律）。其他文件按需 Read。
+**完成门禁**：跨平台 authority 是
+`python3 <skill-root>/scripts/validate-run.py --run-dir <run> --intake-policy required --project-root <project> --validate-report`。
+Codex Stop hook 只在 active run 已进入交付阶段时调用该命令；同一 turn 最多阻断 3 次，
+达到上限只允许会话退出，不会把失败结果改写为通过。
+
+**注入**（Claude Code 示例）：项目 CLAUDE.md 中追加 skill 级
+`@~/.claude/skills/better-test/protocol-base.md`，再追加 resolver 得到的仓库相对
+`@<TEST_ROOT>/protocol.md`。其他文件按需 Read，禁止把默认布局硬编码到 flat 项目。
 
 ## Red Lines
 
@@ -137,6 +160,14 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 23. Provider/impact 不确定或失败时缩小测试范围、清空 required selection 或删除项目 hard gate → 违规；unknown/low confidence 只能 expand-safe-default
 24. source-map 被人工维护为项目 SSOT，或项目专属 test group/gate/ledger 泄漏进通用 Provider → 违规；通用协议与项目知识必须分层
 25. 多平台发布只用单一 OS/arch/runtime 的 GREEN 外推到全部包 → 违规；支持的平台必须分别绑定 artifact/process/session 证据，远端 runner/CI/长期测试机是合法环境，本机 VM 不是默认要求
+26. 未通过完整报告、typed results、secret/PII 和 fingerprint 查重门禁就创建外部 Bug Issue，或把 direct/binary/blocked 结论自动提交 → 违规
+27. active test run 调用 credential `rotate/enroll/set-*-pwd`、创建交互式 password bootstrap 或要求用户临场输入账号密码 → 违规；只允许 `profile_id` 非交互消费，缺失/拒绝必须记 `BLOCKED_CREDENTIAL_PROFILE` 并继续安全子集
+28. 未先解析 `TEST_ROOT` 就直接读取或写入字面量 `.better-work/test` → 违规；仓库 marker
+    与默认布局并存时必须以 `.better-test-root` 为准
+29. 新 run 缺少 `intake.json`，或 `results.json.intake_ref` 的 ID / SHA-256 与该文件不一致
+    → 违规；历史 run 可 advisory 兼容，但不能伪装为已绑定
+30. 把 Codex Stop hook 的未触发、fail-open 或达到每 turn 阻断上限解释为 run 已通过
+    → 违规；最终状态只认 portable `validate-run.py` 的真实退出码和证据
 
 ## Acceptance Criteria
 
@@ -164,6 +195,13 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 11. 多 tester 的 v4 default 合并必须运行 `validate-merged-results-v4.py`，逐来源保留 subject、
     relation、typed item/evidence、gate、caveat 和 readiness occurrence；v3 merged validator
     仅用于历史兼容，不能作为 v4 主合并路径
+12. 项目启用 `bug-issue-policy.json` 时，confirmed/proven Bug 每项独立创建一个 Issue；重跑
+    命中 fingerprint 时只回写 run-local ledger，不重复创建，任何 secret/PII 发现均 fail closed
+13. 启用无人值守 profile 的项目必须以 hook/validator 证明 active run 无 `rotate/enroll/set-*-pwd`
+    或 password bootstrap；profile 缺失、被拒绝或远端 runner 无 secret provider 时必须机器化
+    BLOCKED，不能回退为用户输入
+14. test-root resolver 回归必须证明：`.better-test-root -> test` 与空 `.better-work/test` 同时存在时，
+    init/strategy/execution/progress/merge 全部只访问 marker 指向的 `${TEST_ROOT}`
 
 ## References
 
@@ -205,6 +243,12 @@ argument-hint: "init | update | strategy | feedback <id> <verdict> | protocol-up
 | `references/procedures/longrun-testing.md` | strategy | strategy 包含 24h+ 长跑；或用户要求稳定性/耐久性测试 | 长跑监控：canary/采样器/三层健康验证/daemon 身份 6 元组 |
 | `references/procedures/combinatorial-testing.md` | strategy | 2+ 个输入因子且穷举成本高；或需要证明 pairwise / 等价类覆盖 | 2-way 覆盖、等价类显式化、高风险 canary 与机器校验 |
 | `references/procedures/hybrid-testing.md` | init / strategy | project profile 启用 hybrid，或发现可读源码/构建图能力 | 目标×能力策略、七 lane、claim 上限、v3/v4 双写 |
+| `references/procedures/reference-suite-intake.md` | init / update / strategy | 用户提供官方、上游、旧实现或第三方测试仓 | 来源身份、危险扫描、全量 case map、adapter 边界与 drift 同步 |
+| `references/procedures/dynamic-fixture-reproducibility.md` | strategy / execution | 用例动态选标的、发现 ID、使用随机池或当前市场状态 | seed、数据池、选中值、fallback 与 claim 分母 |
+| `references/procedures/imported-skip-taxonomy.md` | init / execution / merge | imported suite 含 runtime/conditional skip | typed skip、分母影响和 closure action |
+| `references/procedures/agent-intent-projection.md` | strategy / update | MCP/Agent/自然语言入口需要用户意图 smoke | 从 case map 生成用户语言检查清单 |
+| `references/procedures/bug-issue-submission.md` | execution / merge 完成 | 项目启用 bug issue policy 且存在 confirmed/proven Bug | 完整报告门禁、脱敏、GitHub create-only、fingerprint 幂等和 URL 回写 |
+| `references/integrations/macos-credential-broker.md` | strategy / execution | macOS 上存在 `dedicated-real-test` + `standing-all-actions` profile | 稳定 broker、profile_id-only、Keychain 轮换、0600 lease 和精确清理 |
 
 ### Tier 3: 设计文档（面向人类，agent 不加载）
 

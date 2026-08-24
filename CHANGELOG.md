@@ -37,6 +37,9 @@ All notable changes to **better-test** (Better-Work series testing subskill) are
 - Dedicated-account campaigns now reuse persistent local sessions and automatically
   discover derivable trading-account identifiers after strict readiness instead of
   asking the user to enter account, password, or account-ID fields per run.
+- Added a stable macOS credential broker with profile-only runtime interfaces,
+  cross-process Keychain self-test, hidden password rotation, `0600` lease
+  materialization, stdin-only trade unlock, and exact-path cleanup.
 - Product login and user-journey claims must now be proven through the product's
   first-party GUI, official CLI, or official configuration. Agents perform setup
   and launch themselves; brokers/wrappers remain internal credential plumbing and
@@ -48,6 +51,20 @@ All notable changes to **better-test** (Better-Work series testing subskill) are
 
 ### Added
 
+- Run-local `intake.json` identity attestation with ID + SHA-256 results binding, semantic relation
+  validation, safe optional artifact-path verification, and historical advisory compatibility.
+- Portable `validate-run.py` completion gate and non-authoritative run-local `metrics.json`.
+- Runtime-verified Codex Stop adapter with matcher-less RNR coexistence, per-turn bounded blocking,
+  fail-open diagnostics, and portable `validate-run.py` as the unchanged authority.
+- Self-test integrity coverage that rejects missing dependency and failed negative-guard execution.
+- External reference-suite intake with static AST inventory, source identity, danger scanning,
+  full case mapping, a versioned JSON schema, a standard-library validator, deterministic
+  positive/negative fixtures, and an upstream-drift contract.
+- Deterministic reference-suite drift diff, dynamic-fixture reproducibility, imported skip
+  taxonomy, Agent user-intent projection, and an optional pytest-to-XMind integration boundary.
+- Policy-gated GitHub Bug Issue submission for confirmed/proven evidence, with complete report
+  embedding, fail-closed secret/PII scanning, stable fingerprints, remote dedupe, and run-local
+  issue URL/number ledgers.
 - Versioned JSON contracts for project profiles, source maps, source impact, and results v4, plus
   strict standard-library validators and deterministic positive/negative fixtures.
 - A declaration-aware Provider runner and a project-neutral Rust/Cargo Provider for capability

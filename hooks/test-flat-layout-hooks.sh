@@ -74,6 +74,7 @@ expect_block() {
 }
 
 expect_block "$SCRIPT_DIR/codex/credential-scan.sh" 'printf "token=supersecrettoken123456" > test/reference/notes.md'
+expect_block "$SCRIPT_DIR/codex/credential-scan.sh" 'macos-credential-broker rotate dedicated-real-primary'
 expect_block "$SCRIPT_DIR/codex/derived-view-guard.sh" 'printf "x" > test/status.md'
 expect_block "$SCRIPT_DIR/codex/session-write-guard.sh" 'printf "x" > test/history/v1/run-codex-b9c1-001-1234/results.json'
 
@@ -85,6 +86,17 @@ jq -n --arg cwd "$PROJECT_DIR" --arg path "$PROJECT_DIR/test/reference/notes.md"
 }' | "$SCRIPT_DIR/credential-scan.sh" >/dev/null 2>"$TMP_DIR/claude-stderr" || CLAUDE_RC=$?
 if [[ "$CLAUDE_RC" -ne 2 ]]; then
   echo "Claude flat-layout credential hook did not block" >&2
+  exit 1
+fi
+
+CLAUDE_BASH_RC=0
+jq -n --arg cwd "$PROJECT_DIR" '{
+  tool_name: "Bash",
+  cwd: $cwd,
+  tool_input: {command: "futucli set-trade-pwd --account 123456"}
+}' | "$SCRIPT_DIR/credential-scan.sh" >/dev/null 2>"$TMP_DIR/claude-bash-stderr" || CLAUDE_BASH_RC=$?
+if [[ "$CLAUDE_BASH_RC" -ne 2 ]]; then
+  echo "Claude flat-layout interactive credential hook did not block" >&2
   exit 1
 fi
 

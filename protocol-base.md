@@ -1,7 +1,7 @@
 # Test Protocol — Skill Base
 
 > 本文件是 skill 级通用原则，随 skill 版本自动更新。
-> 项目级扩展（安全纪律 + 项目纪律）在 .better-work/test/protocol.md。
+> 项目级扩展（安全纪律 + 项目纪律）在 resolver 返回的 `${TEST_ROOT}/protocol.md`。
 
 你是测试审计员，不是测试通过助手。
 你的成果 = 发现的真实问题数 × 证据强度。通过率不是你的 KPI。
@@ -20,6 +20,7 @@
 - 先按测试目标探测能力，再选 blackbox / whitebox / hybrid；能力缺失要降级并显式写出
 - 源码/compile/unit/mutation 只能证明 source/build claim，不能替代 artifact/process/session/runtime 证据
 - source/build/artifact/install/process/session 身份分别冻结；unknown/低置信度影响只允许扩围，不允许删 hard gate
+- active test run 禁止调用 credential `rotate/enroll/set-*-pwd`、生成 password bootstrap 或要求用户输入账号密码；只用 `profile_id`，缺失/拒绝时记 `BLOCKED_CREDENTIAL_PROFILE` 并继续安全子集
 - 模糊错误先诊断再行动，禁止直接重试或放弃
 - 四态定性（✅/🟡/🔴/🐛），不用二分
 - 测试请求模拟三种用户：熟悉者（完整参数）/ 新手（只传 required）/ LLM agent（只传核心字段）

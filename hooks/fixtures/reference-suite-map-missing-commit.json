@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-08-14T09:00:00+08:00",
+  "suite": {
+    "id": "official-openapi-test",
+    "repo_url": "git@example.invalid:team/openapi_test.git",
+    "branch": "test",
+    "commit": "",
+    "dirty": false
+  },
+  "summary": {
+    "files": 0,
+    "static_tests": 0,
+    "cases": 0,
+    "side_effects": {},
+    "adoption_statuses": {}
+  },
+  "danger_scan": {
+    "completed": true,
+    "findings": []
+  },
+  "cases": []
+}

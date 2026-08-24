@@ -6,7 +6,7 @@
 
 strategy 是 tester 自动注册的触发点。首次执行 strategy 时：
 
-1. 检查 `.better-work/test/testers/` 是否有**当前 session 对应的活跃 tester**
+1. 检查 `${TEST_ROOT}/testers/` 是否有**当前 session 对应的活跃 tester**
 2. 如果没有 → 自动注册新 tester：
    - 探测平台（env `CLAUDECODE=1` → claude-code；codex config → codex；等）
    - 获取 session_id、model、device 信息
@@ -40,15 +40,30 @@ strategy 是 tester 自动注册的触发点。首次执行 strategy 时：
 
 ```
 注册完成后，写入 session 标识文件供 hook 识别当前 tester：
-  mkdir -p .better-work/test/.active-sessions
+  mkdir -p "${TEST_ROOT}/.active-sessions"
   echo '{"tester_id":"<tester-id>","run_dir":"history/<version>/run-<tester-id>-NNN-<ts>"}' \
-    > .better-work/test/.active-sessions/$PPID.json
+    > "${TEST_ROOT}/.active-sessions/$PPID.json"
 
 $PPID 是 Claude Code 进程的 PID（从 Bash 工具调用中获取）。
 session-write-guard.sh hook 使用此文件识别 tester 身份，阻止跨 tester 写入。
 
-Session 清理：tester 完成所有测试后删除自己的 session 文件。
+Session 清理：Codex 安装 Stop gate 时，最终回复前保留 session 文件，gate 在 portable
+完成校验通过后删除该精确文件；如果未安装 Stop gate，则在 portable gate 通过后由 tester
+删除。不得在最终校验前提前删除。
 ```
+
+### 被测物 Intake（新 run 必做）
+
+注册完成后创建当前 run 的 `intake.json`，记录 source/build/artifact/process/session 等实际
+subject 与 relation，并运行：
+
+```bash
+python3 <skill-root>/scripts/validate-intake.py <run>/intake.json --project-root <project-root>
+```
+
+拿到最终 artifact 后允许更新 intake；写 `results.json` 前必须冻结 intake，并把
+`intake_id` 与 intake 文件 SHA-256 写入 `results.json.intake_ref`。不能确认的 identity
+写成 `unknown` 并说明原因，不得捏造 relation。
 
 ### 注册门控（Gate）
 
@@ -289,7 +304,7 @@ git diff <prev_version_tag>..HEAD → 读实际变更内容（不只是文件名
 
 ### 第一层：关键词匹配
 
-读 `.better-work/test/impact-map.md`，做关键词匹配：
+读 `${TEST_ROOT}/impact-map.md`，做关键词匹配：
 
 ```
 对每个 changes 中的描述：
@@ -321,17 +336,17 @@ git diff <prev_version_tag>..HEAD → 读实际变更内容（不只是文件名
 ## Step 3: 读历史（read_history）
 
 ```
-读 .better-work/test/history/<current_version>/run-*-*/results.json
+读 ${TEST_ROOT}/history/<current_version>/run-*-*/results.json
 取最近一次（按时间戳最新的，跨所有 tester）
 统计：total / passed / failed / skipped
 提取 fail 项的 id 列表
 
-读 .better-work/test/history/feedback-rules.json
+读 ${TEST_ROOT}/history/feedback-rules.json
 - suppress[].test_id → 这些 id 即使 fail 也不算 active
 - known_behaviors[] → 展示给用户但不影响推荐
 - lessons[] → 用于人类参考
 
-读 .better-work/test/history/bugs-index.md
+读 ${TEST_ROOT}/history/bugs-index.md
 - FIXED 但未 VERIFIED 的 bug → 提取其 related_tests 加入 bug_retest_candidates
 - OPEN 的 bug → 提取其 related_tests 作为已知活跃 bug（展示但不自动推荐 retest）
 ```

@@ -11,6 +11,8 @@
 # 5. Backs up original files before modifying
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+
 # Portable sed -i (BSD vs GNU)
 sedi() {
   if sed --version 2>/dev/null | grep -q GNU; then
@@ -20,18 +22,11 @@ sedi() {
   fi
 }
 
-PROJECT_ROOT="${1:-.}"
+PROJECT_ROOT="$(cd "${1:-.}" && pwd -P)"
 
 # Find protocol.md
-PROTOCOL=""
-if [[ -f "$PROJECT_ROOT/.better-work/test/protocol.md" ]]; then
-  PROTOCOL="$PROJECT_ROOT/.better-work/test/protocol.md"
-else
-  PROJECT_NAME=$(basename "$PROJECT_ROOT")
-  if [[ -f "$HOME/.better-work/$PROJECT_NAME/test/protocol.md" ]]; then
-    PROTOCOL="$HOME/.better-work/$PROJECT_NAME/test/protocol.md"
-  fi
-fi
+TEST_ROOT="$("$SCRIPT_DIR/resolve-test-root.sh" "$PROJECT_ROOT")"
+PROTOCOL="$TEST_ROOT/protocol.md"
 
 if [[ -z "$PROTOCOL" ]]; then
   echo "Error: protocol.md not found for project at $PROJECT_ROOT"
@@ -88,7 +83,15 @@ echo "  - Safety + project discipline: kept"
 # Update CLAUDE.md — ensure both lines present in correct order (base before project)
 CLAUDE_MD="$PROJECT_ROOT/CLAUDE.md"
 BASE_LINE="@~/.claude/skills/better-test/protocol-base.md"
-PROJECT_LINE="@.better-work/test/protocol.md"
+case "$TEST_ROOT" in
+  "$PROJECT_ROOT"/*)
+    TEST_ROOT_REL="${TEST_ROOT#"$PROJECT_ROOT"/}"
+    PROJECT_LINE="@${TEST_ROOT_REL}/protocol.md"
+    ;;
+  *)
+    PROJECT_LINE="@$TEST_ROOT/protocol.md"
+    ;;
+esac
 
 if [[ -f "$CLAUDE_MD" ]]; then
   HAS_BASE=false

@@ -186,6 +186,7 @@ reflect 的产出是**修改建议**，不是直接修改。每条建议需要�
 ```
 输入：
   - 所有 results.json 的时间戳（started_at / finished_at，带时区偏移）
+  - 各 run 的 metrics.json（如存在；仅作观测，不作 verdict 证据）
   - test-groups.md 的典型耗时
 
 步骤：
@@ -197,6 +198,8 @@ reflect 的产出是**修改建议**，不是直接修改。每条建议需要�
      - 实际 > 预估 × 1.5 → 预估过低，建议上调
      - 实际 < 预估 × 0.5 → 预估过高，建议下调
   3. smoke / full 集合的总耗时也需要校准
+  4. 汇总 tester_count、unattended_minutes、resume_failed、
+     resource_conflicts_detected 和 validator_blocks，判断是否出现需要独立 Runtime 的真实压力
 
 输出：
   耗时校准建议: [组 → 旧预估 → 新预估（基于 N 次实测平均）]

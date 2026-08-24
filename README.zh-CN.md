@@ -55,6 +55,14 @@ coverage lane、无损历史投影与 v3/v4 安全双写。项目通过自己的
   `FULL-TEST-REPORT.md`，其中包含结论、审计、完整机器结果，以及所有带完整元数据的
   8 节 Bug Report；摘要或链接不能替代正文
 - **Bug 生命周期管理** — OPEN → CONFIRMED → FIXED → VERIFIED → CLOSED
+- **Run intake 绑定** — 新 run 通过 ID + SHA-256 把 `results.json` 绑定到同目录
+  `intake.json`；历史 run 继续以 advisory 模式读取
+- **Portable run 完成门禁** — `scripts/validate-run.py` 组合校验 results、intake 和可选完整报告，
+  不依赖平台 PostToolUse 的退出码语义
+- **有界 Codex Stop 适配器** — 进入交付阶段的 run 在对话结束前调用 portable gate，
+  具备每 turn 限次和 fail-open 日志；它仍是适配层，不是事实权威
+- **研发 Issue 闭环** — 项目启用 policy 后，每个 confirmed/proven Bug 在完整报告、typed
+  evidence 和 secret/PII 门禁通过后，幂等提交为一个 GitHub Issue
 
 ## 工作原理
 
@@ -193,7 +201,13 @@ references/
 │   ├── procedures/flakiness-scoring.md     flaky 信号时触发
 │   ├── procedures/bug-report.md            发现 bug 时触发
 │   ├── procedures/longrun-testing.md       24h+ 稳定性测试
-│   └── procedures/combinatorial-testing.md pairwise / 等价类覆盖
+│   ├── procedures/combinatorial-testing.md pairwise / 等价类覆盖
+│   ├── procedures/hybrid-testing.md        有源码/构建能力时触发
+│   ├── procedures/reference-suite-intake.md 吸纳官方/上游测试仓时触发
+│   ├── procedures/dynamic-fixture-reproducibility.md 动态选样/数据池时触发
+│   ├── procedures/imported-skip-taxonomy.md 上游条件 skip 时触发
+│   ├── procedures/agent-intent-projection.md Agent/MCP 用户意图 smoke
+│   └── procedures/bug-issue-submission.md confirmed/proven Bug 提交 GitHub Issue
 │
 └── Tier 3: 设计文档（人阅读，agent 不加载）
     └── methodologies/design-rationale.md   研究引用 + 设计理由

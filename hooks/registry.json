@@ -6,12 +6,12 @@
       "phase": "core",
       "priority": "P0",
       "rule_path": "hooks/lib/rules/credential-scan.sh",
-      "summary": "Block credential-like content written into the resolved project test root.",
+      "summary": "Block credential-like writes and interactive credential setup in Better Test projects.",
       "platforms": {
         "claude": {
           "status": "active",
           "event": "PreToolUse",
-          "matcher": "Edit|Write",
+          "matcher": "Bash|Edit|Write",
           "entrypoint": "hooks/credential-scan.sh"
         },
         "codex": {
@@ -22,7 +22,7 @@
               "event": "PreToolUse",
               "matcher": "Bash",
               "entrypoint": "hooks/codex/credential-scan.sh",
-              "note": "Bash path: scans command text for explicit credential-like literals when the command writes into the resolved test root; external file copies remain outside this guard."
+              "note": "Bash path: blocks interactive credential setup and scans explicit credential-like literals when commands write into the resolved test root; external file copies remain outside the content guard."
             },
             {
               "status": "active",
@@ -255,6 +255,31 @@
               "matcher": "Write",
               "entrypoint": "hooks/codex/session-write-guard.sh",
               "note": "Write path: runtime-verified on codex-cli 0.125.0, 0.145.0-alpha.18, and 0.146.0-alpha.3.1 for built-in apply_patch. Enforcement still depends on the same session file contract keyed to the hook parent PID."
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "stop-gate",
+      "phase": "completion",
+      "priority": "P1",
+      "rule_path": "hooks/lib/rules/stop-gate.sh",
+      "summary": "At finalization, run the portable run validator before Codex may stop.",
+      "platforms": {
+        "claude": {
+          "status": "deferred",
+          "note": "Claude Stop payload and coexistence semantics are not verified by this implementation."
+        },
+        "codex": {
+          "status": "active",
+          "bindings": [
+            {
+              "status": "active",
+              "event": "Stop",
+              "entrypoint": "hooks/codex/stop-gate.sh",
+              "timeout": 30,
+              "note": "Runtime-verified on codex-cli 0.146.0. Matcher is intentionally omitted. The adapter blocks an invalid finalizing run at most three times per turn; portable validate-run.py remains authoritative."
             }
           ]
         }

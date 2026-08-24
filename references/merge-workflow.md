@@ -44,7 +44,7 @@ IF 没有未合并 run：
 
 ```
 1. 创建 merge 锁文件：
-   echo "<coordinator-id> <timestamp>" > .better-work/test/.merge-in-progress
+   echo "<coordinator-id> <timestamp>" > "${TEST_ROOT}/.merge-in-progress"
    → derived-view-guard.sh 检测到此文件后放行 derived view 写入
 
 2. 生成 coordinator-id：coordinator-<platform>-<4hex>
@@ -82,7 +82,11 @@ IF 没有未合并 run：
 
 ```
 对每个候选 run 先运行：
-  <skill-root>/scripts/validate-results.sh <run>/results.json
+  python3 <skill-root>/scripts/validate-run.py --run-dir <run> \
+    --intake-policy <required|advisory>
+
+新 run 使用 `required`；历史无 intake run 使用 `advisory`。已存在 intake 但合同或 hash
+损坏时，两种模式都必须失败。
 
 项目有 gate 清单/applicability 校验器时，再运行（例如）：
   python3 test/tools/validate-gates.py --run-dir <run> --package-type <type>
@@ -345,6 +349,11 @@ L2 审计和独立 challenge 全部闭合后，最后运行：
 任一命令非零退出时，不得交付。`merged-summary.md`、`bugs/`、`conflict-log.md` 和
 `merged-results.json` 继续保留为内部结构化源，但不得要求开发者分别打开。
 
+项目启用 `bug-issue-policy.json` 时，在上述两道报告命令通过后加载
+`references/procedures/bug-issue-submission.md`，对 merge 后仍为 OPEN/CONFIRMED 且
+typed evidence 为 confirmed/proven 的 Bug 执行幂等 Issue 提交。每个 Bug 一个 Issue；
+先远端 fingerprint 查重，创建/关联结果写入 merge-local `bug-issue-submissions.json`。
+
 机器闭环要求：
   - v4 `summary` 的 pass/caveat/fail/blocked/partial/skip/excluded/conflict 必须与 items 精确重算
   - v4 merged item occurrence 必须与来源 item 完全相等，连同 subject_refs、claim_scope、
@@ -387,7 +396,7 @@ L2 审计和独立 challenge 全部闭合后，最后运行：
 ```
 
 用户确认后：
-- 删除 merge 锁文件：`rm .better-work/test/.merge-in-progress`
+- 删除 merge 锁文件：`rm "${TEST_ROOT}/.merge-in-progress"`
 - 合并完成。
 
 ---

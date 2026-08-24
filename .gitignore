@@ -6,4 +6,6 @@
 __pycache__/
 *.py[cod]
 .better-work/
+.apex-v2/
+.apex-v2.lock/
 CLAUDE.md

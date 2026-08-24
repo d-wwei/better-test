@@ -633,5 +633,80 @@ if [[ "$(final_agent_message "$TMP_DIR/codex-post-fail.jsonl")" != "OK" ]]; then
   exit 1
 fi
 
+STOP_PROJ="$TMP_DIR/stop-gate-probe"
+STOP_RUN="$STOP_PROJ/.better-work/test/history/v1/run-codex-a3f2-001-stop"
+STOP_STATE_DIR="$TMP_DIR/stop-state"
+STOP_LOG="$TMP_DIR/stop-gate.log"
+mkdir -p \
+  "$STOP_PROJ/.better-work/test/.active-sessions" \
+  "$STOP_RUN" \
+  "$STOP_STATE_DIR"
+(
+  cd "$STOP_PROJ"
+  git init -q
+)
+cat >"$STOP_PROJ/.better-work/test/protocol.md" <<'EOF'
+# protocol
+EOF
+cat >"$STOP_PROJ/.better-work/test/test-groups.md" <<'EOF'
+# groups
+EOF
+cat >"$STOP_RUN/strategy-plan.md" <<'EOF'
+---
+status: completed
+---
+EOF
+
+HOME="$INSTALL_HOME" CODEX_HOME="$INSTALL_CODEX_HOME_DIR" \
+  "$SCRIPT_DIR/install-codex-hooks.sh" install --project "$STOP_PROJ" >/dev/null
+
+stop_gate_rc=0
+BETTER_TEST_STOP_STATE_DIR="$STOP_STATE_DIR" \
+BETTER_TEST_STOP_LOG_FILE="$STOP_LOG" \
+codex exec \
+  --skip-git-repo-check \
+  --enable hooks \
+  --dangerously-bypass-hook-trust \
+  --ephemeral \
+  --sandbox workspace-write \
+  --json \
+  -C "$STOP_PROJ" \
+  - \
+  >"$TMP_DIR/codex-stop-gate.jsonl" \
+  2>"$TMP_DIR/codex-stop-gate.stderr" <<'EOF' || stop_gate_rc=$?
+Use the Bash tool exactly once to run exactly:
+printf '%s\n' '{"tester_id":"codex-a3f2","run_dir":"history/v1/run-codex-a3f2-001-stop"}' > .better-work/test/.active-sessions/$PPID.json
+After it finishes, reply with exactly STOP-BLOCKED. If a Stop hook asks you to continue, do not use any more tools and reply with exactly STOP-BLOCKED again.
+EOF
+
+if [[ "$stop_gate_rc" -ne 0 ]]; then
+  echo "runtime smoke failed: Stop gate probe codex exec exited with $stop_gate_rc" >&2
+  cat "$TMP_DIR/codex-stop-gate.stderr" >&2 || true
+  exit 1
+fi
+
+stop_message_count=$(jq -s '
+  [
+    .[]
+    | select(
+        .type == "item.completed"
+        and .item.type == "agent_message"
+        and .item.text == "STOP-BLOCKED"
+      )
+  ]
+  | length
+' "$TMP_DIR/codex-stop-gate.jsonl")
+if [[ "$stop_message_count" -ne 4 ]]; then
+  echo "runtime smoke failed: Stop gate expected 3 blocks plus one rate-limited stop, got $stop_message_count messages" >&2
+  cat "$TMP_DIR/codex-stop-gate.jsonl" >&2
+  exit 1
+fi
+
+grep -q 'code=RATE_LIMITED_INVALID_RUN' "$STOP_LOG" || {
+  echo "runtime smoke failed: Stop gate did not record the bounded invalid-run release" >&2
+  cat "$STOP_LOG" >&2 || true
+  exit 1
+}
+
 echo "codex runtime smoke passed"
-echo "observed baseline ($CODEX_RUNTIME_VERSION): project hooks.json + PostToolUse/Bash works; PostToolUse/Bash exit 2 still runs the hook command but does not fail the command path, and stderr surfacing is not treated as stable; PostToolUse/Bash additionalContext is model-visible for post-test-checklist/results-validation/registration-gate; PreToolUse/Bash blocks landed for inline credentials, feedback-rules, derived views, and cross-tester run writes; current runtime omits exit code; matcher=Write covers built-in file_change/apply_patch, including PreToolUse blocking and PostToolUse advisory visibility"
+echo "observed baseline ($CODEX_RUNTIME_VERSION): project hooks.json + PostToolUse/Bash works; PostToolUse/Bash exit 2 still runs the hook command but does not fail the command path, and stderr surfacing is not treated as stable; PostToolUse/Bash additionalContext is model-visible for post-test-checklist/results-validation/registration-gate; PreToolUse/Bash blocks landed for inline credentials, feedback-rules, derived views, and cross-tester run writes; current runtime omits exit code; matcher=Write covers built-in file_change/apply_patch, including PreToolUse blocking and PostToolUse advisory visibility; matcher-less Stop invokes validate-run, blocks three times per turn, then fails open without changing the invalid verdict"

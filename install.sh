@@ -250,7 +250,7 @@ handle_gemini() {
   label="gemini"
   if [ -d "$HOME/.gemini" ]; then
     append_csv reminders "$label"
-    say "→" "$label: detected; add @.better-work/test/protocol.md to GEMINI.md manually"
+    say "→" "$label: detected; resolve TEST_ROOT first, then add @<repo-relative-TEST_ROOT>/protocol.md to GEMINI.md manually"
   elif [ "$command" = "status" ]; then
     say "→" "$label: not detected"
   fi

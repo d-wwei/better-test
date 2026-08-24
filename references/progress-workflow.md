@@ -57,7 +57,7 @@
 [给下一个 session 的交接信息：]
 - 当前 daemon 状态: [running PID xxxx / not running / managed by skill]
 - 测试输出目录: [/tmp/project-test-xxx/ 或对应项目的位置]
-- 上次 results.json 路径: [.better-work/test/history/<ver>/run-<tester-id>-NNN-*/results.json]
+- 上次 results.json 路径: [${TEST_ROOT}/history/<ver>/run-<tester-id>-NNN-*/results.json]
 - 需要参考的 known-issues 条目: [test_ids]
 - 用户尚未回复的问题: [如有]
 ```
@@ -93,7 +93,7 @@
 
 ### 执行步骤
 
-1. **列出所有 tester**：扫描 `.better-work/test/testers/` 目录，读每个 tester 的 `registry.md`
+1. **列出所有 tester**：扫描 `${TEST_ROOT}/testers/` 目录，读每个 tester 的 `registry.md`
 
 2. **展示 tester 列表**（从 registry.md 找到最新 run，读 run 内 progress.md）：
 
@@ -212,6 +212,10 @@ resume     → 扫描 testers/*/registry.md → 用户选择 → 读 run 目录�
 checkpoint → 写入 run 目录内 progress.md + 更新 registry.md last_active
 merge      → 所有 tester 完成后，coordinator 读各 run 目录合并结果
 ```
+
+`progress.md` 继续是人类/Agent 交接视图，不承担机器状态机职责。恢复时如当前 run 已有
+`intake.json`，必须确认 `results.json.intake_ref` 仍匹配其 ID 与 SHA-256；不匹配时停止续跑并
+重新确认被测物。run 完成后可生成 `metrics.json`，但 metrics 不参与 verdict。
 
 ## 不要做的事
 
