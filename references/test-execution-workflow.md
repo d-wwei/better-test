@@ -108,6 +108,37 @@
    → 详见 Compare 模式四色标记规则
 ```
 
+### 查询 / 集合 / 流式数据质量矩阵
+
+`RET_OK`、HTTP 200、shape 非空或字段存在只能证明调用完成。对查询、列表、缓存和
+stream/push 类结果，按适用范围继续检查：
+
+```
+1. Oracle-conditioned non-empty
+   → 只有在同参数基准、动态发现或业务事实证明“应有数据”时，才要求非空
+   → 未建立 oracle 时，空结果只能写 unknown/data-unavailable，不能自动 PASS 或 FAIL
+
+2. Value domain
+   → 数值必须 finite；价格/数量/比例按字段语义检查正数、非负、上下界
+   → 时间必须可解析，并检查时区、单调性、未来时间和相对业务窗口的新鲜度
+
+3. Exact identity
+   → 64-bit ID/sequence 禁止经过浮点或低精度中间层
+   → 同时检查无损表示、唯一性和接口承诺的排序/单调性
+
+4. Aggregate/detail consistency
+   → global/summary/quota 等聚合值必须能由逐项状态或账本解释
+   → 聚合与 detail 冲突时，即使两边都非空也不能标 PASS
+
+5. Cache integrity
+   → 结合业务/市场状态检查 freshness、重复 key/row、旧 generation 和默认零值污染
+   → 低流量或闭市可不推进，但必须有 state/window 证据，不能把冻结解释成正常
+
+6. Normalized parity
+   → compare 模式固定 subject/oracle 身份、规范化参数、权限和时间窗口后做字段级 diff
+   → 动态 fixture 必须现场重新发现；历史 symbol/ID 失效不能归因产品
+```
+
 ### 结构化测试记录（每个测试项必填）
 
 每标记一个测试项结果时，必须填写以下结构化记录。此记录同时写入 process-log.md 和 results.json。
@@ -501,6 +532,11 @@ Agent 需要做的记录：
 ```
 
 Bug ID 全局递增。如果不确定是不是新 bug（可能是已知 bug 的新表现），先检查 bugs-index.md。
+
+**计数纪律**：测试 occurrence、finding 和 Bug 不是一一对应。参数化用例或多市场场景可产生
+多个 occurrence，但相同症状/根因/fingerprint 应归并为一个 finding/Bug；未完成权限、fixture、
+时段或基准归因的差异留在 investigation backlog，不进入 Bug 数。summary 必须分别报告
+occurrence、finding、Bug 数，并保留可复核映射。
 
 ### Bug Retest 规则
 

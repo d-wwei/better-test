@@ -1672,6 +1672,7 @@ RESULT_FILE: <子 Agent 写入的文件路径>
 - **三句话格式**：每个 bug 先写 scene（什么操作触发）+ symptom（看到什么现象）+ impact（谁受影响）。防止"something broke"式模糊描述
 - **P0 门槛**：severity 想标 P0 → 必须附"证否此 finding 的实验设计"。写不出 = 证据不足 → 降级
 - **Origin attribution 3 层归因**：来源归因不清（daemon / tester 脚本 / 历史残留）时走 3 层链——时间戳 vs ship date、跨版本 binary literal、历史 session 对账。任一层不吻合 → severity 写 undetermined
+- **计数基数分离**：occurrence 是一次参数化执行，finding 是归一化症状，Bug 是去重后的产品缺陷。多个 occurrence 可映射同一 Bug；未归因差异留 investigation backlog。任何总数必须先列映射再机械计数
 - **证据文件命名**：`BUG-001-scenario-artifact.txt`（按 bug-id 命名），不按 phase 命名。方便最终 bug report 组装
 - **单文件交付**：`bugs/` 是内部源目录；每个完整正文和 YAML 元数据必须由
   `scripts/build-full-report.py` 逐字嵌入 `FULL-TEST-REPORT.md`。摘要、链接或省略任一节都不合格
@@ -1710,6 +1711,20 @@ bug:
 ```
 
 ### Bug 生命周期
+
+在进入生命周期前，先保留基数映射：
+
+```text
+occurrence（测试执行实例）
+  -> finding（归一化症状/差异）
+  -> bug/fingerprint（去重后的产品缺陷）
+
+规则：
+- summary 分别写 occurrence / finding / Bug 数，禁止混用。
+- 多市场、多参数命中同一根因时，增加 affected_scenarios，不重复建 Bug。
+- 权限、动态 fixture、时段、rate limit 或环境未归因时，留 investigation backlog。
+- 只有满足项目 confirmed/proven 门禁的 finding 才进入 bugs/ 和外部 Issue。
+```
 
 ```
 1. 测试中发现 bug

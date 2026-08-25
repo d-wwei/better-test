@@ -305,3 +305,21 @@
 - **内容**: 当开发者说明修复了具体非法参数、具体枚举或具体边界值时，Better Test 的 bug-retest 计划必须把这些 exact 输入逐项映射成测试 case，并验证 runtime side effect。只跑泛化 happy path 或只看 source diff 不能关闭该修复声明。
 - **证据**: Leaf 指出 backend 会传非法 market `113/124/123`；有效复测需要同时验证 source filter 覆盖 exact 值、account auth 中确实含这些值、runtime cancel-all 后订单状态实际改变。
 - **状态**: pending
+
+### [2026-08-25] 查询/集合/流式数据质量矩阵
+- **来源项目**: futu-opend-rs (v1.6.3-v1.6.5 Official parity + Issues #37-#40)
+- **来源**: user-input + data-quality gap audit
+- **建议目标**: test-execution-workflow.md
+- **风险等级**: medium
+- **内容**: Silent success 规则扩展为 oracle-conditioned non-empty、数值/时间值域、64-bit identity、aggregate/detail consistency、cache freshness/default-zero 和 normalized parity 六层矩阵；动态 fixture 必须现场重新发现。
+- **证据**: #37 聚合投影、#38 空成功、#39 零值 cache、#40 sequence 精度分别在 RET_OK/非空/字段存在条件下仍产生错误；37 个 occurrence 中 18 个归入已确认 Issue。
+- **状态**: promoted 2026-08-25（用户明确批准；落点 `references/test-execution-workflow.md` 查询/集合/流式数据质量矩阵；ADR-0001）
+
+### [2026-08-25] occurrence → finding → Bug 多对一记账
+- **来源项目**: futu-opend-rs (v1.6.3-v1.6.5 Official parity)
+- **来源**: user-input + data-quality gap audit
+- **建议目标**: test-execution-workflow.md + templates.md
+- **风险等级**: medium
+- **内容**: 参数化执行 occurrence、归一化 finding、去重 Bug 必须分别计数并保留映射；多个 occurrence 可归并同一 Bug，权限/fixture/时段未归因差异留 investigation backlog，不得进入 Bug 数。
+- **证据**: 37 个 Rust fail/C++ pass occurrence 仅映射到 #37-#40 的 18 条，另有 #36 不属于该分母；按 occurrence 数直接报告 Bug 会产生系统性误计。
+- **状态**: promoted 2026-08-25（用户明确批准；落点 `references/test-execution-workflow.md` 计数纪律 + `references/templates.md` 计数基数分离/Bug 生命周期；ADR-0001）

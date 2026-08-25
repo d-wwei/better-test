@@ -6,6 +6,12 @@ All notable changes to **better-test** (Better-Work series testing subskill) are
 
 ### Changed
 
+- Query/list/stream PASS decisions now use a semantic data-quality matrix covering
+  oracle-conditioned non-empty results, value/time domains, exact 64-bit identities,
+  aggregate/detail consistency, cache integrity, and normalized parity.
+- Test reporting now separates execution occurrences, normalized findings, and
+  deduplicated Bugs; unresolved permission, fixture, time-window, and environment
+  differences remain an investigation backlog instead of inflating Bug counts.
 - Strategy now resolves `objective × discovered capabilities × project policy` into black-box,
   white-box, or hybrid execution. Missing or unknown source capability expands to the project's safe
   black-box defaults and can never remove a hard gate.
@@ -51,6 +57,9 @@ All notable changes to **better-test** (Better-Work series testing subskill) are
 
 ### Added
 
+- ADR-0001 documents the portable data-quality matrix and occurrence-accounting decision.
+- Deterministic guidance regression coverage prevents removal of the new semantic and
+  cardinality rules.
 - Run-local `intake.json` identity attestation with ID + SHA-256 results binding, semantic relation
   validation, safe optional artifact-path verification, and historical advisory compatibility.
 - Portable `validate-run.py` completion gate and non-authoritative run-local `metrics.json`.

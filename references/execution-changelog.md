@@ -1,5 +1,19 @@
 # Test Execution Workflow Changelog
 
+## [2026-08-25] modify
+- **操作**: modify
+- **段落**: Pass 判定 / 查询数据质量
+- **内容**: 在 silent success 基础上增加 oracle-conditioned non-empty、数值/时间值域、64 位身份、aggregate/detail、cache integrity 和 normalized parity 六层矩阵。
+- **来源**: user-input + futu-opend-rs v1.6.3-v1.6.5 data-quality audit
+- **一致性检查**: 与既有 Pass 4 件套、compare 模式、字段四态和证据分级兼容；项目专属 market/symbol/range 留在项目知识库。
+
+## [2026-08-25] modify
+- **操作**: modify
+- **段落**: Bug 发现 / 输出模板
+- **内容**: 分离 occurrence、finding、Bug 三种计数基数；多 occurrence 同根因去重，未归因差异留 investigation backlog。
+- **来源**: user-input + futu-opend-rs Official parity triage
+- **一致性检查**: 与 results occurrence 保留、fingerprint 去重、完整 Bug Report 和 Issue submission 门禁一致。
+
 ## [2026-07-27] modify
 - **操作**: modify
 - **段落**: 完成流程 / Bug Report / merge / 输出模板 / L2 审计
