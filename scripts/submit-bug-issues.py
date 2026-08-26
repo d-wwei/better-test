@@ -302,30 +302,45 @@ def validate_full_report(run_dir: Path, policy: dict[str, Any]) -> Path | None:
     return report
 
 
-def resolve_project_profile(
+def resolve_project_profiles(
     run_dir: Path,
     policy_path: Path,
-    raw_profile: Any,
-) -> Path | None:
-    if not isinstance(raw_profile, str) or not raw_profile.strip():
-        return None
-    candidate = Path(raw_profile)
-    if candidate.is_absolute():
-        resolved = candidate.resolve()
-        if resolved.is_file():
-            return resolved
-        raise SubmissionError(f"project_profile does not exist: {resolved}")
-    candidates = [
-        (policy_path.parent / candidate).resolve(),
-        (run_dir / candidate).resolve(),
-    ]
-    for resolved in candidates:
-        if resolved.is_file():
-            return resolved
-    raise SubmissionError(
-        "project_profile does not exist relative to policy or run directory: "
-        f"{raw_profile}"
-    )
+    policy: dict[str, Any],
+) -> list[Path]:
+    raw_profiles: list[str] = []
+    singular = policy.get("project_profile")
+    if isinstance(singular, str) and singular.strip():
+        raw_profiles.append(singular)
+    plural = policy.get("project_profiles", [])
+    if not isinstance(plural, list) or not all(
+        isinstance(value, str) and value.strip() for value in plural
+    ):
+        raise SubmissionError("project_profiles must be a string array")
+    raw_profiles.extend(plural)
+
+    resolved_profiles: list[Path] = []
+    for raw_profile in raw_profiles:
+        candidate = Path(raw_profile)
+        candidates = (
+            [candidate.resolve()]
+            if candidate.is_absolute()
+            else [
+                (policy_path.parent / candidate).resolve(),
+                (run_dir / candidate).resolve(),
+            ]
+        )
+        resolved = next(
+            (path for path in candidates if path.is_file()),
+            None,
+        )
+        if resolved is None:
+            raise SubmissionError(
+                "project profile does not exist relative to policy or run "
+                f"directory: {raw_profile}"
+            )
+        if resolved not in resolved_profiles:
+            resolved_profiles.append(resolved)
+    return resolved_profiles
 
 
 def validate_results(
@@ -339,13 +354,32 @@ def validate_results(
         return results_path, results
 
     script_dir = Path(__file__).parent
-    profile_path = resolve_project_profile(
-        run_dir, policy_path, policy.get("project_profile")
-    )
+    profile_paths = resolve_project_profiles(run_dir, policy_path, policy)
     if results_path.name == "results.json":
         command = [str(script_dir / "validate-results.sh"), str(results_path)]
-        if profile_path is not None:
+        if results.get("schema_version") == 4 and profile_paths:
+            profile_sha = (
+                results.get("input_refs", {})
+                .get("project_profile", {})
+                .get("sha256")
+            )
+            profile_path = next(
+                (
+                    path
+                    for path in profile_paths
+                    if hashlib.sha256(path.read_bytes()).hexdigest()
+                    == profile_sha
+                ),
+                None,
+            )
+            if profile_path is None:
+                raise SubmissionError(
+                    "no configured project profile matches results "
+                    f"input_refs.project_profile.sha256={profile_sha!r}"
+                )
             command.extend(["--profile", str(profile_path)])
+        elif profile_paths:
+            command.extend(["--profile", str(profile_paths[0])])
     else:
         schema_version = results.get("schema_version")
         validator = (
@@ -354,8 +388,9 @@ def validate_results(
             else "validate-merged-results.py"
         )
         command = [sys.executable, str(script_dir / validator), str(results_path)]
-        if schema_version == 4 and profile_path is not None:
-            command.extend(["--profile", str(profile_path)])
+        if schema_version == 4:
+            for profile_path in profile_paths:
+                command.extend(["--profile", str(profile_path)])
     run_command(command)
     return results_path, results
 

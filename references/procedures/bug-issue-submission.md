@@ -30,8 +30,9 @@
 `direct`、`binary`、`indirect`、`blocked`、推断性根因、source-only runtime claim 一律不自动
 提交。发现敏感内容时 fail closed，不做猜测式自动脱敏。
 
-v4 run/merge 应在项目的 `bug-issue-policy.json` 中声明 `project_profile`。相对路径先按
-policy 文件所在目录解析，再兼容按 run 目录解析；这样 reviewer 不需要依赖本机
+v4 run/merge 应在项目的 `bug-issue-policy.json` 中声明 `project_profile`，存在多个历史
+profile revision 时使用 `project_profiles` 数组。相对路径先按 policy 文件所在目录解析，
+再兼容按 run 目录解析；这样 reviewer 不需要依赖本机
 `BETTER_TEST_TRUSTED_PROFILE` 环境变量，也不会把 run-local profile 副本误当 trust anchor。
 
 单 tester run 可在完成 L2 后提交；多 tester 任务必须等待 merge，只由 coordinator 对合并后

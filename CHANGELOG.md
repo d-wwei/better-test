@@ -65,7 +65,7 @@ All notable changes to **better-test** (Better-Work series testing subskill) are
   blocked/partial/pending/skip result.
 - Issue submission resolves canonical project profiles relative to the policy file
   before the run directory and passes that trust anchor to both run and merged-v4
-  validation.
+  validation; versioned projects may declare multiple trusted profile revisions.
 - v3 proven-basis metadata now projects into the v4 proof contract while retaining
   the original basis for zero-drift semantic comparison.
 - Subprocess deadline triage separates wrapper scheduling failures from product
