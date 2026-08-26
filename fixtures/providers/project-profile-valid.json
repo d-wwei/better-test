@@ -16,7 +16,7 @@
         "dependencies": [
           {
             "path": "{better_test_root}/scripts/hybrid_core.py",
-            "sha256": "e39ad433274312fad41d37c5e23848041caebecd5d4c9204d39655bc81149978"
+          "sha256": "c5fe265b5fa694a2fe0c1c0787fd573f44ec72d34517016c51466a182d4e6117"
           }
         ],
         "source_access": "read-only",

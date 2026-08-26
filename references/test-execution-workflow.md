@@ -632,6 +632,11 @@ L1 Hook 自动记录每条 Bash 命令和输出到 tester 的 run 目录内 `exe
     → 对 validated results 中 evidence=confirmed/proven 的新 Bug 执行 `--submit`
     → 每个 Bug 一个 Issue；direct/binary/blocked 不提交；secret/PII 命中立即阻断
     → 创建或关联后保留 run-local `bug-issue-submissions.json`
+
+6.7 子进程测试出现 readiness、退出、PID 文件或 cleanup deadline 时，加载
+`references/procedures/subprocess-deadline-triage.md`。先跑 direct binary/control 与
+串行/并发重复矩阵；在产品路径独立失败前，只能归为 TEST-INFRA candidate，不能把 wrapper
+固定等待造成的 flake 写成产品 FAIL。
 7. 向用户和开发者只呈现 `FULL-TEST-REPORT.md` 这一份文件。聊天中可以先说一句结论，
    但不能再把 summary、audit、bugs 作为需要开发者分别打开的交付物
 9. 如有 bug-retest 中的项复测通过 → 更新 bugs-index.md 对应 bug 为 VERIFIED

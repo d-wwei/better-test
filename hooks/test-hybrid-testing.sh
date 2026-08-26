@@ -892,6 +892,41 @@ jq --arg sha "$DUAL_MAP_SHA" '
 "$ROOT_DIR/scripts/validate-results.sh" "$TMP_DIR/dual-input/results.json" >/dev/null
 python3 "$ROOT_DIR/scripts/hybrid-results.py" project-v3-to-v4 \
   "$TMP_DIR/dual-input/results.json" "$TMP_DIR/dual-input/results-v4.json" >/dev/null
+
+# A validated v3 proven basis projects to the v4 proof shape without creating a
+# false semantic diff. The original basis remains available as compatibility
+# provenance while runtime subjects are mapped to the typed v4 contract.
+mkdir -p "$TMP_DIR/proven/artifacts" "$TMP_DIR/proven/hybrid"
+cp "$ROOT_DIR/hooks/fixtures/artifacts/"* "$TMP_DIR/proven/artifacts/"
+cp "$TMP_DIR/dual-input/hybrid/source-map.json" "$TMP_DIR/proven/hybrid/source-map.json"
+jq '
+  .items[0].evidence_level = "proven" |
+  .items[0].subject_refs = ["source:fixture", "session:fixture"] |
+  .items[0].evidence_sources[0].evidence_kind = "source" |
+  .items[0].evidence_sources[1].evidence_kind = "runtime" |
+  .items[0].proven_basis = {
+    kind:"source",
+    evidence_refs:["SRC-DAEMON-LOG-01"],
+    runtime_evidence_refs:["SRC-CLIENT-JSON-01"]
+  } |
+  .gate_items[0].required_subject_types = ["source", "session"] |
+  .hybrid.subjects = [
+    {id:"source:fixture",type:"source",identity:{commit:"fixture",dirty:false}},
+    {id:"session:fixture",type:"session",identity:{session_id:"fixture-session",readiness:"ready"}}
+  ]
+' "$TMP_DIR/dual-input/results.json" >"$TMP_DIR/proven/results.json"
+"$ROOT_DIR/scripts/validate-results.sh" "$TMP_DIR/proven/results.json" >/dev/null
+python3 "$ROOT_DIR/scripts/hybrid-results.py" project-v3-to-v4 \
+  "$TMP_DIR/proven/results.json" "$TMP_DIR/proven/results-v4.json" >/dev/null
+python3 "$ROOT_DIR/scripts/validate-results-v4.py" "$TMP_DIR/proven/results-v4.json" >/dev/null
+python3 "$ROOT_DIR/scripts/hybrid-results.py" semantic-diff \
+  "$TMP_DIR/proven/results.json" "$TMP_DIR/proven/results-v4.json" >/dev/null
+jq -e '
+  .items[0].proven_basis.proof_kind == "independent_reproduction" and
+  .items[0].proven_basis.runtime_subject_refs == ["session:fixture"] and
+  .items[0].provider_metadata.legacy_proven_basis.kind == "source"
+' "$TMP_DIR/proven/results-v4.json" >/dev/null || fail "v3 proven basis projection drift"
+
 jq '.subjects[0].identity.commit = "forged-commit"' \
   "$TMP_DIR/dual-input/results-v4.json" >"$TMP_DIR/dual-input/identity-drift.json"
 expect_fail "canonical field differs: subjects" python3 "$ROOT_DIR/scripts/hybrid-results.py" \

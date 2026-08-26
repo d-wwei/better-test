@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "contract_version": "1.0.0",
-  "source_map_sha256": "75cac5b4ced4a85b41c5959ac7fc955adcf15156c9481b40947520a5ef71a2e6",
+  "source_map_sha256": "4d5a126c6ae4fbd4f095e1f7fc8f1ca6181c78790742d8f7487d779d18108d13",
   "base": "fixture",
   "head": "fixture",
   "changed_units": [],

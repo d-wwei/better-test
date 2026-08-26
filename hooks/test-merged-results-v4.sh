@@ -148,6 +148,106 @@ expect_invalid \
   "release GO requires every merged gate to pass" \
   '.release_readiness.verdict = "go" | .gates[0].verdict = "skip"'
 
+# A later supplemental run may explicitly close an older incomplete
+# occurrence. Both occurrences remain preserved, but only the reviewed newer
+# occurrence participates in the aggregate result.
+mkdir -p "$TMP_DIR/merge/run-a-superseded"
+cp "$TMP_DIR/merge/run-a/"*.json "$TMP_DIR/merge/run-a-superseded/"
+cp "$TMP_DIR/merge/run-a/artifact.txt" "$TMP_DIR/merge/run-a-superseded/artifact.txt"
+jq '
+  .run_id = "run-a-superseded" |
+  .finished_at = "2026-08-01T10:00:00+08:00" |
+  .items[0].status = "blocked" |
+  .items[0].reason = "environment unavailable in original run" |
+  .items[0].test_kind = "runtime" |
+  .items[0].claim_scope = "observation" |
+  .items[0].assertion = {field:"terminal_verdict",value:"blocked"} |
+  .max_claim_scope = "observation" |
+  .summary = {
+    total:1,passed:0,passed_unconditional:0,passed_with_caveat:0,
+    passed_known_legacy_behavior:0,failed:0,blocked:1,skipped:0,
+    excluded:0,pending:0,partial:0
+  } |
+  .max_claim_scope = "observation" |
+  .gates[0].verdict = "blocked" |
+  .gates[0].reason = "source gate was unavailable in original run" |
+  .release_readiness = {verdict:"blocked",reason:"original environment was unavailable"}
+' "$TMP_DIR/merge/run-a/results.json" >"$TMP_DIR/merge/run-a-superseded/results.json"
+SUPERSEDED_SHA=$(shasum -a 256 "$TMP_DIR/merge/run-a-superseded/results.json" | awk '{print $1}')
+jq --slurpfile old "$TMP_DIR/merge/run-a-superseded/results.json" \
+   --arg old_sha "$SUPERSEDED_SHA" '
+  .source_runs[0] = {
+    run_id:"run-a-superseded",schema_version:4,version:"1.0.0",
+    results_path:"run-a-superseded/results.json",sha256:$old_sha
+  } |
+  .subjects = (
+    [.subjects[] | select(.source_run != "run-a")] +
+    [$old[0].subjects[] | {source_run:"run-a-superseded",subject:.}]
+  ) |
+  .relations = (
+    [.relations[] | select(.source_run != "run-a")] +
+    [$old[0].relations[] | {source_run:"run-a-superseded",relation:.}]
+  ) |
+  .items[0].result = "pass" |
+  .items[0].occurrences = [
+    {source_run:"run-a-superseded",item:$old[0].items[0]},
+    .items[0].occurrences[1]
+  ] |
+  .gates[0].verdict = "pass" |
+  .gates[0].occurrences = [
+    {source_run:"run-a-superseded",gate:$old[0].gates[0]},
+    .gates[0].occurrences[1]
+  ] |
+  .summary = {
+    total:1,passed:1,passed_unconditional:1,passed_with_caveat:0,
+    passed_known_legacy_behavior:0,failed:0,blocked:0,partial:0,
+    skipped:0,excluded:0,conflicts:0
+  } |
+  .max_claim_scope = "observation" |
+  .caveat_overrides = [] |
+  .release_readiness = {
+    verdict:"blocked",
+    reason:"one source gate remains blocked",
+    source_verdicts:[
+      {source_run:"run-a-superseded",verdict:"blocked",reason:"original environment was unavailable"},
+      .release_readiness.source_verdicts[1]
+    ]
+  } |
+  .supersessions = [{
+    item_id:"SRC-UNIT.01",
+    superseded_source_run:"run-a-superseded",
+    authoritative_source_run:"run-b",
+    approved_by:"independent-l2-fixture",
+    approved_at:"2026-08-01T10:04:30+08:00",
+    reason:"later direct evidence closes the original environment blocker"
+  }] |
+  .gate_supersessions = [{
+    gate_id:"source-closure",
+    superseded_source_run:"run-a-superseded",
+    authoritative_source_run:"run-b",
+    approved_by:"independent-l2-fixture",
+    approved_at:"2026-08-01T10:04:30+08:00",
+    reason:"later gate execution closes the original environment blocker"
+  }]
+' "$TMP_DIR/merge/merged-results.json" >"$TMP_DIR/merge/supplemental-supersession.json"
+python3 "$VALIDATOR" "$TMP_DIR/merge/supplemental-supersession.json" >/dev/null
+jq '
+  .supersessions[0].superseded_source_run = "run-b" |
+  .supersessions[0].authoritative_source_run = "run-a-superseded"
+' "$TMP_DIR/merge/supplemental-supersession.json" \
+  >"$TMP_DIR/merge/invalid-supersession-status.json"
+if python3 "$VALIDATOR" "$TMP_DIR/merge/invalid-supersession-status.json" \
+  >"$TMP_DIR/invalid-supersession-status.out" \
+  2>"$TMP_DIR/invalid-supersession-status.err"; then
+  echo "FAIL: invalid supersession status unexpectedly passed" >&2
+  exit 1
+fi
+grep -F "can only supersede blocked/partial/pending/skip" \
+  "$TMP_DIR/invalid-supersession-status.err" >/dev/null || {
+  cat "$TMP_DIR/invalid-supersession-status.err" >&2
+  exit 1
+}
+
 cp -R "$TMP_DIR/merge/run-b" "$TMP_DIR/merge/run-b-conflict"
 jq '.items[0].assertion.value = 99' "$TMP_DIR/merge/run-b/results.json" \
   >"$TMP_DIR/merge/run-b-conflict/results.json"

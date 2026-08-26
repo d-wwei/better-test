@@ -57,6 +57,20 @@ All notable changes to **better-test** (Better-Work series testing subskill) are
 
 ### Added
 
+- Release-set validation now accepts schema v4 sources with explicit
+  `provider_metadata.release_set` identity and external canonical profiles, while
+  preserving mixed v3/v4 release accounting.
+- v4 merge validation supports explicit, reviewed supplemental supersessions that
+  retain every source occurrence while allowing a newer run to close an older
+  blocked/partial/pending/skip result.
+- Issue submission resolves canonical project profiles relative to the policy file
+  before the run directory and passes that trust anchor to both run and merged-v4
+  validation.
+- v3 proven-basis metadata now projects into the v4 proof contract while retaining
+  the original basis for zero-drift semantic comparison.
+- Subprocess deadline triage separates wrapper scheduling failures from product
+  runtime failures through timestamped lifecycle evidence and direct controls.
+
 - ADR-0001 documents the portable data-quality matrix and occurrence-accounting decision.
 - Deterministic guidance regression coverage prevents removal of the new semantic and
   cardinality rules.

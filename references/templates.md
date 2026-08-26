@@ -1380,8 +1380,29 @@ evidence；`closed` 只在全部 action 都为 `verified` 且 `closure_evidence`
 
 ```bash
 python3 <skill-root>/scripts/validate-release-set.py \
-  --policy test/release-set-policy.json <run-a>/results.json <run-b>/results.json
+  --policy test/release-set-policy.json \
+  --profile test/project-profile.json \
+  <run-a>/results.json <run-b>/results.json
 ```
+
+schema v4 把 release-set 身份写在顶层 `provider_metadata.release_set`：
+
+```json
+{
+  "provider_metadata": {
+    "release_set": {
+      "environment_id": "linux-x86_64-systemd",
+      "machine_id": "runner-linux-a",
+      "config_profile": "authenticated",
+      "package_type": "rc"
+    }
+  }
+}
+```
+
+v4 校验必须传入与 `input_refs.project_profile.sha256` 匹配的外部 canonical
+`--profile`；跨 profile revision 时可重复传入。v3 继续读取顶层 `environment` 与
+`package_type`，两种 schema 可以在同一 release set 中共同对账。
 
 ### project-profile.json（hybrid 项目，git-tracked）
 

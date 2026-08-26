@@ -44,6 +44,14 @@
       "type": "array",
       "items": {"$ref": "#/$defs/caveat_override"}
     },
+    "supersessions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/supersession"}
+    },
+    "gate_supersessions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/gate_supersession"}
+    },
     "release_readiness": {
       "type": "object", "additionalProperties": false,
       "required": ["verdict", "reason", "source_verdicts"],
@@ -168,6 +176,36 @@
       "properties": {
         "source_run": {"type": "string", "minLength": 1},
         "item_id": {"type": "string", "minLength": 1},
+        "approved_by": {"type": "string", "minLength": 1},
+        "approved_at": {"type": "string", "format": "date-time"},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "supersession": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "item_id", "superseded_source_run", "authoritative_source_run",
+        "approved_by", "approved_at", "reason"
+      ],
+      "properties": {
+        "item_id": {"type": "string", "minLength": 1},
+        "superseded_source_run": {"type": "string", "minLength": 1},
+        "authoritative_source_run": {"type": "string", "minLength": 1},
+        "approved_by": {"type": "string", "minLength": 1},
+        "approved_at": {"type": "string", "format": "date-time"},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "gate_supersession": {
+      "type": "object", "additionalProperties": false,
+      "required": [
+        "gate_id", "superseded_source_run", "authoritative_source_run",
+        "approved_by", "approved_at", "reason"
+      ],
+      "properties": {
+        "gate_id": {"type": "string", "minLength": 1},
+        "superseded_source_run": {"type": "string", "minLength": 1},
+        "authoritative_source_run": {"type": "string", "minLength": 1},
         "approved_by": {"type": "string", "minLength": 1},
         "approved_at": {"type": "string", "format": "date-time"},
         "reason": {"type": "string", "minLength": 1}

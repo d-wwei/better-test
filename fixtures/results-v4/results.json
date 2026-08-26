@@ -134,13 +134,13 @@
   "max_claim_scope": "source_correctness",
   "missing_capabilities": ["runtime-probe", "artifact-identity", "process-identity", "session-readiness"],
   "input_refs": {
-    "project_profile": {"artifact_ref": "project-profile.json", "sha256": "58dcdf69712ae91e1e40915b9643e258cd25eb919b1dbb62c84071452ec87606"},
+    "project_profile": {"artifact_ref": "project-profile.json", "sha256": "9c864b6d2ee8170779a93e9aabbd7a99ccb7f5d4be73e4c7e36c2932b6e331c0"},
     "capabilities": {"artifact_ref": "capabilities.json", "sha256": "52f717bd79d08d11f085a58f861c9b1614b1f9c49df5083e900000388b8e4c75"},
     "strategy": {"artifact_ref": "strategy.json", "sha256": "d4e38d6f846ef1abd968334effc4d77d519518d5ac7e144c78acdf25e0a06a94"},
-    "source_map": {"artifact_ref": "source-map.json", "sha256": "75cac5b4ced4a85b41c5959ac7fc955adcf15156c9481b40947520a5ef71a2e6"},
-    "source_impact": {"artifact_ref": "source-impact.json", "sha256": "12aa0a5506fb5ea230c3ef583c1b6f57b3fbb1f3cf4b532989dee179595857fa"}
+    "source_map": {"artifact_ref": "source-map.json", "sha256": "4d5a126c6ae4fbd4f095e1f7fc8f1ca6181c78790742d8f7487d779d18108d13"},
+    "source_impact": {"artifact_ref": "source-impact.json", "sha256": "bb57282909ce2459d4103d367c92b63653f38aa53095fc11feee43d6272926a2"}
   },
-  "source_impact_ref": {"artifact_ref": "source-impact.json", "sha256": "12aa0a5506fb5ea230c3ef583c1b6f57b3fbb1f3cf4b532989dee179595857fa"},
+  "source_impact_ref": {"artifact_ref": "source-impact.json", "sha256": "bb57282909ce2459d4103d367c92b63653f38aa53095fc11feee43d6272926a2"},
   "compatibility": {"semantic_diff": "not_run"},
   "release_readiness": {
     "verdict": "not_applicable",

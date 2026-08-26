@@ -1906,6 +1906,45 @@ def canonicalize_results(document: dict[str, Any]) -> dict[str, Any]:
     schema = document.get("schema_version")
     if schema not in {3, 4}:
         raise ValueError("canonicalization supports results schema 3 or 4")
+
+    def canonical_proven_basis(item: dict[str, Any]) -> dict[str, Any] | None:
+        basis = item.get("proven_basis")
+        if not isinstance(basis, dict):
+            return None
+        if schema == 4:
+            provider_metadata = item.get("provider_metadata")
+            legacy_basis = (
+                provider_metadata.get("legacy_proven_basis")
+                if isinstance(provider_metadata, dict)
+                else None
+            )
+            if isinstance(legacy_basis, dict):
+                basis = legacy_basis
+                basis_schema = 3
+            else:
+                basis_schema = 4
+        else:
+            basis_schema = 3
+        if basis_schema == 3:
+            return {
+                "schema": 3,
+                "kind": basis.get("kind"),
+                "evidence_refs": sorted(basis.get("evidence_refs", [])),
+                "versions": sorted(basis.get("versions", [])),
+                "runtime_evidence_refs": sorted(
+                    basis.get("runtime_evidence_refs", [])
+                ),
+            }
+        return {
+            "schema": 4,
+            "proof_kind": basis.get("proof_kind"),
+            "statement": basis.get("statement"),
+            "verifier": basis.get("verifier"),
+            "runtime_subject_refs": sorted(
+                basis.get("runtime_subject_refs", [])
+            ),
+        }
+
     items: list[dict[str, Any]] = []
     for item in document.get("items", []):
         if schema == 3:
@@ -1929,7 +1968,7 @@ def canonicalize_results(document: dict[str, Any]) -> dict[str, Any]:
                     "subject_refs": sorted(item.get("subject_refs", ["legacy:run"])),
                     "claim_scope": item.get("claim_scope", "behavior"),
                     "evidence_strength": item.get("evidence_strength", item.get("evidence_level")),
-                    "proven_basis": item.get("proven_basis"),
+                    "proven_basis": canonical_proven_basis(item),
                     "evidence": sorted(
                         [
                             {
@@ -1970,7 +2009,7 @@ def canonicalize_results(document: dict[str, Any]) -> dict[str, Any]:
                     "subject_refs": sorted(item.get("subject_refs", [])),
                     "claim_scope": item.get("claim_scope"),
                     "evidence_strength": item.get("evidence_strength"),
-                    "proven_basis": item.get("proven_basis"),
+                    "proven_basis": canonical_proven_basis(item),
                     "evidence": sorted(
                         [
                             {
@@ -2249,6 +2288,11 @@ def v3_to_v4(document: dict[str, Any], run_dir: Path | None = None) -> dict[str,
             }
         ]
     subject_refs_default = [subject["id"] for subject in subjects if isinstance(subject, dict) and _nonempty(subject.get("id"))]
+    subject_types = {
+        subject.get("id"): subject.get("type")
+        for subject in subjects
+        if isinstance(subject, dict)
+    }
     items: list[dict[str, Any]] = []
     for item in document.get("items", []):
         status = normalize_status(item.get("status"))
@@ -2275,6 +2319,31 @@ def v3_to_v4(document: dict[str, Any], run_dir: Path | None = None) -> dict[str,
                     **({"sha256": evidence_hash} if evidence_hash is not None else {}),
                 }
             )
+        legacy_basis = item.get("proven_basis")
+        projected_basis = None
+        if isinstance(legacy_basis, dict):
+            runtime_subject_refs = [
+                ref
+                for ref in item.get("subject_refs", subject_refs_default)
+                if subject_types.get(ref)
+                in {"process", "session", "external_service"}
+            ]
+            projected_basis = {
+                "proof_kind": "independent_reproduction",
+                "statement": (
+                    "Projected from validated results v3 "
+                    f"proven_basis.kind={legacy_basis.get('kind')}"
+                ),
+                "verifier": "better-test-v3-projection",
+                "runtime_subject_refs": runtime_subject_refs,
+            }
+        provider_metadata = (
+            {"legacy_provenance": legacy_provenance}
+            if legacy_provenance
+            else {}
+        )
+        if isinstance(legacy_basis, dict):
+            provider_metadata["legacy_proven_basis"] = legacy_basis
         items.append(
             {
                 "id": item.get("id"),
@@ -2291,12 +2360,12 @@ def v3_to_v4(document: dict[str, Any], run_dir: Path | None = None) -> dict[str,
                 "evidence_sources": sources,
                 "bug_ids": item.get("bug_ids", []),
                 "selection_refs": item.get("selection_refs", []),
-                **({"proven_basis": item["proven_basis"]} if "proven_basis" in item else {}),
                 **(
-                    {"provider_metadata": {"legacy_provenance": legacy_provenance}}
-                    if legacy_provenance
+                    {"proven_basis": projected_basis}
+                    if projected_basis is not None
                     else {}
                 ),
+                **({"provider_metadata": provider_metadata} if provider_metadata else {}),
                 **(
                     {
                         "reason": item.get("caveat_reason")

@@ -6,7 +6,7 @@ SUBMITTER="$ROOT_DIR/scripts/submit-bug-issues.py"
 BUILDER="$ROOT_DIR/scripts/build-full-report.py"
 TMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/better-test-bug-issues.XXXXXX")"
 RUN_DIR="$TMP_DIR/run-codex-a3f2-issue"
-POLICY="$TMP_DIR/policy.json"
+POLICY="$TMP_DIR/policy/policy.json"
 FAKE_BIN="$TMP_DIR/bin"
 FAKE_STATE="$TMP_DIR/fake-gh-state.json"
 CREATE_COUNT="$TMP_DIR/create-count"
@@ -16,8 +16,10 @@ cleanup() {
 }
 trap cleanup EXIT
 
-mkdir -p "$RUN_DIR/bugs" "$RUN_DIR/artifacts" "$FAKE_BIN"
+mkdir -p "$RUN_DIR/bugs" "$RUN_DIR/artifacts" "$FAKE_BIN" "$(dirname "$POLICY")"
 cp "$ROOT_DIR/hooks/fixtures/artifacts/"* "$RUN_DIR/artifacts/"
+cp "$ROOT_DIR/fixtures/providers/project-profile-valid.json" \
+  "$(dirname "$POLICY")/project-profile.json"
 
 jq '
   .run_id = "run-codex-a3f2-issue"
@@ -126,6 +128,7 @@ cat >"$POLICY" <<'EOF'
   "report_names": ["FULL-TEST-REPORT.md"],
   "ledger_name": "bug-issue-submissions.json",
   "max_body_bytes": 60000,
+  "project_profile": "project-profile.json",
   "redaction": {
     "block_emails": true,
     "block_nonlocal_ips": true,

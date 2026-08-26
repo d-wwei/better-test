@@ -241,6 +241,7 @@ Codex Stop hook 只在 active run 已进入交付阶段时调用该命令；同�
 | `references/procedures/flakiness-scoring.md` | update / strategy | update 检测到 flaky 信号；或推荐组含 known-issues Flaky 项 | 稳定性评分 |
 | `references/procedures/bug-report.md` | test-execution | 发现 bug 需要写报告 | 8 节标准格式 + 完整 yaml 元数据 + 单文件嵌入合同 |
 | `references/procedures/longrun-testing.md` | strategy | strategy 包含 24h+ 长跑；或用户要求稳定性/耐久性测试 | 长跑监控：canary/采样器/三层健康验证/daemon 身份 6 元组 |
+| `references/procedures/subprocess-deadline-triage.md` | test-execution | 子进程 readiness/退出/PID 文件受固定 deadline、并发或调度影响 | direct control、时间线、重复矩阵与 TEST-INFRA/产品归因 |
 | `references/procedures/combinatorial-testing.md` | strategy | 2+ 个输入因子且穷举成本高；或需要证明 pairwise / 等价类覆盖 | 2-way 覆盖、等价类显式化、高风险 canary 与机器校验 |
 | `references/procedures/hybrid-testing.md` | init / strategy | project profile 启用 hybrid，或发现可读源码/构建图能力 | 目标×能力策略、七 lane、claim 上限、v3/v4 双写 |
 | `references/procedures/reference-suite-intake.md` | init / update / strategy | 用户提供官方、上游、旧实现或第三方测试仓 | 来源身份、危险扫描、全量 case map、adapter 边界与 drift 同步 |

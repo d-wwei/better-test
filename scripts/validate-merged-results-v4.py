@@ -217,6 +217,74 @@ def validate(
     for run_id, source in sources.items():
         for item in source.get("items", []):
             expected_items.setdefault(item["id"], []).append({"source_run": run_id, "item": item})
+    superseded_pairs: set[tuple[str, str]] = set()
+    supersession_keys: set[tuple[str, str]] = set()
+    for index, row in enumerate(document.get("supersessions", [])):
+        if not isinstance(row, dict):
+            continue
+        where = f"supersessions[{index}]"
+        item_id = row.get("item_id")
+        old_run = row.get("superseded_source_run")
+        new_run = row.get("authoritative_source_run")
+        key = (item_id, old_run)
+        if key in supersession_keys:
+            errors.append(f"{where} duplicates supersession for {item_id}/{old_run}")
+            continue
+        supersession_keys.add(key)
+        if old_run == new_run:
+            errors.append(f"{where} source runs must differ")
+            continue
+        occurrences = expected_items.get(item_id, [])
+        old_item = next(
+            (
+                occurrence["item"]
+                for occurrence in occurrences
+                if occurrence["source_run"] == old_run
+            ),
+            None,
+        )
+        new_item = next(
+            (
+                occurrence["item"]
+                for occurrence in occurrences
+                if occurrence["source_run"] == new_run
+            ),
+            None,
+        )
+        if old_item is None or new_item is None:
+            errors.append(
+                f"{where} must reference two source runs containing item {item_id}"
+            )
+            continue
+        old_status = old_item.get("status")
+        new_status = new_item.get("status")
+        if old_status not in {"blocked", "partial", "partial_fail", "pending", "skip"}:
+            errors.append(
+                f"{where} can only supersede blocked/partial/pending/skip, observed {old_status}"
+            )
+        if new_status not in PASS_RESULTS | {"fail"}:
+            errors.append(
+                f"{where} authoritative occurrence must be pass/caveated/fail, observed {new_status}"
+            )
+        old_finished = sources.get(old_run, {}).get("finished_at")
+        new_finished = sources.get(new_run, {}).get("finished_at")
+        if is_timestamp(old_finished) and is_timestamp(new_finished):
+            old_time = datetime.fromisoformat(old_finished.replace("Z", "+00:00"))
+            new_time = datetime.fromisoformat(new_finished.replace("Z", "+00:00"))
+            if new_time <= old_time:
+                errors.append(
+                    f"{where} authoritative source must finish after superseded source"
+                )
+            approved_at = row.get("approved_at")
+            if is_timestamp(approved_at):
+                approval_time = datetime.fromisoformat(
+                    approved_at.replace("Z", "+00:00")
+                )
+                if approval_time < new_time:
+                    errors.append(
+                        f"{where} approved_at cannot precede authoritative source finish"
+                    )
+        superseded_pairs.add((item_id, old_run))
     seen_item_ids: set[str] = set()
     aggregate_results: list[str] = []
     for index, merged_item in enumerate(document.get("items", [])):
@@ -230,8 +298,16 @@ def validate(
         expected_occurrences = expected_items.get(item_id, [])
         if _counter(merged_item.get("occurrences", [])) != _counter(expected_occurrences):
             errors.append(f"{where}.occurrences must exactly preserve typed source items and evidence")
+        active_occurrences = [
+            occurrence
+            for occurrence in expected_occurrences
+            if (item_id, occurrence["source_run"]) not in superseded_pairs
+        ]
+        if not active_occurrences:
+            errors.append(f"{where} supersessions removed every occurrence")
+            active_occurrences = expected_occurrences
         semantic_rows = []
-        for occurrence in expected_occurrences:
+        for occurrence in active_occurrences:
             source = sources.get(occurrence["source_run"], {})
             types_by_id = {
                 subject.get("id"): subject.get("type")
@@ -255,7 +331,7 @@ def validate(
         expected_result = (
             "conflict"
             if semantics_conflict
-            else _merge_status([row["item"].get("status") for row in expected_occurrences])
+            else _merge_status([row["item"].get("status") for row in active_occurrences])
         )
         if merged_item.get("result") != expected_result:
             errors.append(f"{where}.result must be conservative value {expected_result}")
@@ -272,6 +348,76 @@ def validate(
     for run_id, source in sources.items():
         for gate in source.get("gates", []):
             expected_gates.setdefault(gate["id"], []).append({"source_run": run_id, "gate": gate})
+    superseded_gate_pairs: set[tuple[str, str]] = set()
+    gate_supersession_keys: set[tuple[str, str]] = set()
+    for index, row in enumerate(document.get("gate_supersessions", [])):
+        if not isinstance(row, dict):
+            continue
+        where = f"gate_supersessions[{index}]"
+        gate_id = row.get("gate_id")
+        old_run = row.get("superseded_source_run")
+        new_run = row.get("authoritative_source_run")
+        key = (gate_id, old_run)
+        if key in gate_supersession_keys:
+            errors.append(
+                f"{where} duplicates supersession for {gate_id}/{old_run}"
+            )
+            continue
+        gate_supersession_keys.add(key)
+        if old_run == new_run:
+            errors.append(f"{where} source runs must differ")
+            continue
+        occurrences = expected_gates.get(gate_id, [])
+        old_gate = next(
+            (
+                occurrence["gate"]
+                for occurrence in occurrences
+                if occurrence["source_run"] == old_run
+            ),
+            None,
+        )
+        new_gate = next(
+            (
+                occurrence["gate"]
+                for occurrence in occurrences
+                if occurrence["source_run"] == new_run
+            ),
+            None,
+        )
+        if old_gate is None or new_gate is None:
+            errors.append(
+                f"{where} must reference two source runs containing gate {gate_id}"
+            )
+            continue
+        old_verdict = old_gate.get("verdict")
+        new_verdict = new_gate.get("verdict")
+        if old_verdict not in {"blocked", "skip", "not_applicable"}:
+            errors.append(
+                f"{where} can only supersede blocked/skip/not_applicable, observed {old_verdict}"
+            )
+        if new_verdict not in {"pass", "fail"}:
+            errors.append(
+                f"{where} authoritative gate must be pass/fail, observed {new_verdict}"
+            )
+        old_finished = sources.get(old_run, {}).get("finished_at")
+        new_finished = sources.get(new_run, {}).get("finished_at")
+        if is_timestamp(old_finished) and is_timestamp(new_finished):
+            old_time = datetime.fromisoformat(old_finished.replace("Z", "+00:00"))
+            new_time = datetime.fromisoformat(new_finished.replace("Z", "+00:00"))
+            if new_time <= old_time:
+                errors.append(
+                    f"{where} authoritative source must finish after superseded source"
+                )
+            approved_at = row.get("approved_at")
+            if is_timestamp(approved_at):
+                approval_time = datetime.fromisoformat(
+                    approved_at.replace("Z", "+00:00")
+                )
+                if approval_time < new_time:
+                    errors.append(
+                        f"{where} approved_at cannot precede authoritative source finish"
+                    )
+        superseded_gate_pairs.add((gate_id, old_run))
     seen_gate_ids: set[str] = set()
     for index, merged_gate in enumerate(document.get("gates", [])):
         if not isinstance(merged_gate, dict):
@@ -284,7 +430,18 @@ def validate(
         expected_occurrences = expected_gates.get(gate_id, [])
         if _counter(merged_gate.get("occurrences", [])) != _counter(expected_occurrences):
             errors.append(f"{where}.occurrences must exactly preserve source gates")
-        expected_verdict = _merge_gate([row["gate"].get("verdict") for row in expected_occurrences])
+        active_occurrences = [
+            occurrence
+            for occurrence in expected_occurrences
+            if (gate_id, occurrence["source_run"])
+            not in superseded_gate_pairs
+        ]
+        if not active_occurrences:
+            errors.append(f"{where} gate supersessions removed every occurrence")
+            active_occurrences = expected_occurrences
+        expected_verdict = _merge_gate(
+            [row["gate"].get("verdict") for row in active_occurrences]
+        )
         if merged_gate.get("verdict") != expected_verdict:
             errors.append(f"{where}.verdict must be conservative value {expected_verdict}")
     if seen_gate_ids != set(expected_gates):

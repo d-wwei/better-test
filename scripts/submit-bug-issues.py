@@ -302,20 +302,49 @@ def validate_full_report(run_dir: Path, policy: dict[str, Any]) -> Path | None:
     return report
 
 
-def validate_results(run_dir: Path, policy: dict[str, Any]) -> tuple[Path, Any]:
+def resolve_project_profile(
+    run_dir: Path,
+    policy_path: Path,
+    raw_profile: Any,
+) -> Path | None:
+    if not isinstance(raw_profile, str) or not raw_profile.strip():
+        return None
+    candidate = Path(raw_profile)
+    if candidate.is_absolute():
+        resolved = candidate.resolve()
+        if resolved.is_file():
+            return resolved
+        raise SubmissionError(f"project_profile does not exist: {resolved}")
+    candidates = [
+        (policy_path.parent / candidate).resolve(),
+        (run_dir / candidate).resolve(),
+    ]
+    for resolved in candidates:
+        if resolved.is_file():
+            return resolved
+    raise SubmissionError(
+        "project_profile does not exist relative to policy or run directory: "
+        f"{raw_profile}"
+    )
+
+
+def validate_results(
+    run_dir: Path,
+    policy_path: Path,
+    policy: dict[str, Any],
+) -> tuple[Path, Any]:
     results_path = choose_file(run_dir, ("merged-results.json", "results.json"))
     results = load_json(results_path)
     if not policy["require_results_validation"]:
         return results_path, results
 
     script_dir = Path(__file__).parent
+    profile_path = resolve_project_profile(
+        run_dir, policy_path, policy.get("project_profile")
+    )
     if results_path.name == "results.json":
         command = [str(script_dir / "validate-results.sh"), str(results_path)]
-        profile = policy.get("project_profile")
-        if profile:
-            profile_path = Path(profile)
-            if not profile_path.is_absolute():
-                profile_path = (run_dir / profile_path).resolve()
+        if profile_path is not None:
             command.extend(["--profile", str(profile_path)])
     else:
         schema_version = results.get("schema_version")
@@ -325,6 +354,8 @@ def validate_results(run_dir: Path, policy: dict[str, Any]) -> tuple[Path, Any]:
             else "validate-merged-results.py"
         )
         command = [sys.executable, str(script_dir / validator), str(results_path)]
+        if schema_version == 4 and profile_path is not None:
+            command.extend(["--profile", str(profile_path)])
     run_command(command)
     return results_path, results
 
@@ -838,7 +869,7 @@ def main() -> int:
         raise SubmissionError("issue submission policy is disabled")
 
     validate_full_report(run_dir, policy)
-    _, results = validate_results(run_dir, policy)
+    _, results = validate_results(run_dir, policy_path, policy)
     bugs_dir = run_dir / "bugs"
     bug_paths = sorted(
         path

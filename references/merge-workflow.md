@@ -94,7 +94,8 @@ IF 没有未合并 run：
 
 项目有 `release-set-policy.json` 时，对全部候选 run 再运行：
   python3 <skill-root>/scripts/validate-release-set.py
-  --policy test/release-set-policy.json <run...>/results.json
+  --policy test/release-set-policy.json
+  --profile test/project-profile.json <run...>/results.json
 
   → 通过 → 继续
   → 任一非零退出 → 该 run 标 GATE-INCOMPLETE：
@@ -116,6 +117,13 @@ hybrid 的 shadow/default run 还必须：
 - 每个来源保留自己的 source fingerprint、artifact hash、process/session identity；
 - release-scoped merge 必须有 runtime subjects 和适用 hard gate，source-only run 只能作佐证；
 - coverage 按七条 lane 分别对账，不把不同分母相加成单一百分比。
+
+补测 run 不得修改已关闭 source run。若后续 run 以更强证据关闭旧的
+`blocked` / `partial` / `pending` / `skip` occurrence，merge 必须在
+`supersessions[]` 中逐项声明旧 run、新 run、Test ID、原因和 reviewer；对应 gate 镜像用
+`gate_supersessions[]`。validator 只在新 run 时间更晚、两边都含该 ID、旧状态可被关闭且
+reviewer 时间不早于补测完成时，才从聚合判定中排除旧 occurrence。原 occurrence 仍完整
+保留，不能通过删除旧 blocker 伪造无冲突。
 
 `merged-results.json.source_runs[]` 不能只写叙述性的 `"validation": "pass"`。v4 default
 合并必须绑定 v4 不可变原件：

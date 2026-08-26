@@ -30,6 +30,53 @@ jq '.run_id = "run-codex-a3f2-003-20260724T130000+0800"
 python3 "$VALIDATOR" --policy "$POLICY" \
   "$TMP_DIR/legacy/results.json" "$TMP_DIR/auth/results.json" >/dev/null
 
+cat >"$TMP_DIR/v4-policy.json" <<'JSON'
+{
+  "schema_version": 1,
+  "min_distinct_environments": 2,
+  "min_distinct_machines": 2,
+  "required_config_profiles": ["legacy", "auth"],
+  "required_gate_ids": ["source-closure"]
+}
+JSON
+for profile in legacy auth; do
+  mkdir -p "$TMP_DIR/v4-$profile"
+  cp "$ROOT_DIR"/fixtures/results-v4/* "$TMP_DIR/v4-$profile/"
+done
+jq '
+  .run_id = "run-v4-legacy" |
+  .version = "2.0.0" |
+  .provider_metadata = {
+    release_set: {
+      environment_id: "macos-arm64",
+      machine_id: "machine-v4-a",
+      config_profile: "legacy",
+      package_type: "rc"
+    }
+  }
+' "$ROOT_DIR/fixtures/results-v4/results.json" >"$TMP_DIR/v4-legacy/results.json"
+jq '
+  .run_id = "run-v4-auth" |
+  .version = "2.0.0" |
+  .provider_metadata = {
+    release_set: {
+      environment_id: "linux-x86_64",
+      machine_id: "machine-v4-b",
+      config_profile: "auth",
+      package_type: "rc"
+    }
+  }
+' "$ROOT_DIR/fixtures/results-v4/results.json" >"$TMP_DIR/v4-auth/results.json"
+python3 "$VALIDATOR" --policy "$TMP_DIR/v4-policy.json" \
+  --profile "$ROOT_DIR/fixtures/providers/project-profile-valid.json" \
+  "$TMP_DIR/v4-legacy/results.json" "$TMP_DIR/v4-auth/results.json" >/dev/null
+if python3 "$VALIDATOR" --policy "$TMP_DIR/v4-policy.json" \
+  "$TMP_DIR/v4-legacy/results.json" "$TMP_DIR/v4-auth/results.json" \
+  >/dev/null 2>&1; then
+  echo "FAIL: schema v4 release set passed without an external canonical profile" >&2
+  exit 1
+fi
+
 if python3 "$VALIDATOR" --policy "$POLICY" \
   "$TMP_DIR/legacy/results.json" "$TMP_DIR/legacy/results.json" \
   >/dev/null 2>&1; then
