@@ -137,6 +137,15 @@ stream/push 类结果，按适用范围继续检查：
 6. Normalized parity
    → compare 模式固定 subject/oracle 身份、规范化参数、权限和时间窗口后做字段级 diff
    → 动态 fixture 必须现场重新发现；历史 symbol/ID 失效不能归因产品
+
+7. 修复完整性门
+   → bug-retest 不能只重跑原始失败断言；必须同时记录目标症状、保持项、相邻不变量、替代缺陷反例
+   → 集合去重修复同时断言 requested/available/result count、唯一性、顺序和 oracle set coverage，
+     禁止通过删除、截断或过滤正常行换取“无重复”
+   → 字段修复同时检查参与同一业务计算或展示的关联字段；禁止目标字段恢复但相邻字段变成
+     默认 0、null、stale 或被省略
+   → 原始 predicate 通过但保持项或相邻不变量失败时，原 Issue 可按原合同单独关闭，
+     但当前功能项仍为 FAIL，必须记录新的 finding/Bug，release gate 不得转绿
 ```
 
 ### 结构化测试记录（每个测试项必填）

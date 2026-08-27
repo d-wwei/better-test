@@ -422,6 +422,10 @@ IF Step 1 检测到 CHANGELOG / release notes：
   声称修复的条目特殊处理：
   → 在计划中标注 `[CHANGELOG 声称修复——需验证]`，优先级高于普通变更
   → 实测未变时在报告中醒目标出 `[CHANGELOG 声称修复但未确认]`
+  → 为每条修复建立修复闭包：原始症状 + 必须保持的旧行为 + 相邻语义不变量 +
+    替代缺陷反例 + oracle
+  → 不能用删除、截断、默认值或绕过路径换取原断言通过；原 predicate 通过但闭包破裂时，
+    旧 Issue 与新 finding 分开记账，当前功能和 release gate 仍失败
 ```
 
 ### 版本基线快照
@@ -550,6 +554,11 @@ session 和适用的业务 canary。
   输入: bugs-index 中 FIXED 未 VERIFIED 的 bug + active_failures + regression canary
   做什么: 跑 related_tests，和修复前对照验证因果关系
   准确度要求: fix 的验证需要 confirmed 级证据（不是"跑通了就行"）
+  修复闭包: 每个候选必须填写原始症状、保持项、相邻不变量、替代缺陷反例和 oracle；
+    缺任一列不得标 VERIFIED
+    → 集合/去重类至少核对请求数、oracle 可用数、返回数、唯一数、顺序与集合覆盖
+    → 字段/默认值类至少核对目标字段、同一计算链关联字段和跨 surface/参考实现 parity
+    → 不能用删除、截断、默认值或绕过路径换取原断言通过
   sim≠real: 涉及 backend 交互的 bug retest 必须选 real 账号。sim 错误码可能与 real 不同，同一 bug 在 sim 上可能不可见
   全路径覆盖: bug 标 VERIFIED 前必须覆盖所有已知 failure paths。changelog 提到"补修某路径"时该路径必须单独验证
   跨 tester 复现: 采信其他 tester 的 bug 前必须亲自复现——复现不只是确认，还能帮自己排查问题

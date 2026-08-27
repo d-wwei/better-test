@@ -111,7 +111,7 @@ Smoke 模式通常不触发（覆盖率审计对 smoke 无意义）；但 result
 1. {path_to_results_json} — 测试结果（每项有 assertion_field、evidence_level 等字段）
 2. {path_to_bugs_dir} — bug 报告目录（如有）
 
-检查以下 11 项：
+检查以下 12 项：
 
 1. **pass 证据**：每个标 ✅ 的项：
    - assertion_field 是否具体？（"power" 是具体的，"output" 不是）→ 不具体则 ⚠
@@ -167,6 +167,13 @@ Smoke 模式通常不触发（覆盖率审计对 smoke 无意义）；但 result
     - YAML 是否含完整身份、状态、严重程度、证据、影响范围、发现版本/run/tester、
       related tests、修复版本、回归 canary 和 post-ship/escape 字段
     - 任一节或元数据缺失 → ⚠ 不完整 Bug Report；主报告不得交付
+
+12. **修复完整性审计**：
+    - bug-retest / claimed fix 是否同时给出原始症状、保持项、相邻不变量、替代缺陷反例和 oracle
+    - 集合/去重修复是否同时验证请求数、oracle 可用数、返回数、唯一数、顺序和集合覆盖
+    - 字段修复是否检查参与同一计算或展示的关联字段，而不是只检查原失败字段
+    - 若原始 predicate 通过但出现替代性退化，结论必须是“原问题关闭、新问题另开”，
+      当前功能和 release gate 仍保持 FAIL；否则标记为 ⚠ 假关闭
 
 输出格式见下方"l2-findings.md 格式"段的"证据审计"部分。
 ```

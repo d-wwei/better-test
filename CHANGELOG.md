@@ -6,6 +6,11 @@ All notable changes to **better-test** (Better-Work series testing subskill) are
 
 ### Changed
 
+- Bug retests and claimed fixes now require a repair-closure matrix covering the
+  original symptom, preserved behavior, adjacent invariants, substitute-defect
+  counterexamples, and an oracle. A narrow predicate can no longer become
+  `VERIFIED` by dropping rows, truncating collections, defaulting sibling fields,
+  or bypassing the repaired path.
 - Query/list/stream PASS decisions now use a semantic data-quality matrix covering
   oracle-conditioned non-empty results, value/time domains, exact 64-bit identities,
   aggregate/detail consistency, cache integrity, and normalized parity.

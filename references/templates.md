@@ -901,6 +901,14 @@ total_items: <N>
 - Active failures: <N>（suppress 后）
 - Bug retest candidates: <BUG-xxx-NNN 列表>
 
+## 修复闭包矩阵（仅 bug-retest / claimed fix）
+
+| Bug/Issue | 原始症状 | 保持项 | 相邻不变量 | 替代缺陷反例 | Oracle | Verdict |
+|---|---|---|---|---|---|---|
+| <ID> | <原失败 predicate> | <修复后不得退化的行为> | <关联字段/数量/顺序/状态> | <删除、截断、默认值或绕过路径> | <旧版/参考实现/业务事实> | <pending> |
+
+缺少保持项、相邻不变量或替代缺陷反例时，不得把修复候选标为 `VERIFIED`。
+
 ## Hybrid Strategy（未启用写 not applicable）
 
 - Objective: <source_change | package_validation | behavior_regression | release_decision>

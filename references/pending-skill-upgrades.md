@@ -323,3 +323,12 @@
 - **内容**: 参数化执行 occurrence、归一化 finding、去重 Bug 必须分别计数并保留映射；多个 occurrence 可归并同一 Bug，权限/fixture/时段未归因差异留 investigation backlog，不得进入 Bug 数。
 - **证据**: 37 个 Rust fail/C++ pass occurrence 仅映射到 #37-#40 的 18 条，另有 #36 不属于该分母；按 occurrence 数直接报告 Bug 会产生系统性误计。
 - **状态**: promoted 2026-08-25（用户明确批准；落点 `references/test-execution-workflow.md` 计数纪律 + `references/templates.md` 计数基数分离/Bug 生命周期；ADR-0001）
+
+### [2026-08-27] 修复复测必须验证保持项与替代缺陷
+- **来源项目**: futu-opend-rs (v1.7.2 Issues #50/#51)
+- **来源**: user-input + post-ship escape reflect
+- **建议目标**: strategy-workflow.md + test-execution-workflow.md + templates.md + l2-audit-prompts.md
+- **风险等级**: medium
+- **内容**: 每个 bug-retest/claimed fix 都建立修复闭包，除原始 predicate 外，必须验证保持项、相邻语义不变量、替代缺陷反例和 oracle。去重不能靠丢行，字段修复不能让关联字段变成默认值；原问题可关闭，但新退化必须独立记 Bug，当前功能和 release gate 仍失败。
+- **证据**: #39 的 `cur_price` 原条件通过但 `last_close=0` 成为 #50；#40 的重复 sequence 消失但 1000 条请求只返回 750 条，成为 #51。
+- **状态**: promoted 2026-08-27（用户明确要求自行修复并升级 skill；落点为上述四个文件，ADR-0001 补充设计理由）

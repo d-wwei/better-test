@@ -1,5 +1,12 @@
 # Test Execution Workflow Changelog
 
+## [2026-08-27] modify
+- **操作**: modify
+- **段落**: Strategy 修复闭包 / 数据质量矩阵 / L2 证据审计 / strategy-plan 模板
+- **内容**: bug-retest 和 claimed fix 除原始 predicate 外，必须验证保持项、相邻不变量、替代缺陷反例和 oracle；集合变换同时检查数量、唯一性、顺序与 set coverage，字段修复同时检查关联字段。
+- **来源**: user-input + futu-opend-rs v1.7.2 Issues #50/#51 escape reflect
+- **一致性检查**: 原 Issue 与新退化分开记账；原条件通过可以关闭旧 Issue，但新 finding 仍使当前功能和 release gate 保持 FAIL。
+
 ## [2026-08-25] modify
 - **操作**: modify
 - **段落**: Pass 判定 / 查询数据质量
