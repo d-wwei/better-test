@@ -1,0 +1,4 @@
+# Expected disposition
+Find sequential/concurrent retry, response-loss reconciliation, changed-payload conflict, authorization-before-cache and tenant-isolation obligations from the contract before reading J-01/J-02.
+J-02 lacks durable/effect counts; propose extending it plus targeted concurrency/permission states. Expected relations include same ID, one owned durable job, one effect, no unauthorized disclosure and no forbidden write. Reconcile lost non-idempotent response before retry; operation details belong to env-config/tools.
+Preserve original J IDs, record unsupported runner/fixture/observer as unresolved. Green logs and route presence do not prove these obligations. Acceptable variants: different partition/group names and counts of cases, provided concurrency, permission order, state and side effects stay explicit.

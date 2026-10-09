@@ -2,6 +2,12 @@
 
 首次为项目建立测试知识时执行。目标：用最少时间识别测试结构，生成可操作的测试组定义和影响映射。
 
+**init 操作边界**：只读取被测系统已有材料，并写测试知识/知识骨架。材料里的 launch、
+install、doctor、pilot、测试命令只记录，不执行；也不能通过 `--help`、配置 loader、
+package scripts 或 helper 间接启动产品、安装依赖、导入产品代码或运行测试。优先读取已有
+help 快照、schema、脚本文本、工具声明和 CI 配置；缺信息标 `UNKNOWN`，首次真正操作留到
+明确 execution 阶段。生成知识不表示工具可用、环境就绪或功能已覆盖。
+
 ## Step 1: 测试场景分类
 
 读 `.better-work/shared/index.md`（如存在）+ 项目根目录的测试目录 + CI 配置 + README 中的测试章节。判断属于哪类：
@@ -24,7 +30,7 @@
 
 不做"读完所有测试代码"。按以下信号源采集：
 
-### 信号源 A：测试目录结构（最高价值）
+### 信号源 A：测试目录结构（已有保护与可复用载体）
 
 ```
 列出 tests/ 或等价目录下的子目录和文件
@@ -45,7 +51,7 @@
 ```
 - CHANGELOG.md / RELEASE_NOTES.md → 历史变更记录
 - git tags → 版本号格式
-- 二进制 --help / --version → 可作为版本快照（用于 diff）
+- 已有二进制 --help / --version 快照 → 可作为版本输入；init 不运行二进制取快照
 - 主包/主二进制是什么 → strategy 的影响分析锚点
 ```
 
@@ -113,17 +119,45 @@
 | 测试执行中 | 日志格式文档 | 按需，遇到问题时收集 |
 | feedback | 历史 bug 报告 | 有测试结果后做上下文补充 |
 
-## Step 2.5: 代码读取策略
+## Step 2.3: 功能、入口与状态调查（只读，先于旧用例明细）
 
-### Step 2.4: 白盒能力发现（只读）
+测试目录说明已有保护，不能定义完整功能分母。先读批准需求/AC、公开契约、用户路径、
+变更和已知事故的原始条件；形成来源支持的行为义务，再把现有用例作为对账输入。
+如果前面已见测试目录/CI/历史摘要，记录这个输入切片限制，不能称为完全盲审。
+
+调查先形成来源义务草稿，Step 3 建好 TEST_ROOT 知识骨架后增量写入既有
+`surface-manifest.md`，保留原接口表，不另建 feature 数据库：
+
+| 新增区段 | 必须记录的内容 |
+|---------|----------------|
+| 来源与边界 | locator + 条目、revision/digest、采集时间、适用范围、可靠性/冲突；版本不明写 unresolved 及原因 |
+| 功能与入口 | 稳定 feature_id、entry_id、用户目标、正式入口（按钮/菜单/快捷键/API/CLI/SDK 等）、可观察结果、来源引用 |
+| 角色与状态 | 稳定项目内状态引用/锚点、适用角色/权限、前置状态、合法/拒绝迁移、外部契约、允许与禁止副作用；复杂状态用小型迁移表 |
+| 实现与已有保护 | 相关源码 locator、原 case ID/native selector；这是关联，不是正确性证明 |
+| 待调查项 | UNKNOWN 的入口/状态/平台、为什么未知、可能风险、下一步材料和调查责任 |
+
+同一事实只在地图保存一处，case 引用 feature/entry ID；不把每个源码函数都当用户功能。
+地图只声明当前已知边界；没有记录某入口不等于入口不存在，不标无依据的 exhaustive。
+若没有正式需求，标明参考兼容性、历史保证或待确认假设，不从当前实现抄预期。
+已知入口即使共享后端仍分开记录；一个按钮 case 通过不能代表快捷键、只读角色或其他平台。
+
+工具发现只读已有 capability 声明、CLI 文档、驱动配置和脚本文本；记录目标 identity、
+owner、副作用范围与缺失能力到 `env-config.md`。可写操作 recipe 草稿，但 init 的
+Execution proof / Detection proof 均为 `NOT_RUN`；不能伪造 runner 或 fixture。
+具名 recipe、四类完成度与引用方式遵循 `docs/adr/0002-test-design-and-tool-operation.md`。
+精确命令只在 env-config/tools 保存，地图引用其锚点，不复制命令。
+
+## Step 2.4: 白盒能力发现（只读）
 
 在读代码前先判断“能获得什么事实”，不要因为看见源码就默认 whitebox/full：
 
-1. 查找已有 `project-profile.json`；存在则运行
-   `validate-provider-output.py project-profile`，再通过受信 runner 执行 `probe`。
+1. 查找已有 `project-profile.json`；存在则只读检查声明，或用本 Skill 的纯数据校验
+   `validate-provider-output.py project-profile` 检查形状。init 不调用 Provider `probe` 或
+   inventory/source-check helper；声明/脚本文本不是能力已实测，实际探测留到 execution。
 2. 无 profile 时只读发现构建系统、源码根、VCS、native test/inventory/static-analysis 命令；
    通用 Rust/Cargo 项目可建议 `better-test.rust-cargo`，项目专属 gate/ledger 不写入通用配置。
-3. 把能力区分为 available / unavailable / unconfigured / error，并记录证据；没有源码能力时
+3. 已有可信观察可区分 available / unavailable / unconfigured / error，并注明旧证据版本/范围；
+   只有声明时保留 UNKNOWN/unconfigured，不用运行 probe 填满表。没有源码能力时
    保持原黑盒知识，不把 unavailable 误写成“项目不需要”。
 4. 若用户批准启用 hybrid，按 `references/source-provider-contract.md` 生成项目 profile；
    Provider 默认只读、无网络、无外部写，profile 不含 secret 或个人绝对路径。
@@ -131,6 +165,8 @@
    的 cache/run artifact，不在 init 中手工维护。
 
 信号源 A–E 采集的是结构和元数据。对于有代码仓库的项目，读取测试代码本身能提取更丰富的信息（断言模式、fixture 依赖、环境要求）。
+
+## Step 2.5: 代码读取策略
 
 ### 第一遍：签名扫描（始终执行）
 
@@ -269,7 +305,7 @@ risk、gate、native ledger 映射。通用合同仍引用 skill 的 schema，�
 按以下顺序生成（参考 `references/templates.md` 的质量标准）：
 
 1. **`protocol.md`** — **项目级**测试认知约束（安全纪律 + 项目纪律口子）。L0 和思维纪律已在 skill 的 `protocol-base.md` 中，不重复生成。从模板中按风险等级（严格/标准/宽松）选择安全纪律版本，询问用户。**无人值守 fallback**：默认 **标准版**，Step 5 报告中明示。项目纪律段初始为空（由 `/better-test protocol-update` 积累）
-2. **`test-groups.md`** — 从信号源 A + B + F 提取。每组包含：名称、覆盖范围、运行命令、运行条件（环境变量、依赖、是否需要真账户）
+2. **`test-groups.md`** — 先固定 Step 2.3 的来源义务，再与信号源 A + B 的既有保护对账，结合 F 复用或生成。每组包含：名称、覆盖范围、运行命令、运行条件（环境变量、依赖、是否需要真账户）；保留原 test ID。仅有元数据、shape 或退出码不能声称业务义务已覆盖
 3. **`escapes.json` + `escapes.md`** — 从模板初始化空 escape 账本。JSON 是 SSOT，
    Markdown 是人类视图；写后运行
    `python3 <skill-root>/scripts/validate-escapes.py test/escapes.json`
@@ -303,7 +339,7 @@ risk、gate、native ledger 映射。通用合同仍引用 skill 的 schema，�
 3. **`impact-map.md`** — 从信号源 A 的目录划分 + 信号源 B 的 CI 矩阵推断初始版本。若无依据则只列已知关键词，标 `[未验证]` 待 update 累积
 4. **`known-issues.md`** — 初始化为空模板（待 feedback 累积）。如果信号源 E 有强信号可写"待验证条目"
 5. **`env-config.md`** — 测试环境配置。从信号源 F（用户提供的材料）+ 信号源 B（CI 配置）中提取：测试账号、服务地址、环境变量、时间依赖、不可逆操作清单、使用注意事项。没有用户提供的信息则写空模板（各段标"待补充"）。随时可通过 update（信号 6）补充
-6. **`surface-manifest.md`**（条件生成）— Step 1 分类为 API/Daemon/CLI/MCP 类项目时生成。从信号源 F（API 规范）或 `--help` 输出或源码路由扫描枚举全部可测接口。纯库/前端项目跳过。初始版本覆盖状态全标"未覆盖"，待首次测试后更新
+6. **`surface-manifest.md`** — 从信号源 F、已有 help 快照、路由/导出声明及 Step 2.3 生成当前已知接口和功能/入口/状态区段；适用于 UI、库/SDK、API、Daemon、CLI、MCP，不再因纯前端或纯库而跳过。保留既有接口表和原 ID；旧项目增量补区段。初始运行覆盖全标"未执行"，设计映射与实际运行分开；未知边界保留 UNKNOWN，不能凭扫描数量声称全部覆盖
 7. **`status.md`** — 自动生成的初始版本（仅项目概况 + 测试组列表，未跑过测试时无运行记录）
 7. **`progress.md`** — 初始化为空模板
 8. **`history/`** — 创建目录 + 两个 JSON 文件（均含 `schema_version: 1` 字段便于将来迁移）：
@@ -425,6 +461,6 @@ projects:
 
 ## 不要做的事
 
-- ❌ 不要在 init 时跑测试以"摸清当前状态"——这是 strategy 的职责，init 只读知识
+- ❌ 不要在 init 时跑测试以"摸清当前状态"——strategy 选择计划，明确 execution 阶段才操作；init 只读被测系统并生成知识
 - ❌ 不要把测试代码内容大段抄到 test-groups.md——只摘要"这组测什么 + 怎么跑"
 - ❌ 不要凭直觉写 impact-map.md 的关键词映射——没依据的标 `[未验证]` 等 update 阶段验证

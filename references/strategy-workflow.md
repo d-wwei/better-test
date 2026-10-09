@@ -102,7 +102,9 @@ Tester 测试期间不可写：
 0. context_research      ← 读历史材料，形成初步判断
 0.5 align_with_user      ← 带着判断和用户对齐范围
 1. detect_changes        ← 变更检测（含 diff 内容分析）
+1.75 discover_obligations ← 从来源独立列行为义务（暂不读旧用例明细）
 2. analyze_impact        ← impact-map 匹配 + 函数级精准分析
+2.5 reconcile_obligations ← 与旧用例逐项对账，记录缺口与选择理由
 3. read_history          ← 历史结果 + feedback-rules + bugs-index
 4. generate_plan         ← 生成分阶段执行计划（质量优先）
 5. form_hypotheses       ← 为每个阶段写测试假设
@@ -139,7 +141,7 @@ Tester 测试期间不可写：
 
 ```
 从 known-issues.md lessons 段 → 提取与本次变更/测试组相关的经验教训
-从 test-groups.md failure modes → 提取本次涉及的组的典型失败模式
+从原始 Bug/escape/反馈 → 提取本次相关的失败条件；test-groups.md failure modes 明细推迟到 Step 2.5
 从 env-config.md 注意事项 → 提取当前环境的约束和基准定义
 
 → 合并为"本次测试需要注意的 N 条关键经验"
@@ -298,6 +300,21 @@ git diff <prev_version_tag>..HEAD → 读实际变更内容（不只是文件名
 
 无 profile 的项目继续原流程，mode=blackbox；不得因“仓库目录存在”假装 Provider 已配置。
 
+## Step 1.75: 来源义务清单（discover_obligations）
+
+在读取旧用例明细/peer 结论之前，固定批准需求/AC、公开接口、用户路径、diff、历史 Bug
+原触发条件和 surface 的版本，独立列本轮义务。此处读 surface 时暂不读其 case 映射列。
+Step 0 已读过历史摘要时注明输入限制；新义务不能依赖旧例失败或现有测试名称才出现。
+有 reviewer 时给不同来源切片（例如需求+入口+权限、契约+状态+事故），先各自提取，再对账；
+不同角色名字不自动构成独立证据。没有 reviewer 仍执行两遍，诚实说明同一作者。
+
+义务格式：在 `<角色/状态/输入>` 下，经 `<entry_id>` 做 `<动作>`，必须/不得出现
+`<可观察结果/副作用>`；附 requirement/source locator + revision/digest、feature/entry/state
+引用、rationale、风险（严重性、变更相关性、事故、外部契约和成本）、oracle 与不确定性。
+没有正式保证的项标待确认假设；缺版本写 unresolved。义务临时编号只在本轮
+`strategy-plan.md` 使用，不建常驻 obligation registry，也不重编号原 test ID。
+需求事实仍在原来源、功能事实仍在 surface，本轮计划只引用并固定当时边界。
+
 ## Step 2: 影响分析（analyze_impact）
 
 两层分析：关键词匹配（粗）+ 函数级分析（精）。
@@ -332,6 +349,53 @@ git diff <prev_version_tag>..HEAD → 读实际变更内容（不只是文件名
 最终影响范围。Provider unknown 或 low confidence 时再加入 profile safe-default lanes。
 
 > **不内置 ">50% 升级 full" 规则**。通用测试协议没有可靠依据支持固定阈值，本 skill 也不擅自加。如果项目需要这种升级策略，应该在 `impact-map.md` 的"全量触发条件"段（见 templates.md）显式列出，不靠隐式阈值。
+
+## Step 2.5: 义务对账与风险选择（reconcile_obligations）
+
+此时才读 `test-groups.md` case 明细、native selectors、外部 suite case-map 和已有 proof。
+每项来源义务选择一个设计处置，再单列本轮执行选择；两列不能混为运行 verdict：
+
+| 设计处置 | 要交代的理由/后续 |
+|---------|----------------|
+| 旧例设计充分 | 指明原 ID/revision、实际入口/状态/断言；是否执行另查匹配 scope 的 run |
+| 需补入口/数据/状态 | 复用或参数化原 ID，保留原映射；明确缺的路径和观察点 |
+| 缺新 case | 给来源支持的候选，runner/fixture 未具备则保持设计缺口 |
+| 来源冲突待澄清 | 列双方 authority/scope/revision 与负责人；不虚构 expected、不授予语义 PASS |
+
+执行选择为 required / selected / not-selected / blocked，都写原因。风险支持本轮不选时，
+同时写风险接受主体（既有授权/批准者）、证据范围与剩余风险；无接受依据则保留待确认。
+hard gates、关键入口/不变量、高风险 canary 与 mandatory 等价类不得被预算或 pairwise 删除。
+UNKNOWN/低信心仍按 profile safe-default lanes 和 impact 扩围，不把未知默认为不适用。
+blocked 是可行性缺口，不能算低风险，也不能静默降低 release 标准。
+
+对每项义务按风险选择输入分区/边界、状态转换、权限、多入口、并发/恢复、跨平台、
+副作用维度；未采用写无相关机制/契约、已有保护或受阻原因。沿用 14 维评估及 hybrid
+七 lane，不生成机械笛卡尔积，也不把新设计百分比并入七 lane。
+没有用例只是测试知识缺口，实际违反保证并有证据才进入既有 Bug 流程。
+
+复用先看“行为义务 + 前置等价类 + 入口/层级 + 预期关系 + 风险”。真正等价的用例可合并，
+不同角色/平台/观察路径不能仅因同路由而合并。高风险候选回答“哪个具体错误实现会失败”。
+按 `docs/adr/0002-test-design-and-tool-operation.md` 的可选合同记录前置、fixture、动作、
+可观察 expected/relation、oracle、runner、environment/cleanup 与证据；不用另写 case parser。
+缺 runner/fixture/recipe/有效 oracle 保留 unresolved，结构完整仍不是 runnable。
+旧自由文本 case 仍能参与对账，不强制迁移 block；未采用合同不是产品失败或全设计有效。
+case 设计留在 test-groups/native tests；本轮选择与版本引用写 strategy-plan，运行证据留原 run。
+
+### 按主张选择 oracle（适用于各阶段和 compare）
+
+没有跨项目的 UI > reference > target 绝对排序。每条主张先固定 authority、scope、revision、
+比较规则、允许差异/时间窗、独立性与冲突：
+
+- 批准需求、公开协议和业务不变量可定义预期；彼此冲突先调查，不由 Agent 静默选一方。
+- 兼容性主张可用已验证参考实现；先对齐字段语义、主体/权限、数据快照、输入和时间窗，
+  排除参考 Bug。数值相等只证明选定范围的 parity，不能外推业务正确。
+- 可独立计算的预期使用独立公式/合成 fixture；幂等、守恒、排序、隔离等关系也须有契约来源。
+  被测函数不能计算自己的 expected；UI 与 API 共享后端时一致也可能共享同一 Bug。
+- UI 是用户观察证据，特定兼容目标可以选作参考；生产反馈、当前实现只能形成调查假设。
+  无充分 oracle 标 unresolved，保留安全探索，不能写语义 PASS。
+- 无副作用/拒绝类断言先用正控制证明观察器有效，再检查零变化；失败时区分探针失效与产品缺陷。
+
+具体 case 引用与四类完成度按 ADR-0002；文档状态不写入 results.status 或 provider_metadata。
 
 ## Step 3: 读历史（read_history）
 
@@ -496,7 +560,7 @@ IF 旧版本仍可用且未保存过基线：
 
 ### 分阶段计划生成
 
-基于 Step 1-3 的输入，生成 5 阶段执行计划：
+基于 Step 1-3 的来源义务、对账、影响并集和历史输入，生成 5 阶段执行计划：
 
 hybrid 计划必须额外列出：typed subjects/relations、七条 coverage lane 分母、required /
 recommended / excluded selection 及理由、missing capability、max claim scope、v3/v4 shadow
@@ -517,7 +581,7 @@ session 和适用的业务 canary。
   为什么先跑: 基础不通 → 后续所有 fail 可能是环境问题不是功能 bug → 浪费调查时间
 
 阶段 2: 直接影响 + 即时对照 + 负向测试
-  输入: Step 2 影响分析的 affected_groups + affected_items + 用户在 Step 0.5 追加的关注点
+  输入: Step 2 影响分析的 affected_groups + affected_items + Step 2.5 选定义务/缺口 + 用户在 Step 0.5 追加的关注点
   做什么: 全项执行。每个 🔴 立刻加对照（不等最后）。每个 🟡 立刻升级（不积累）
   执行顺序:
     a. 依赖链排序（被依赖的先跑）
@@ -536,19 +600,22 @@ session 和适用的业务 canary。
     3. 只修了一个 surface 吗？
     4. 只证明了 binary literal 落地吗？
     5. error path / missing field / wrong enum 是否仍然 silent？
-  穷举边界标准（agent 边际成本 ≈ 0，穷举优于采样）:
-    数值: 7 点（min-1 / 0 / 1 / 合理值 / 上限 / 上限+1 / INT_MAX）
-    枚举: 全扫 0-100（或 binary 中已知的全部 variant）
-    字符串: 5 点（空 / 短 / 长 / 格式错 / 合法）
-    日期: 4 点（倒置 / 过去 / 未来 / garbage）
-  Pairwise 组合取样: 单参数穷举管纵深，多参数矩阵爆炸（如市场×品类×账号×时段 ≥3 维）管横向
-    → 全组合不可行时按 `references/procedures/combinatorial-testing.md` 生成机读矩阵，
+  输入分区与边界选择（来源定义支持域，实际成本与风险决定范围）:
+    数值: 已定义 min/max 的前、边界、后；0、溢出等只在适用类型/机制下追加
+    枚举: 规范支持的 variant + 有定义的拒绝/unknown 类；binary 值只是线索，不无依据扫 0-100
+    字符串/日期: 契约定义的合法分区、长度/时间边界、格式错和非法顺序；记录不适用理由
+    小而有限且可安全重置的支持域可穷举；远程费用、耗时、限流、状态污染、不可逆副作用都计入成本
+  组合策略: 根据风险选择穷举、pairwise 或定向高阶组合/状态序列，并写清剩余风险
+    → 低风险因子可按 `references/procedures/combinatorial-testing.md` 生成机读矩阵，
       用 `<skill-root>/scripts/validate-pairwise.py` 证明任意两维 value pair 全覆盖
-    → 替代"全测不可能就只测熟悉组合"——熟悉组合 = 确认偏误的温床
+    → 该结果只证明选定因子的二元组合；已知三因素事故必须保留定向三因素 case，
+      并发/权限先后等序列也不能用 pairwise 数字证明已覆盖
   等价类显式化: 每个参数先列等价类（品类/市场/账号类型……），每类至少 1 个代表进用例
     → required_equivalence_classes 必须过同一 validator；高风险 canary 单列，不被 pairwise 替代
     → 防止符号集硬编码单一代表（如全部用 US.AAPL）导致整个等价类（指数/主连/crypto）零覆盖
-  Body 格式矩阵: 每个 endpoint 测 4 种格式（flat / c2s wrapper / camelCase / snake_case），不同格式走不同解析路径
+  Body 格式矩阵: 从当前契约列实际支持的格式/命名与拒绝规则；各支持路径和必要负向项都要有观察
+    → flat / c2s wrapper / camelCase / snake_case 仅为候选，不推定每个 endpoint 支持全部格式
+    → 若只支持两种，验证这两种及明确拒绝行为；未规定错误码/拒绝语义保留待澄清
 
 阶段 3: 回归验证
   输入: bugs-index 中 FIXED 未 VERIFIED 的 bug + active_failures + regression canary
@@ -574,14 +641,16 @@ session 和适用的业务 canary。
   做什么: 至少 smoke 级别覆盖，发现问题则升级为全项执行
 
 阶段 5: 覆盖审计
-  输入: surface manifest（如有）
-  做什么: 对比 manifest vs 阶段 1-4 已执行项
+  输入: surface manifest 当前已知边界 + Step 1.75 来源义务 + Step 2.5 对账
+  做什么: 按 feature/entry/state/平台/角色对比设计与阶段 1-4 已执行 scope；同 case 多入口不能一次抵全入口
   未覆盖接口:
     能深测（有 EXPECT_PATTERN + 运行条件满足）→ 执行并要求 field-level 证据
     不能深测 → 标 ⏭️ 写原因。不为覆盖率凑数
-  探索性 charter 钩子: 影响范围命中"0 历史记录"的模块 → 按 references/procedures/exploratory-charter.md
-    开 90 分钟 charter（SKILL.md Tier 2 表的触发条件，此处是执行点）
-  输出: 最终可达覆盖率 T / R = NN%
+  探索性 charter 钩子: 影响范围命中"0 历史记录"或来源/入口/状态 UNKNOWN、缺口假设 → 按 references/procedures/exploratory-charter.md
+    开有界 charter；时长按风险/成本约定，探索只在 execution 内操作
+  输出: 保留可达接口覆盖率 T / R 和范围；另写来源义务映射、选定入口/状态设计、实际执行、有效 oracle 的数量/分母
+    → 分母版本、UNKNOWN 与 not-selected/blocked 单列；映射完整或脚本 exit=0 不能叫功能覆盖完成
+    → 不改 results schema / 七 lane / 正式报告数；设计摘要落既有 strategy-plan/FULL-TEST-REPORT
 
 阶段 5+: 状态回验（贯穿所有阶段后）
   测试操作可能改变账户/系统状态（如 margin 消耗、挂单数量变化）
@@ -602,7 +671,7 @@ session 和适用的业务 canary。
 6. 每个阶段完成后报告证据质量分布（confirmed / direct / indirect 各几项），indirect >30% → 立即补强
 7. 推测即验证: 标了推测/indirect 的结论必须在当 Phase 内验证——标注和验证在同一动作完成。推测停留不验证 = 违规
 8. 单次观测不定论: 异常值至少两个时间点采样（间隔 ≥5min）+ 参考实现对照，区分暂态(cache)/持久(bug)。暂态未确认持久性不得报 bug
-9. 合理化阻断: 看到异常先查参考实现（按 Ground Truth 层级），后下结论。"可能是设计如此"/"可能是闭市"不是调查终点
+9. 合理化阻断: 看到异常先查该主张的契约/oracle 和参考适用范围，记录冲突后再下结论。"可能是设计如此"/"可能是闭市"不是调查终点
 10. severity 用最坏场景下谁受影响定，不用自己碰到的场景。pre-existing 记在 fix_note 不降 severity
 11. 覆盖声明必须附验证数量占总数比例（"4 项验证一致"不等于"184 个接口一致"）
 12. 🟡 产生时就地解决——"先全部跑完再处理"导致 🟡 永远不会被处理
@@ -690,6 +759,9 @@ Step 4 + 5 完成后，将完整计划（含假设）写入当前 run 目录的 
    - Context Summary ← Step 0 摘要
    - Change Analysis ← Step 1 变更检测结果
    - Impact Scope ← Step 2 影响分析
+   - Source Obligations ← Step 1.75 来源/边界/风险/oracle（先于旧例）
+   - Obligation Reconciliation ← Step 2.5 原 ID/revision + 设计处置 + 本轮选择/未选或受阻理由
+   - Frozen Design Scope ← source/surface/case/recipe 的实际 revision/digest、未解决引用、剩余风险及接受主体
    - Team Contract ← 多 tester 时记录 preset / slot / role boundary
    - Phased Plan ← Step 4 分阶段计划
    - Hypotheses 嵌入 Stage 2 ← Step 5 假设
@@ -882,13 +954,12 @@ IF 计划中某些阶段/组委托给子 agent 执行：
 | 修 bug 前后 | 修复前的 commit | 修复后的 commit |
 | Feature flag 对比 | flag=off | flag=on |
 
-### Ground Truth 层级
+### 对照的 oracle 与比较范围
 
 ```
-对照时的正确性层级（高到低）：
-  1. App / UI（终端用户看到的值）— 最终 ground truth
-  2. 参考实现（C++ / Python SDK）— 技术 ground truth
-  3. 被测对象（新实现）
+使用 Step 2.5 的“按主张选择 oracle”。记录 baseline 的依据、已知限制和独立性，
+UI/API 同源不能凭一致判业务正确；独立契约相反时保留冲突并调查。
+无 oracle 仍可记录观测差异，不给语义 PASS。
 
 比较时对齐字段语义，不只比数值。
   → 参考实现的 power 字段 ≠ App 的"购买力"——它们可能是不同计算
@@ -919,10 +990,10 @@ test-groups.md 中需要定义测试目标：
    a. 先跑基准目标，记录返回值
    b. 再跑被测目标，记录返回值
    c. 对比两者：
-      - 完全一致 → ✅ 行为一致
+      - 完全一致 → 记录限定 scope 的行为一致；语义 PASS 还须满足选定 oracle
       - 被测有额外字段/能力 → ℹ️ 新功能（不算 fail）
       - 基准通过但被测返回不同值 → ⚠ 差异（需调查）
-      - 基准通过但被测 fail → 🔴 回归
+      - 有效基准和契约通过但被测 fail → 🔴 回归；基准正确性未确认时先调查
 4. 生成差异报告
 ```
 
