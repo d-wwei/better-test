@@ -64,6 +64,31 @@
 
 以下规则适用于所有项目的所有测试执行，不依赖项目专属知识。
 
+### Stage 0：产品与工具操作预检
+
+操作产品/工具前加载 `references/procedures/product-operation.md`，从 resolved TEST_ROOT 的
+env-config 选具名 recipe；旧自由文本 case 同样可引用。先确认 capability、原 run/subject
+identity、owner、副作用范围、实际入口和 observer 正控制。首次或 recipe/tool/build/环境变化后，
+在明确 execution 做一条受控低风险的 Launch/Doctor/Drive/Observe/Cleanup 生命周期。
+init 仅只读和生成知识，不执行启动、安装或 pilot，包括 helper 间接执行。
+
+stage 0 失败保留现场和既有用例分母，标明能力缺口；一次 pilot 只证明实际入口和版本环境，
+不能替代 required tests 或缺陷检测控制。UI 入口必须真实 UI 驱动；共享 GUI/profile/device
+只允许一个 driver，除非资源已真正隔离。操作 recipe 不替代 case oracle 或下方 Pass 四件套。
+
+### 操作失败、恢复与证据清理
+
+每次遵循观察当前状态 → 确认前置 → 一项操作 → 有界等待 → 再观察业务后效 → 保存原始证据。
+失败重新 doctor；进程健康但 UI/PTY 卡住仍需保留现场后重建本 run session。
+按 TEST-INFRA、环境 blocked、文档漂移、产品缺陷的判别证据分诊；无法区分继续调查，
+timeout 或 observer 无输出不能直接认定产品 Bug/无副作用。
+
+重试写明原因、上限、前态与幂等性；每个归因修正至多一次验证性重试，项目更严 policy 优先。
+非幂等动作应答丢失先 reconcile 回执/对象/真实状态；未知且不能查询则 blocked/partial，
+禁止重复写入。按 ownership 和当前存活身份清理本 run 资源，不 kill by name、不删他人数据
+或 artifacts。清理前后核对原始证据可读、存活及字节/hash；正在追加的日志先封存副本再核对。
+证据被破坏时 recipe 不得标已验证。详细规则以 product-operation 为唯一方法正文。
+
 ### 四色标记
 
 每个测试项执行后立即标记结果：
@@ -500,6 +525,7 @@ happy path 通过后，对每个接口主动尝试 break——silent failure 最
 
 | 触发条件 | 加载什么 |
 |---------|---------|
+| 首次或修订 recipe 操作、UI/PTY 卡住、应答丢失、cleanup 身份/证据异常 | `references/procedures/product-operation.md` |
 | 三问无法定位失败原因 | `references/procedures/hypothesis-investigation.md` |
 | 同一测试连续 2 次结果不一致 | `references/procedures/flakiness-scoring.md` |
 | 用户要求对某模块做深度探索 | `references/procedures/exploratory-charter.md` |

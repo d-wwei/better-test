@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Better Test — Synthetic Notes</title>
+<style>
+body{font:16px system-ui;max-width:720px;margin:40px auto;padding:0 20px;background:#f7f7f3;color:#202820}
+label{display:block;margin:16px 0}input,textarea{display:block;width:100%;box-sizing:border-box;padding:10px;font:inherit}
+button{padding:10px 18px;margin-right:8px}li{margin:12px 0}#identity{font-size:12px;overflow-wrap:anywhere}
+</style>
+<h1>Synthetic Notes</h1>
+<p id="identity" data-app-marker="better-test-synthetic-notes">Binding instance…</p>
+<button id="new" type="button">New note</button>
+<section id="editor" hidden>
+  <label>Title<input id="title" aria-label="Title"></label>
+  <label>Body<textarea id="body" aria-label="Body" rows="6"></textarea></label>
+  <button id="save" type="button">Save</button>
+  <button id="cancel" type="button">Cancel</button>
+  <button id="close" type="button">Close editor</button>
+</section>
+<p id="status" role="status" aria-live="polite" data-state="loading">Loading</p>
+<ul id="notes" aria-label="Saved notes"></ul>
+<script src="/app.js"></script>
+</html>
