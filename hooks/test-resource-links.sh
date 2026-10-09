@@ -34,7 +34,7 @@ reference_pattern = re.compile(r"(?<![A-Za-z0-9_./-])references/[A-Za-z0-9._/-]+
 # inside a URI is never a token boundary that can expose a local-looking suffix.
 external_prefix = r"(?:[A-Za-z][A-Za-z0-9+.-]*:|~/|/|\.{1,2}/|(?!(?:references/))[A-Za-z0-9._-]+/)"
 external_start = re.compile(external_prefix)
-external_locator = re.compile(r"(?<![A-Za-z0-9_./-])" + external_prefix + r"[^\s`<>\"]+")
+external_locator = re.compile(r"(?<![A-Za-z0-9_./-])" + external_prefix + r"[^\s`<>\"|]+")
 local_suffix = re.compile(r"(references/[A-Za-z0-9._/-]+\.md)[?#][^\s`<>\"']+")
 markdown_destination = re.compile(r"\]\(\s*")
 
@@ -81,8 +81,8 @@ def local_reference_text(text):
         if label_start < 0:
             label_start = match.start()
         masked[label_start:cursor] = " " * (cursor - label_start)
-    # Bare URI regions end at whitespace/markup wrappers; URI punctuation
-    # (including apostrophes) stays inside. Local suffixes are not load edges.
+    # Inline destinations are already masked. Bare URI regions also stop at
+    # table cell separators; URI punctuation stays inside each region.
     local_text = external_locator.sub(" ", "".join(masked))
     return local_suffix.sub(r"\1", local_text)
 

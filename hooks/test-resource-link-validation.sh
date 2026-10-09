@@ -93,6 +93,15 @@ printf '%s\n' '# Orphan' > "$FIXTURE/references/procedures/orphan.md"
 printf '%s\n' "https://example.invalid/docs#[('references/procedures/orphan.md')]" >> "$FIXTURE/SKILL.md"
 check 'bare URI punctuation cannot connect a local orphan' 1 'unreferenced Tier-2 procedure'
 
+new_fixture compact_table_connected
+printf '%s\n' '|https://example.invalid/docs|references/procedures/table-only.md|' >> "$FIXTURE/SKILL.md"
+printf '%s\n' '# Table-only procedure' > "$FIXTURE/references/procedures/table-only.md"
+check 'compact table retains local cell after bare URI' 0
+
+new_fixture compact_table_missing
+printf '%s\n' '|https://example.invalid/docs|references/procedures/missing.md|' >> "$FIXTURE/SKILL.md"
+check 'compact table local target must exist' 1 'referenced resource does not exist'
+
 new_fixture adjacent_markdown
 printf '%s\n' '[external](https://example.invalid/docs?next=[references/procedures/external.md]),[local](references/procedures/adjacent.md)' >> "$FIXTURE/SKILL.md"
 printf '%s\n' '# Adjacent local procedure' > "$FIXTURE/references/procedures/adjacent.md"
