@@ -4,6 +4,12 @@
 
 Accepted for the C0 development baseline — 2026-10-09.
 
+M6 entry/template integration starts from reviewed I0
+`10b9347ff7191e11ccb84910e3d3cdfbaf04b228`. M1/M2/M5 runtime dependency loads
+and the M3 procedure now exist there; the M3 Dispatch Card supplement is pending
+owner-patch merge. Targeted static/fixture checks, integrated full regression,
+actual Agent trials and benefit experiments remain separate acceptance stages.
+
 This freezes interfaces for the parallel upgrade. C0 does not implement M1–M5,
 require a nonexistent checker, or establish execution/detection proof. The
 baseline before this decision is `e7f9125226ff3f78e80b61b9448224cc49fcfd86`.
@@ -45,9 +51,10 @@ and old free text are not implicitly adopted. The planned read-only command is:
 python3 <worktree>/scripts/validate-test-design.py --test-root <resolved-root> --format json
 ```
 
-It must not execute commands, import project code or access the network. Until
-M1 implements and integration connects it, this is an interface reservation,
-not a command users must run.
+It must not execute commands, import project code or access the network. At C0
+this was an interface reservation. At I0 the shipped checker is consumed by
+strategy/update using the actual loaded Skill root; old free text stays
+`not_adopted`, and warnings remain visible rather than equating exit 0 with proof.
 
 | Field | Frozen minimum type |
 |---|---|
@@ -58,6 +65,11 @@ not a command users must run.
 | `preconditions` / `actions` / `evidence_required` | Nonempty lists of nonempty strings |
 | `input_fixture` / `oracle_ref` / `runner_ref` / `environment_ref` / `cleanup_ref` | Reference |
 | `expected` | Nonempty list of objects with nonempty `observe` and `relation` strings; optional `value` (any JSON), `oracle_ref` (Reference overriding the case oracle) |
+
+Accepted compatibility limitation: the existing shipped schema helper requires
+JSON integer literals for `revision` (`1`, not `1.0`). Its supported subset is
+not standalone/full Draft2020-12 validation. M1's contract and CLI fixtures
+disclose this; no change to `hybrid_core.py` or results verdicts is implied.
 
 Reference is either a nonempty locator string or an object with
 `status: unresolved | not_applicable` and a nonempty `reason`. Explicit gaps or
@@ -137,7 +149,7 @@ Whole-file owners prevent simultaneous workflow edits:
 
 | Owner | Files |
 |---|---|
-| M6 | `SKILL.md`, `references/templates.md`, README (both languages), CHANGELOG, CI, `scripts/test-all.sh`, `hooks/test-resource-links.sh`; ADR and integration handoff |
+| M6 | `SKILL.md`, `references/templates.md`, README (both languages), CHANGELOG, CI, `scripts/test-all.sh`, `hooks/test-resource-links.sh`; ADR and integration handoff; narrowly authorized merge-workflow Step 7 feedback mapping/scope correction |
 | M1 | Case contract/schema/checker, BDD procedure, design fixtures/tests/handoff |
 | M2 | `references/init-workflow.md`, `references/strategy-workflow.md`, `references/procedures/exploratory-charter.md`; coverage fixtures/handoff |
 | M3 | `references/test-execution-workflow.md`; operation procedure, platform guide, isolated fixtures/tests/handoff |

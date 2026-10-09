@@ -290,6 +290,17 @@ init 时自动创建 `protocol-versions/` 目录和首个快照。
 | <Letter>-02 | <名称> | 功能 | `<field_name>` | 80% ⚠ |
 | ... | ... | ... | ... | ... |
 
+### 设计与证明范围（按 case/entry 保留原 ID）
+
+Scope: case <原 ID> revision <N>; entry <实际范围>; recipe <ID> revision <N>
+Design: AUTHORED; unresolved: <具体原因或 none>
+Structure: NOT_CHECKED / <真实 checker 输出 locator + status/errors/warnings/退出码>
+Execution proof: NOT_RUN / <原 run/artifact + subject/environment/entry + 原 revisions>
+Detection proof: NOT_RUN / <faulty run + correct-control run + fault/predicate>
+Current review: required: <未绑定/变化来源与 affected refs> / current-within-proof-scope
+Changed source / affected refs: <来源 before → after、feature/entry/state/case/oracle/recipe revisions>
+Owner / next / unknowns: <谁补材料/修知识/执行；完成条件与阻塞>
+
 ---
 
 ## smoke 集合
@@ -323,11 +334,53 @@ estimated_time: <分钟>
 ### 字段说明
 
 - **测试类型**: 用于测试金字塔结构检查（unit > integration > e2e 是健康比例）
-- **测试项 ID**: `<组字母>-<序号>` 格式（如 A-01），全局唯一，被 known-issues / feedback / impact-map 引用
+- **测试项 ID**: 保留项目原 test ID，全局唯一，被 known-issues / feedback / impact-map 引用；新 ID 沿用项目规范（如 A-01），不批量重编号
 - **类型（功能/元数据）**: 元数据测试不计入功能覆盖率（4 问中的第 1 问）
 - **断言字段**: 具体到字段名，不是"返回值正确"（4 问中的第 2 问）
 - **稳定性**: 从 history/ 自动计算的 flakiness 评分百分比（见 references/procedures/flakiness-scoring.md）
 - **smoke 选组标准**: 必须写明"为什么选这几组"——应该是关键业务路径，不是随便选的
+
+### 可选 case-contract:v1 示例（默认不采用）
+
+旧表格/自由文本不必迁移。下面整个四反引号块是**惰性教学示例**，复制完整示例仍不
+采用合同。只有绑定项目真实来源、原 ID、地图和 runner/oracle/环境后，才把内层 marker
+及紧邻 json 单独放到项目 test-groups；不要激活示例 ID 或占位值。完整结构示例沿用
+`fixtures/test-design/valid.json` 的合成 J-02；以下引用不是已存在的项目绑定或运行证据。
+
+````markdown
+<!-- better-test:case-contract:v1 -->
+```json
+{
+  "case_id": "J-02",
+  "revision": 1,
+  "requirements": ["test-root:reference/jobs-v2.md#AC-2@fixture-r1"],
+  "features": ["F-JOB-SUBMIT"],
+  "entries": ["API-POST-JOBS", "CLI-JOB-SUBMIT"],
+  "risk": {"failure": "重试创建重复任务或 outbox 事件", "priority": "high"},
+  "preconditions": ["专用租户 T1，已存在 K/P1 的任务", "隔离 CLI/API 共用同一持久状态"],
+  "input_fixture": "test-root:reference/job-small.json@fixture-r1",
+  "actions": ["CLI 再提交相同 key 和 payload", "通过独立持久状态探针查询任务及 outbox"],
+  "expected": [
+    {"observe": "responses.job_id", "relation": "与原任务 ID 相同，差异意味着重放语义错误"},
+    {"observe": "durable_jobs_and_outbox_matching_key", "relation": "任务与事件分别等于 1；任一大于 1 表示重复副作用", "value": {"jobs": 1, "outbox": 1}}
+  ],
+  "oracle_ref": "test-root:oracle-catalog.md#O-JOB-IDEMPOTENCY@fixture-r1",
+  "runner_ref": "test-root:tools/test_jobs.py::test_retry_same_key@fixture-r1",
+  "environment_ref": "test-root:env-config.md#OP-JOBS",
+  "cleanup_ref": "test-root:tools/jobs-fixture.py#cleanup-owned-run",
+  "evidence_required": ["原始请求与响应", "持久任务与 outbox 计数", "subject/environment identity"]
+}
+```
+````
+
+类型与只读 CLI 以 `references/test-design-contract.md` 为准：Reference 可为 locator，或
+带 reason 的 unresolved/not_applicable；缺来源不伪造 hash。revision 必须是 >=1 的 JSON
+整数字面量（如 `1`）；`1.0` 不被现有 helper 接受，并非完整 Draft2020-12 语义。
+从本次加载的 Skill 根执行 `python3 <skill-root>/scripts/validate-test-design.py --test-root <resolved-root> --format json`，
+保留并显示 warnings，不能只看 exit 0：valid 仅结构，not_adopted 仅未采用；1 为结构错误，
+2 为文件/参数操作错误。map ID、anchor/selector/revision、oracle 语义和执行/检测不由 checker 证明。
+文档证明行不是 results 字段；current-within-proof-scope 要有实际匹配 proof。变化可令当前
+review required，同时保留旧 run/proof 原字节；recipe pilot 不等于 case 缺陷检测。
 
 ### 质量标准
 
@@ -336,7 +389,7 @@ estimated_time: <分钟>
 | 运行命令 | 可直接复制粘贴执行 | "跑 A 组" |
 | 运行条件 | 列全所有依赖（环境、二进制、账户） | "需要环境就绪" |
 | 关键字段断言 | 给一个具体字段名 | "断言返回值正确" |
-| 测试项 ID | `<Letter>-<NN>` 格式，全局唯一 | 无 ID 或重复 |
+| 测试项 ID | 保留原 ID，全局唯一；新 ID 沿用项目规范 | 无 ID、重复或批量重编号 |
 | smoke / full 集合 | 组字母 + 项数 + 耗时 + 选组理由 | 只列字母 |
 | 测试类型标注 | 每组有 unit/integration/e2e/contract/performance | 空 |
 
@@ -400,22 +453,32 @@ estimated_time: <分钟>
 ## known-issues.md
 
 人类视图的已知问题表。`feedback-rules.json` 是机器视图，本文件是同步出来的人类版本。
+正式反馈来源与适用范围遵循 `references/feedback-workflow.md`；未归因候选留现有
+progress/update 待办，不进入 merge 消费的 feedback 文件。显式 user verdict 或已有授权
+不重复审批，材料不足须保留未知。历史 run/results 不因反馈或知识更新改写。
 
 ```markdown
 # Known Issues
 
 ## 已 suppress（不算 active failures）
 
-| Test ID | Verdict | 来源版本 | 原因 |
+| Test ID | Verdict | 来源版本 | 原因 / 契约或决定依据 / 适用 scope |
 |---------|---------|---------|------|
-| B-05 | not-a-bug | v1.4.27 | 开发者说空 funds 是预期（账户无资金时） |
-| H-02 | wontfix | v1.4.26 | macOS Keychain 旧版兼容性问题，不修 |
+| B-05 | not-a-bug | v1.4.27 | <可定位契约 + 相符观察；无资金账户的原 entry/case/oracle revisions> |
+| H-02 | wontfix | v1.4.26 | <可信不修决定 + 接受者；具体 macOS/Keychain 范围，保留缺陷风险> |
 
 ## 已知行为（仍算 fail，但已知）
 
-| Pattern | 描述 | 来源版本 |
+| Test ID / Pattern | Verdict / 描述 | 来源版本 / 依据 / scope / Owner-next |
 |---------|------|---------|
-| D-* | 闭市时 quote 返回 stale 数据，不影响功能 | v1.4.27 |
+| <原 ID> | deferred：已知 fail，等待修复 | <真实反馈来源、范围与下一步> |
+| <原 ID> | fixed-differently：断言有依据地修正，仍待复测 | <独立 oracle、保持项与回归范围> |
+
+## 已声明 fixed（待实际复测）
+
+| Test ID | 修复来源 / scope | 原症状、保持项、相邻不变量、替代缺陷与回归 / Owner-next |
+|---------|-----------------|-----------------------------------------------------------|
+| <原 ID> | <真实 commit/来源；版本/环境/entry/case revisions> | <原流程实际复测，声明不等于 VERIFIED> |
 
 ## Flaky
 
@@ -433,11 +496,12 @@ estimated_time: <分钟>
 
 | 项目 | 必须满足 |
 |------|---------|
-| Test ID | 必须是 test-groups.md 中真实存在的 ID（`<Letter>-<NN>` 格式） |
+| Test ID | 必须是 test-groups.md 中真实存在的原 ID，不为采用新合同而重编号 |
 | Verdict | 取自 `not-a-bug / fixed / wontfix / deferred / fixed-differently` |
 | 来源版本 | 该规则首次出现的版本 |
 | Flaky 稳定性评分 | 从 history/ 自动计算，格式 `NN% (N/N)`（见 references/procedures/flakiness-scoring.md） |
 | 经验教训 | 是可推广的洞察（evidence: proven 级），不是特定 ID 的现象 |
+| Scope 复核 | 消费前核对原依据及产品/环境/entry/case/oracle/recipe revisions；缺依据、变化或反证写 required，不投影成全局 suppress；格式不能承载 scope 时保留候选与阻塞，不造 schema 字段 |
 
 ---
 
@@ -465,7 +529,7 @@ estimated_time: <分钟>
 
 | 服务 | 地址/端口 | 启动方式 | 健康检查 | 注意事项 |
 |------|---------|---------|---------|---------|
-| daemon | localhost:18111 | `./sample-service --port 18111` | `curl localhost:18111/health` | 确保只有一个实例（lsof 端口清场） |
+| daemon | localhost:18111 | `./sample-service --port 18111` | `curl localhost:18111/health`（仅 liveness） | 先绑定实际 identity/owner，Doctor 另验业务 ready；不清理其他 owner 的进程 |
 | 数据库 | localhost:5432 | docker-compose up db | `pg_isready` | 测试用独立 schema，不动生产数据 |
 
 ## 环境变量
@@ -495,7 +559,50 @@ estimated_time: <分钟>
 - <项目特有的重要提醒，如"不要同时跑两个 agent 测试同一个 daemon">
 - <如"周末 daemon 会自动重启，测试前确认 PID">
 - <如"测试数据用 tmpdir，不要写 ~/data/ 目录">
+
+## 具名 operation recipe（按实际项目绑定，未绑定是 draft）
+
+<a id="OP-NOTES-WEB"></a>
+### OP-NOTES-WEB
+recipe_revision: 1
+
+#### Purpose
+<case/entry 和适用行为；不复制 expected>
+#### Capability and tool choice
+<工具实际版本、动作/观察能力、选择原因、能力缺口>
+#### Preconditions
+<subject/build/session/profile、原 run identity、资源 owner、权限及副作用范围>
+#### Launch
+<项目精确命令、工作目录、拥有的 PID/端口/临时路径；未知命令标 draft>
+#### Doctor
+<实例绑定、ready 谓词、observer 正控制、等待 deadline>
+#### Drive and Wait
+<当前可观测目标、一次动作、完成谓词、有界等待>
+#### Observe and Evidence
+<实际 request/response/exit、原始 UI、重开及独立持久后效；run-local 路径>
+#### Failure and Recovery
+<归因、保留失败、reconcile、修正、条件重试上限、session reset>
+#### Cleanup
+<owner+存活确认，精确资源清理，证据前后可读/字节/hash 检查>
+#### Proof status
+Scope: case/entry revisions; recipe revision; subject/environment
+Design: AUTHORED; unresolved: <原因或 none>
+Structure: NOT_CHECKED / <真实 checker 输出，只证明结构>
+Execution proof: NOT_RUN / <既有实际 run/artifact 及版本环境>
+Detection proof: NOT_RUN / <故障与正确对照 run、具体谓词>
+Current review: required: <未绑定/变化来源> / current-within-proof-scope
+Changed source / affected refs: <before → after、tool/build/environment/entry/case/recipe revisions>
+Owner / next / unknowns: <完成条件与阻塞；保留历史 proof 及当前范围缺口>
 ```
+
+操作方法 SSOT 是 `references/procedures/product-operation.md`，平台能力见
+`references/tool-operation-platforms.md`。选择顺序为既有 harness → 已安装适配控制 →
+原生 CLI/API → 真实缺口的薄适配器。init 只读发现/记录，不启动、安装或 pilot；
+execution stage 0 才按实际身份/owner 运行完整操作链。占位 recipe 不可照抄执行。
+case 唯一链接用 `environment_ref: "test-root:env-config.md#OP-NOTES-WEB"`，指向实际
+显式锚点，runner_ref 仍是原生测试入口，不增 recipe_ref/runner/config/租约服务。
+共享 GUI/OS 输入一位 driver；交接先观察实际 release，cleanup 仅 startup-owner 资源。
+无响应的非幂等动作先 reconcile；成功 pilot 仅限实际入口/工具/版本/环境，不能外推。
 
 ### 质量标准
 
@@ -519,7 +626,8 @@ estimated_time: <分钟>
 
 ## surface-manifest.md（接口清单 SSOT）
 
-枚举被测对象的全部可测接口。覆盖率计算的分母来源。适用于 API/CLI/daemon/MCP 等有明确接口边界的项目类型；纯库/前端组件项目可选跳过。
+枚举被测对象当前有来源支持的接口、用户入口和角色/状态边界。原接口表仍是接口覆盖率
+分母；库/前端按 SDK/UI surface 记录，未知项不冒充全部已枚举。新增设计分母不并入 hybrid 七 lane。
 
 ```markdown
 # Surface Manifest — v<X.Y.Z>
@@ -533,6 +641,7 @@ estimated_time: <分钟>
 | REST endpoints | <N> |
 | CLI subcommands | <N> |
 | MCP tools | <N> |
+| UI entries / SDK exports（如适用） | <已知 N；unknown 单列> |
 | 其他（WebSocket / gRPC / ...） | <N> |
 | **总计** | **<M>** |
 
@@ -556,6 +665,24 @@ estimated_time: <分钟>
 | 工具名 | 必选参数 | 说明 | 覆盖状态 |
 |--------|---------|------|---------|
 | resource_query | resource_ids | 资源查询 | ✅ I-04 |
+
+## Source boundary
+
+| Source locator + item | Revision/digest | Collected | Scope | Reliability/conflict/unknown |
+|-----------------------|-----------------|-----------|-------|------------------------------|
+| <原需求/AC/契约/接口来源> | <实际 revision；未知 unresolved> | <ISO+时区> | <已知边界> | <可靠性、冲突与未确认项> |
+
+## Feature / entry / role / state
+
+| Feature ID | Entry ID + user goal | Role / pre-state / transition | Outcome / side-effect boundary | Source refs | Source/native refs / original case IDs |
+|------------|----------------------|-------------------------------|--------------------------------|-------------|---------------------------------------|
+| <项目稳定 ID> | <入口 ID + 用户目标> | <角色/前态/转换> | <必须/不得后效> | <原 locator/revision> | <native selector/原 ID；未执行入口单列> |
+
+## Unknowns to investigate
+
+| Entry/state/platform unknown | Reason / risk | Next source/action | Owner |
+|-----------------------------|---------------|--------------------|-------|
+| <未知范围> | <材料缺口与风险> | <只读调查/后续明确执行> | <owner> |
 
 ## 未覆盖接口
 
@@ -591,6 +718,7 @@ estimated_time: <分钟>
 | 来源 | 标注清单来源（spec / help / code / manual） |
 | 覆盖状态 | 每个接口标注 ✅ test_id / ⏭️ 原因 / 🔴 未覆盖 |
 | 不含凭证 | 示例参数不含真实密码/token |
+| 来源边界与地图 | 来源 reliability/revision/scope、entry/role/state 与原 case/native 引用；地图是导航，不能替代 oracle；UNKNOWN 不是不适用，单 case 通过不代表全部入口/平台 |
 
 ---
 
@@ -603,12 +731,13 @@ estimated_time: <分钟>
 ```markdown
 # Oracle Catalog — <project>
 
-> 正确性层级: App/UI（用户看到的）> 参考实现 > 被测对象（详见 strategy-workflow Ground Truth 层级）
+> 按每条主张选择 authority/scope/revision、比较规则和独立性；来源冲突先调查。
+> 批准 AC/契约与独立公式定义断言，被测函数/当前输出不能生成自己的 expected。
 
-| 接口类 | 首选 oracle | 次选 | 失效/降级条件 |
-|--------|------------|------|--------------|
-| <如 交易读写> | <如 C++ 同账号同参数> | <如 App 截图> | <如 参考实现不暴露该接口 → 降级为字段合理性 + 后端 log> |
-| <如 指标/计数器> | 被计数的行为本身（做 N 次操作 → 计数 +N） | — | — |
+| 接口类 / 主张 | Oracle locator + authority/revision/scope | 独立性 / 比较规则 / 已知冲突 | 失效/降级条件 |
+|---------------|------------------------------------------|-----------------------------|--------------|
+| <兼容性> | <已验证参考实现及适用契约> | <主体/权限/快照/时间窗与允许差异；共享后端风险> | <来源冲突调查；无有效 oracle 写 unresolved，不判语义 PASS> |
+| <指标/副作用> | <批准 AC 的计数关系 + 独立 observer> | <正控制证明 observer 有效，再验零变化/不变量> | <observer 失效是工具调查，不从当前输出刷新 golden> |
 ```
 
 ### 质量标准
@@ -618,6 +747,7 @@ estimated_time: <分钟>
 | 全覆盖 | 每个接口类都有行；无 oracle 的类显式写"无 oracle——盲区" |
 | 失效条件 | 每行写明 oracle 何时不可用及降级方案 |
 | 修复方向也要对照 | "修复声明 ≠ 行为正确"——bug 修复的方向断言同样需要 oracle 对照（真实案例：按错误方向修复并定向验证通过，后被参考实现证伪） |
+| 按主张选择 | 无 UI > reference > target 固定排名；parity 只证明选定范围，UI/API 共享实现的一致不自动独立；规则见 references/strategy-workflow.md 的按主张选择 oracle |
 
 ---
 
@@ -750,9 +880,14 @@ last_active: <YYYY-MM-DDTHH:MM:SS±HH:MM>
 
 | Resource | Value |
 |----------|-------|
-| daemon_port | <port number> |
-| daemon_pid | <PID> |
-| config_path | <path> |
+| daemon_port | <真实端口 + target identity + owner> |
+| daemon_pid | <真实 PID + 当前存活/归属观察> |
+| config_path | <本 owner 的实际配置路径> |
+| responsibilities / merged-axis | <designer/reviewer/explorer/executor/aggregator → 既有 slots；兼任披露> |
+| independence / review inputs | <author/reviewer/session/model、共享 source/golden/cache/artifact；A 输入/先存义务 → B 输入时间与原 run L2 引用> |
+| shard / overlap | <原 case/entry/environment IDs + overlap 原因；source/case/recipe revisions 的 strategy 引用> |
+| isolation / single driver | <ports/data/profile/namespace/device/account；side-effect scope；实际隔离与共享 GUI/OS-input 唯一 driver> |
+| handoff / cleanup | <时间窗、有界等待、实际 release artifact；startup-owner cleanup 与 unresolved owner-next 的 strategy/audit 引用> |
 
 ## Runs
 
@@ -771,9 +906,9 @@ last_active: <YYYY-MM-DDTHH:MM:SS±HH:MM>
 
 | 项目 | 必须满足 |
 |------|---------|
-| Resources 段 | 列出所有占用的共享资源（端口、PID、配置路径） |
+| Resources 段 | 列所有共享资源与目标/owner/隔离/driver；时间窗过期不等于 release，换 driver 前核对实际观察 |
 | Runs 表 | 每个 run 有对应的 run 目录路径 |
-| 总长度 | ≤ 30 行（只做索引不做内容） |
+| 总长度 | ≤ 30 行（只做索引不做内容）；具体输入轨迹、freeze 与交接 artifact 放既有 strategy/L2/audit/run，registry 只引用 |
 | 不含凭证 | 不写密码/token/API key |
 
 ---
@@ -901,6 +1036,34 @@ total_items: <N>
 - Active failures: <N>（suppress 后）
 - Bug retest candidates: <BUG-xxx-NNN 列表>
 
+## Source Obligations
+
+| This-run obligation | Source + revision | Feature/entry/state | Must/must-not outcome | Rationale/risk/cost | Oracle authority/scope/independence/conflict |
+|---------------------|-------------------|---------------------|-----------------------|---------------------|--------------------------------------------|
+| <来源义务，先于旧例> | <原 locator/revision> | <实际边界> | <可观察行为/副作用> | <真实风险与预算> | <批准 AC/独立依据；缺失 unresolved> |
+
+## Obligation Reconciliation
+
+| Obligation ref | Original case ID/revision / selector | Design disposition | Required/selected/not-selected/blocked | Reason/residual risk/acceptance owner | Binding gaps |
+|----------------|--------------------------------------|--------------------|---------------------------------------|--------------------------------------|--------------|
+| <本轮引用> | <原 ID/revision/native entry> | <充分/补入口状态/缺 case/来源冲突> | <本轮选择> | <理由、余风险与既有接受主体> | <oracle/fixture/runner/recipe 缺口> |
+
+## Frozen Design Scope
+
+- Sources / surface / case / recipe: <实际 locators/revisions/digests，未知不伪造>
+- Input-slice / unresolved / unexecuted entry/platform: <独立审查已接触材料与当前缺口>
+- Scope: <subject/environment/entry + case/recipe revisions>
+- Design: AUTHORED; unresolved: <原因或 none>
+- Structure: NOT_CHECKED / <真实 checker locator + status/errors/warnings/退出码>
+- Execution proof: NOT_RUN / <原 run/artifact + 原 identity/revisions，仅该范围>
+- Detection proof: NOT_RUN / <faulty+control run + fault/predicate>
+- Current review: required: <变化来源> / current-within-proof-scope
+- Changed source / affected refs / owner-next: <before → after；复核/新执行的完成条件与阻塞>
+
+地图/case/recipe 在原知识位置，本计划仅保留当时选择。旧 proof 可与当前 required 并列，
+不改历史 run；结构/操作成功不证明 oracle 或检测能力，pilot 不删 required 分母。
+hard gates、关键不变量/canary 与 mandatory 等价类保留，UNKNOWN 按原规则安全扩围。
+
 ## 修复闭包矩阵（仅 bug-retest / claimed fix）
 
 | Bug/Issue | 原始症状 | 保持项 | 相邻不变量 | 替代缺陷反例 | Oracle | Verdict |
@@ -930,6 +1093,13 @@ total_items: <N>
 - Coordinator: <tester-id | pending | none>
 - Shared blind-spot guard:
   - <如"不同账号 + 不同 surface + 不同 oracle">
+- Responsibilities / merged-axis: <designer/reviewer/explorer/executor/aggregator → 既有 slots；按风险兼任，不固定 Agent 数>
+- Provenance / independence limits: <author/reviewer/session/model；共享 source/golden/cache/artifact origin；self-review/提前读作者材料范围>
+- Review inputs: <A 原来源/revision/时间 → 先存本 run L2 义务 → B case/strategy/revision/时间；不得倒填盲审>
+- Shard / overlap: <原 case/entry/environment IDs + overlap 理由；source/case/recipe 冻结版本>
+- Resource assignment: <target identity/owner/side-effect scope；ports/data/profile/namespace/device/account；实际隔离与共享 GUI/OS-input 单 driver>
+- Handoff: <时间窗/有界等待/实际 observed release artifact；startup-owner cleanup，超时先核对存活和 release>
+- Unresolved / disposition: <owner 回应、反例与处置在既有 audit/merge challenge 的原文/引用>
 
 ### My Slot
 - Role: <role_name | "solo">
@@ -1008,6 +1178,8 @@ strategy-plan.md 直接在 run 目录内创建，无需归档复制。
 |------|---------|
 | YAML frontmatter | 所有字段已填；status 来自有效枚举值；时间戳遵循三档规范 |
 | Team Contract | 多 tester 时必须填写；solo 场景写 `Coordination mode: solo` |
+| 设计审查与派单 | 按 references/team-role-presets.md 与 references/l2-audit-prompts.md 保留 A-before-B 输入/义务、provenance、实际资源交接；角色/共识不升级证据，保留原 post-run L2/challenge |
+| 设计与证明范围 | 来源义务先于旧例，设计处置与本轮选择分列；四类 proof 独立、unknown/受阻/未选原因明确；advisory Markdown 不是 input_refs.strategy 的机器 JSON，不造 results/provider_metadata 字段 |
 | Stages | 编号 1-5（简化路径可少于 5）；每阶段有 groups + items |
 | Hypotheses | Stage 2 每个受影响组至少 1 条；IF-THEN-BECAUSE 格式 |
 | User Adjustments | 有修改必填；无修改写"Accepted as-is" |

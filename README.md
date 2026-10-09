@@ -22,6 +22,18 @@ v4: Objective- and capability-driven black-box/white-box/hybrid strategy, versio
 contracts, typed evidence, seven coverage lanes, lossless legacy projection, and safe v3/v4
 dual-write migration. Projects graduate from shadow to default through their own audited window.
 
+The current development increment connects source obligations, entry/role/state maps,
+an opt-in case contract and read-only design checker, named operation recipes, A-before-B
+review, and scoped knowledge/feedback maintenance through the existing workflows and
+templates. Legacy free text remains usable. These additions are advisory document facts;
+the original intake/results validators, hard gates, v3/v4 contracts and single report remain authoritative.
+
+Focused structure/fixture checks cover authored methods and static loading only. Fresh
+UI/API Agent acceptance and the frozen A/B benefit pilot are **NOT_RUN** for this increment.
+The eight-platform operation guide is adapted guidance, not eight tested drivers;
+authentication/runtime and unsupported or unexecuted entries remain unknown until bound and run.
+Load the exact development worktree's `SKILL.md` and scripts to test it; the installed Skill may differ.
+
 Key capabilities:
 
 - **8 L1 hooks + gate.sh universal entry** — credential scan, derived-view guard, session isolation, execution logging, post-test checklist, results validation. gate.sh auto-detects better-test projects from global config (no per-project setup)

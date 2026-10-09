@@ -283,18 +283,27 @@ scope-of-impact 说得很吓人，但 definitional 不满足时，不能硬升�
 ## Step 7: 合并 feedback + 重建 feedback-rules.json（merge_feedback）
 
 ```
-收集所有选中 run 的 feedback/*.md
+仅收集所有选中 run 有依据/适用范围的正式 feedback/*.md；
+未归因候选留原 progress/update 待办，不进入规则。
 
 1. 按 test_id 分组
-2. 按时间排序（每个 feedback md 的 YAML frontmatter 中有 timestamp）
+2. 按时间排序（feedback frontmatter 的 date；旧记录若用 timestamp 则核对其真实时间）
 3. 对每个 test_id 取最终 verdict：
    - 后写的 revoke 覆盖先写的任何 verdict
    - 同一 test_id 的非 revoke verdict 以最新为准
-4. 重建 feedback-rules.json：
-   - suppress: verdict 为 not-a-bug / wontfix / deferred 的 test_id
-   - known_behaviors: verdict 为 not-a-bug 的（附 note）
-   - lessons: 从 feedback notes 中提取 proven 级洞察
+4. 核对原依据及产品/环境/角色/entry/case/oracle/recipe revisions 的实际 scope，
+   按 references/feedback-workflow.md 重建 feedback-rules.json：
+   - suppress: 契约/明确不修决定有可信依据且范围相符的 not-a-bug / wontfix
+   - known_behaviors: deferred / fixed-differently（保留失败或待复测，不代表通过）
+   - fixed: 不 suppress；按执行流程复测原症状、保持项、相邻不变量、替代缺陷与回归
+   - lessons: 按已有 evidence grading；重复转述不自动 proven
+5. 保留原反馈与历史 run；scope 不符/依据缺失/反证时标 required 并重选。
+   当前格式不能表达所需 scope 时不造 schema/provider_metadata 字段，
+   保留候选和阻塞，不能投影成全局 suppress。
 ```
+
+这是工作流范围核对，未声称现有机器 merge 校验此范围。原 validators、结果判定与
+修复闭包门不变；显式用户 verdict 或已有授权按 feedback 流程直接录入，不重复审批。
 
 ## Step 8: 生成合并输出（generate_output）
 

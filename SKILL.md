@@ -143,7 +143,7 @@ Codex Stop hook 只在 active run 已进入交付阶段时调用该命令；同�
 6. `known-issues.md` 写入时未附 test_id + 判定来源（developer / human / inferred） → 违规
 7. `feedback-rules.json` 被人手编辑（应通过 `/better-test feedback` 提炼或 `/better-test merge` 重建） → 违规，破坏自动化
 8. `progress.md` 中记录无法被下一个 session 理解的模糊状态（如"差不多跑完了"） → 违规，必须精确到测试 ID 和组
-9. `init` 时跑全部测试以"摸清当前状态" → 违规，init 只读知识不执行测试
+9. `init` 时启动产品、运行测试/pilot 或通过 helper 安装依赖以"摸清当前状态" → 违规，init 只读材料与能力并生成知识，实际自验进入明确 execution 阶段
 10. flaky 测试连续 2+ 次表现不一致时，未在 `known-issues.md` 的 Flaky 段标注或未发起 `/better-test feedback ... deferred` → 违规，flaky 不能默默吞掉
 11. 时间戳不带时区偏移（如裸 `2026-04-21 14:23` 或 `<ISO>` 占位符） → 违规，必须使用三档规范格式
 12. tester 测试期间写入项目级聚合文件（`test/status.md`、`known-issues.md`、`bugs-index.md`、`feedback-rules.json`） → 违规，这些是 derived view，只有 coordinator 通过 `/better-test merge` 写入
@@ -205,7 +205,32 @@ Codex Stop hook 只在 active run 已进入交付阶段时调用该命令；同�
 
 ## References
 
-三层加载架构：Tier 1 核心流程嵌入 workflow（每次执行自动加载）、Tier 2 扩展流程按条件加载、Tier 3 方法论参考供人类阅读（agent 不加载）。
+三层加载架构：Tier 1 核心流程嵌入 workflow（每次执行自动加载）、Tier 2 扩展流程按条件加载、Tier 3 方法论参考供人类阅读（agent 不加载）。开发 handoff 不在运行时加载链。
+
+设计与操作沿用原知识文件：来源在原需求/契约，feature/entry/role/state 在
+surface-manifest，case 在 test-groups/native tests，recipe 在 env-config/tools，
+本轮选择与冻结范围在 strategy-plan，实际证据在原 run。新文档区段为 advisory；
+case block 显式 opt-in，旧自由文本继续可用，不另建功能/用例数据库或报告。
+
+strategy 先从来源列义务，再对账旧例，加载 `references/test-design-contract.md` 与
+`references/procedures/bdd-scenarios.md`；按 `references/strategy-workflow.md` 调用
+本次实际加载 Skill 根的 `python3 <skill-root>/scripts/validate-test-design.py --test-root <resolved-root> --format json`。
+保存并显示完整 status/errors/warnings/退出码：0+valid 只证明结构，0+not_adopted
+是未采用，1 是 adopted 结构错误，2 是文件/参数操作错误。checker 不验证 oracle、
+map ID、selector/anchor/revision、可执行性或缺陷检测，不能替代原 validate-run。
+
+init 编写 recipe 前只读 `references/procedures/product-operation.md` 的工具发现与模板，
+实际操作在 execution stage 0 加载该 procedure，按目标 identity、owner、副作用边界
+完成 Launch/Doctor/Drive and Wait/Observe/Cleanup，并验证证据存活。pilot 只覆盖实际
+entry/tool/recipe/build/environment；required tests 与其他入口缺口继续保留。
+
+设计审查/派单前加载 `references/team-role-presets.md` 与 `references/l2-audit-prompts.md`：
+五类职责映射既有 slot，A 仅来源输入且先留存义务，再开放 B 作者 case/策略。
+披露兼任、同源资料与独立性，共享 GUI/OS 输入只有一个 driver，交接需实际 release 观察。
+保留原执行后 L2 Audit 1–4 与独立 merge challenge；同意结论不能升级证据。
+update/feedback 按原 workflow 复核变化范围，保留历史 run；显式授权不重复审批，
+deferred 仍是已知 fail，fixed 仍待实际复测。Design、Structure、Execution proof、
+Detection proof 分别记录，方法/静态检查不等于 Agent 已遵循或收益已验证。
 
 ### Tier 1: Workflow 文件（含嵌入的核心流程）
 
@@ -216,14 +241,14 @@ Codex Stop hook 只在 active run 已进入交付阶段时调用该命令；同�
 | `references/strategy-workflow.md` | `/better-test strategy` | 变更检测 + 影响分析 + 决策树 + 条件检查（批量/组合策略/发布建议） |
 | `references/test-execution-workflow.md` | 测试执行阶段 | **框架 + 模板**：结合通用纪律 + 项目知识生成专属执行计划。内嵌：四色标记 + 证据分级 + 错误三问 + 终态规则 + 安全守则 + 覆盖率报告 |
 | `references/feedback-workflow.md` | `/better-test feedback` | 反馈录入 + 规则提炼 + suppress。内嵌：回归 canary 提示 |
-| `references/l2-audit-prompts.md` | 测试完成后（full/targeted/compare/bug-retest） | L2 子 Agent 审查 prompt：执行审计 + 覆盖率对账 + 证据审计 + l2-findings.md 格式 |
+| `references/l2-audit-prompts.md` | case/strategy 冻结前的设计审查；测试完成后（full/targeted/compare/bug-retest） | 先来源义务 A、后作者方案 B；原执行/覆盖/证据 Audit 1–4 + l2-findings |
 | `references/protocol-update-workflow.md` | `/better-test protocol-update` | 认知约束升级 + changelog |
 | `references/pending-skill-upgrades.md` | `/better-test update` Step 5.5 | 通用经验升级队列（agent 追加，人审核） |
 | `references/reflect-workflow.md` | `/better-test reflect` | 历史经验提取：6 类分析 + 增量/全量两层机制 |
 | `references/merge-workflow.md` | `/better-test merge` | 多 tester 结果合并：扫描 run → 冲突检测 → bug 校验 → 生成聚合文件 |
 | `references/progress-workflow.md` | `/better-test checkpoint` 或 `resume` | 断点续传 |
 | `references/templates.md` | 生成输出文件时 | 核心文件的模板 + 质量标准 |
-| `references/team-role-presets.md` | strategy / merge 遇到多 tester 组队时 | 可扩展 role schema + preset 库 + coordinator dispatch / merge protocol |
+| `references/team-role-presets.md` | strategy 设计审查、execution 派单与资源交接、merge | 五类职责与风险配置 + 原 role/preset + provenance、单 driver 与交接边界 |
 | `references/adapters.md` | 多平台注入 | Claude / Cursor / Gemini / Codex 适配 |
 | `references/source-provider-contract.md` | init / strategy / execution 遇到 Provider | 四合同、信任边界、身份、降级与版本兼容 |
 | `references/v3-deprecation.md` | execution / merge / reflect 读写 v3/v4 | v4 default、v3 兼容写入、退场条件与回滚 |
@@ -232,7 +257,10 @@ Codex Stop hook 只在 active run 已进入交付阶段时调用该命令；同�
 
 | File | 触发者 | 触发条件 | Content |
 |------|--------|---------|---------|
-| `references/procedures/bdd-scenarios.md` | init / update | 用户在信号源 F 提供了 PRD 或验收标准 | Given-When-Then 场景生成 |
+| `references/procedures/bdd-scenarios.md` | init / update / strategy | 原始需求/AC 导出或复核 case 义务 | 来源 → Given-When-Then、独立 oracle 与可选 case 合同 |
+| `references/test-design-contract.md` | strategy / update；生成显式 opt-in case 时 | 对账 case 或调用结构 checker | marker/Reference/CLI、警告与四类证明边界；旧格式不强制迁移 |
+| `references/procedures/product-operation.md` | init / execution / update 安排后续执行 | init 只读工具发现；实际操作、recipe 首次/修订 pilot 或恢复异常 | ten-section recipe、目标身份、owner、有界等待、先 reconcile 与证据存活 |
+| `references/tool-operation-platforms.md` | init / execution | 选择当前平台可用工具与能力 | 八平台操作方法与未知能力；不是八平台 runtime 验证 |
 | `references/procedures/tdd-flow.md` | agent | 当前任务包含写新功能代码（不只是跑测试） | Red-Green-Refactor |
 | `references/procedures/contract-testing.md` | init | Step 1 分类为 API/Web 服务 **且** 有多服务调用链 | 契约测试步骤 |
 | `references/procedures/exploratory-charter.md` | 用户 / strategy | 用户要求"深度测试"；或 strategy 发现某模块 0 历史记录 | 探索性测试 charter |

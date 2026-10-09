@@ -6,6 +6,18 @@ All notable changes to **better-test** (Better-Work series testing subskill) are
 
 ### Changed
 
+- Connect the advisory design/operation increment through existing Skill/workflows/templates:
+  source obligations and entry/role/state maps, opt-in case blocks with an inert example,
+  per-claim independent oracles, named ten-section recipes, A-before-B review/resource
+  provenance, and four separate proof facts with scoped freshness review. Legacy free
+  text, original identities/results validators/gates/v3-v4/report contracts remain unchanged.
+- Align merge feedback guidance with the existing scoped feedback workflow: only supported
+  not-a-bug/wontfix decisions suppress; deferred/fixed-differently retain known failure or
+  retest scope, fixed requires actual closure testing, and historical runs stay immutable.
+- This increment has focused structure/fixture checks only; fresh UI/API Agent acceptance,
+  authenticated/platform runtime acceptance and frozen A/B benefit trials remain NOT_RUN.
+  The eight-platform operation guide is adapted guidance, not verified universal drivers.
+
 - Bug retests and claimed fixes now require a repair-closure matrix covering the
   original symptom, preserved behavior, adjacent invariants, substitute-defect
   counterexamples, and an oracle. A narrow predicate can no longer become

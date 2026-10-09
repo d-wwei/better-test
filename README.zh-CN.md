@@ -24,6 +24,16 @@ v4：按目标与实际能力自动选择黑盒/白盒/混合策略；Provider �
 coverage lane、无损历史投影与 v3/v4 安全双写。项目通过自己的审计观察窗口后从 shadow
 切到 default。
 
+当前开发增量通过原工作流和模板接入来源义务、entry/role/state 地图、显式 opt-in case
+合同与只读结构 checker、具名操作 recipe、先 A 后 B 的独立审查、范围化知识/反馈维护。
+旧自由文本继续可用。新增区段是 advisory 文档事实，原 intake/results validators、hard
+gates、v3/v4 合同与唯一报告继续作为运行判定依据。
+
+定向结构/fixture 检查只覆盖已编写方法与静态加载链。本增量的新 session UI/API Agent
+验收及冻结 A/B 收益试验均为 **NOT_RUN**。八平台操作指南是方法适配，不代表八个驱动
+已实测；认证/runtime 与未绑定、未执行入口仍待实际验证。验证开发版本须加载该
+worktree 的准确 `SKILL.md` 和脚本，当前已安装 Skill 可能不同。
+
 核心能力：
 
 - **8 个 L1 Hook + gate.sh 统一入口** — 凭证扫描、feedback-rules 保护、derived-view 保护、session 隔离、执行日志、完成清单、结果校验、注册门控。gate.sh 从全局配置自动检测项目（无需逐项目配置）
