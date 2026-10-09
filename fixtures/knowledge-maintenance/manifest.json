@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "scope": "fixture_integrity_only",
+  "agent_semantic_exercise": "NOT_RUN",
+  "m1_design_checker": "NOT_RUN",
+  "scenarios": {
+    "semantic-change": {
+      "frozen_sha256": {
+        "source-before.txt": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "source-after.txt": "b839cd17a2506ddb85770e57a130f8c2a0b3419442d92896bd4d8855d1cb93d3",
+        "source.diff": "8d038ab9da71f452901b7657b825019702dd8548831688d276fadd2012fd1906",
+        "before/strategy-plan.md": "956600fa30391e4a9442da6fcce84fcae3e3b6ceadf91cf0c12afd2a4d7490d9",
+        "before/impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "before/surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "before/test-groups.md": "564fb439c66bc07ecf670ae2c8916566517bc7c8d9c64ad6f7aeae95cb8bde78",
+        "before/env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "before/history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "before/reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "before/reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d"
+      },
+      "allowed_changed_paths": [
+        "reference/requirements.md",
+        "strategy-plan.md",
+        "surface-manifest.md",
+        "test-groups.md"
+      ],
+      "preserve_history": [
+        "history/synthetic-proof.md"
+      ]
+    },
+    "pure-refactor": {
+      "frozen_sha256": {
+        "source-before.txt": "a9615511f850ed626b62d79bb00a1fd14259c778eb09edc9d42c19c88660ea80",
+        "source-after.txt": "a825be858eddfa2dadde0c29388429d93e7a9ca61287879f8bb553aa8b70e302",
+        "source.diff": "15c7b8c1f6bb9dbab42412a3046b67b124093535ed56dff5c0d68ebd687632d1",
+        "before/strategy-plan.md": "956600fa30391e4a9442da6fcce84fcae3e3b6ceadf91cf0c12afd2a4d7490d9",
+        "before/impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "before/surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "before/test-groups.md": "564fb439c66bc07ecf670ae2c8916566517bc7c8d9c64ad6f7aeae95cb8bde78",
+        "before/env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "before/history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "before/reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "before/reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d"
+      },
+      "allowed_changed_paths": [
+        "impact-map.md",
+        "strategy-plan.md"
+      ],
+      "preserve_history": [
+        "history/synthetic-proof.md"
+      ]
+    },
+    "tool-change": {
+      "frozen_sha256": {
+        "source-before.txt": "d0ce9db12fde056a56c0fc32b7d7fe1ee639a210af368714a69f0dbfcca8ca9f",
+        "source-after.txt": "5eba2a0353ba95cc331d38b4581f83e60e0db1b06215a2ee367154f8d398039f",
+        "source.diff": "7f0d761129ae15bef5ac6250e63361f21ec0324f50986224af81d9f2195f9b9d",
+        "before/strategy-plan.md": "956600fa30391e4a9442da6fcce84fcae3e3b6ceadf91cf0c12afd2a4d7490d9",
+        "before/impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "before/surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "before/test-groups.md": "564fb439c66bc07ecf670ae2c8916566517bc7c8d9c64ad6f7aeae95cb8bde78",
+        "before/env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "before/history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "before/reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "before/reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d"
+      },
+      "allowed_changed_paths": [
+        "env-config.md",
+        "strategy-plan.md",
+        "test-groups.md"
+      ],
+      "preserve_history": [
+        "history/synthetic-proof.md"
+      ]
+    }
+  }
+}

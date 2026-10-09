@@ -1,0 +1,4 @@
+# Surface manifest — synthetic mapping
+F-NOTE-SAVE: E-SAVE-BUTTON / E-SAVE-SHORTCUT → U-01; requirement reference/requirements.md revision 1.
+Role/state: writer; draft → saved. Reader cannot save (out of this exercise's case scope).
+Coverage: both entries NOT_RUN; no new platform proof inferred.

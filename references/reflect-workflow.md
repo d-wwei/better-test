@@ -1,6 +1,6 @@
 # Reflect Workflow
 
-`/better-test reflect [scope]` — 从历史数据中提取跨会话、跨版本的测试经验，更新知识文件。
+`/better-test reflect [scope]` — 从历史数据中提取跨会话、跨版本的测试经验，提出知识维护建议。
 
 与增量 reflect 的区别：增量 reflect 在每次测试后自动执行，只用本次运行数据对比知识文件。全量 reflect 读所有历史数据，做单次运行看不到的趋势分析和模式提炼。
 
@@ -30,7 +30,7 @@
 
 ## 核心原则
 
-reflect 的产出是**修改建议**，不是直接修改。每条建议需要用户确认。
+reflect 的产出是**修改建议**，不是直接修改。每条未获授权的建议需要用户确认；已有明确授权覆盖的维护无需重复确认。
 
 原因：历史数据中的 pattern 可能是巧合（两次恰好都挂了 ≠ 因果关系）。人需要判断"这确实是规律"还是"碰巧而已"。
 
@@ -56,6 +56,29 @@ reflect 的产出是**修改建议**，不是直接修改。每条建议需要�
   - 识别需要升级到 workflow / queue 的模式
   - 不能单独推翻 raw evidence
 ```
+
+---
+
+## 先界定历史范围与失效原因
+
+先解析 TEST_ROOT，固定每份历史 run 的 source/build/artifact/process/session、产品/平台/环境、入口、case/recipe/oracle revisions 和 evidence strength；缺项标 unresolved，不用当前知识补造旧身份。按可比范围分组再分析趋势，禁止把另一平台或旧 recipe 的 pass 外推为当前 verified。设计、结构、环境内执行、故障检测能力分别陈述；旧 proof 保留原 locator 和 digest，当前不符范围只标 `required` / `NOT_RUN`，不是产品 Fail。
+
+对需求、入口/状态/权限、oracle、recipe/selector 或纯重构的失效传播，按 `references/update-workflow.md` 的 3a.1/3a.2 提交受影响引用、原因、现存证据和 owner/下一步。纯重构只核对映射和定向回归；无语义依据不改 expected。oracle 输出改变但缺规范依据时保留冲突，不建议刷新 golden。缺版本/映射/归因时扩大调查，不压低 hard gate。
+
+漏测复盘先分清六类根因（可并存），每类写来源、未知项、改进位置及后续实际验证：
+
+| 漏项位置 | 复盘与改进落点 |
+|---|---|
+| 需求没发现 | 补 requirement/source 与 surface-manifest 的义务来源 |
+| 用例没设计 | test-groups 补前置/边界/动作/独立 expected，复用原 ID |
+| 工具无法操作 | env-config recipe、tools 的能力/selector/恢复，安排明确 execution pilot |
+| oracle 错误 | 固定冲突来源/适用版本，纠正 case oracle 依据并保留原错误证据 |
+| 执行没选 | 下一轮 strategy 的选择/未选理由与受阻风险；不重复创建相同 case |
+| 证据误判 | run 原始观察、身份、后效与独立证据对账；提出归因修正，不覆盖旧 results |
+
+历史 Bug/生产反馈先记录脱敏来源、时间、环境、触发输入、可复现范围、缺失材料、可靠性。缺材料只是候选义务，不能标 confirmed case 或已验证可复现。重复转述同一次事件不算多份独立证据。“误报”先分工具/环境/文档/产品归因；有独立后效错误就保留产品 finding，不以 ignore、放宽断言或统计 flaky 消除它。
+
+经验提炼只写最小可迁移规则、证据范围、反例与项目限制。单次平台现象不能升级为全局偏好。所有修改建议仍需按本流程确认，再走 update 分流；不会新建 freshness registry 或第二份正式 FULL-TEST-REPORT。
 
 ---
 
@@ -303,7 +326,9 @@ reflect 的产出是**修改建议**，不是直接修改。每条建议需要�
 
 reflect 的输出分两类：
 
-**共享知识文件**（test-groups.md、impact-map.md、env-config.md）：任何时候可直接写。
+**先确认建议，再判断写权限**：本段不授予绕过确认或 tester 隔离的权限。用户确认后经 `references/update-workflow.md` 分流；批准知识维护不等于批准启动产品或修改历史证据。
+
+**共享知识文件**（test-groups.md、impact-map.md、env-config.md、surface-manifest.md）：测试期间 Tester 将建议写自己 run 的 progress/summary/strategy，Coordinator 合并时只读历史 run、在 merge 记录承接并更新共享知识；单 tester 完成后或无活跃测试时才能按职责更新。历史 run/results/intake/artifacts 保持原样。
 
 **Derived view 文件**（known-issues.md、status.md）：
 - **测试期间**（有活跃 session 文件）：reflect 发现写到 run 目录内 progress.md 关键发现段，由 `/better-test merge` 或单 tester 完成后合并到项目级文件
@@ -311,7 +336,7 @@ reflect 的输出分两类：
 
 ## 一致性检查
 
-reflect 修改知识文件前，执行与 test-execution-workflow 相同的一致性检查（见 test-execution-workflow.md "一致性检查"段）。
+reflect 经确认并按写权限修改知识文件前，执行与 test-execution-workflow 相同的一致性检查（见 test-execution-workflow.md "一致性检查"段）。
 
 特别注意：
 - reflect 建议升级到 protocol 的内容 → 必须走 `/better-test protocol-update` 流程，不能直接写
