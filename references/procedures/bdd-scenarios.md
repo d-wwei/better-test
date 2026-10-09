@@ -11,7 +11,14 @@
    - 至少 1 个正向场景（happy path）
    - 至少 1 个异常场景（错误输入/权限不足/超时）
 3. MECE 检查：PRD 每个需求点是否都有对应场景
-4. 将场景转化为 test-groups.md 条目（每个 Given-When-Then = 一个测试用例）
+4. 将场景转化为 test-groups.md 条目，保留原 test ID；同一场景的多条预期可属于一个用例，
+   不按断言数量膨胀用例计数。旧自由文本和 native tests 保留。
+5. 高风险新用例可采用 `references/test-design-contract.md` 的可选 case block：先固定来源与
+   版本，再写义务、输入/状态、动作、独立预期/依据和证据。未确认需求保留 unresolved，
+   不从当前实现或生产输出复制 golden。checker 的 valid 只证明结构，不代表语义/产品通过。
+6. 按主张选择 oracle 的 authority/scope/revision；冲突记录范围并调查，不固定 UI 最高。
+   expected 写观察点、比较规则和失败含义；保留四问、oracle catalog 失效条件与既有
+   mutation/反例取证。真正等价场景可合并，不同权限/入口/副作用/oracle 不能因相似标题删除。
 
 ## 格式
 
@@ -26,6 +33,9 @@ Then <错误处理预期>
 ```
 
 ## 示例
+
+下面假设需求明确承诺 3 秒跳转和 3 次失败后锁定 30 分钟；实际来源没有这些承诺时，
+不得将示例数值或文案当成产品验收标准。先绑定真实需求与版本。
 
 ```
 需求："用户登录后看到首页"
