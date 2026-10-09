@@ -65,6 +65,23 @@ second successful cleanup. Launch failures before identity use the exact owned
 Popen child for cleanup. New attempts require a fresh directory and same original
 run identity. Windows lifecycle/GUI is NOT_RUN; stop currently uses POSIX SIGTERM/ps.
 
+For stop, `--deadline` is one monotonic budget beginning before local/HTTP identity
+observation, including the pre-SIGTERM identity/budget check and process-state wait.
+Owned POSIX cancellation covers the whole operation, including trickled identity
+headers/body; each exact `ps -p PID` child also gets the remaining subprocess timeout.
+Timeout during identity observation sends no signal; a timeout after a verified
+SIGTERM reports unconfirmed cleanup, preserves evidence and does not send another
+signal or escalate. No late process probe can report successful cleanup.
+
+For launch, `--deadline` covers discovery plus complete identity observation from
+the moment Popen returns the exact owned child. Local precondition/file setup and
+OS process creation precede that budget; this is not a total host-call SLA. Late
+identity cannot produce success. Failure recovery has a separate **3-second owned
+child wait budget** after SIGTERM, so launch failure may take longer than discovery
+deadline. If the child still does not exit, report its exact PID/residual and retain
+all evidence; no SIGKILL escalation. Launch/stop absolute cancellation shares the
+documented main-thread POSIX/no-active-ITIMER_REAL condition, never a worker fallback.
+
 ## Real browser notes entry
 
 Open **the actual identity endpoint** in a dedicated profile/context using the

@@ -17,6 +17,7 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest.mock import patch
 import urllib.error
 import urllib.request
 
@@ -237,6 +238,18 @@ class Fixture(unittest.TestCase):
         self.assertFalse(missing.exists())
         self.assertIn("operation_error", json.loads(result.stderr))
 
+    def test_stop_wrong_owner_preserves_live_instance_and_evidence(self):
+        self.submit()
+        trace = self.instance["directory"] / "trace.jsonl"
+        before = hashlib.sha256(trace.read_bytes()).hexdigest()
+        result = subprocess.run([sys.executable, str(ROOT / "lifecycle.py"), "stop",
+            "--identity", str(self.instance["directory"] / "identity.json"), "--owner", "other-owner"],
+            capture_output=True, text=True, timeout=3)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("owner mismatch", result.stderr)
+        self.assertIsNone(self.instance["process"].poll())
+        self.assertEqual(hashlib.sha256(trace.read_bytes()).hexdigest(), before)
+
     def test_control_owner_and_type_validation(self):
         request = urllib.request.Request(self.instance["endpoint"] + "/__control", method="POST",
             data=b'{"note_body_loss": true}', headers={"X-Fixture-Owner": "other"})
@@ -445,6 +458,127 @@ class DoctorDeadline(unittest.TestCase):
             future = pool.submit(self.lifecycle.doctor, self.identity, .3)
             with self.assertRaisesRegex(ValueError, "main-thread POSIX"):
                 future.result(timeout=1)
+
+    def call_stop(self, deadline=.05, probe=None):
+        argv = ["lifecycle.py", "stop", "--identity", "synthetic-control.json",
+            "--owner", self.identity["run_id"], "--deadline", str(deadline)]
+        result = subprocess.CompletedProcess(["ps"], 0, stdout="", stderr="")
+        with patch.object(sys, "argv", argv), patch.object(self.lifecycle, "read_identity", return_value=self.identity), \
+                patch.object(self.lifecycle.os, "kill") as kill, \
+                patch.object(self.lifecycle.subprocess, "run", side_effect=probe, return_value=result) as process_probe:
+            self.stop_kill = kill
+            return self.lifecycle.main(), kill, process_probe
+
+    def test_stop_delayed_identity_expires_before_any_kill(self):
+        self.delays["/identity"] = .25
+        started = time.monotonic()
+        with self.assertRaisesRegex(TimeoutError, "deadline"):
+            self.call_stop()
+        self.assertFalse(self.stop_kill.called)
+        elapsed = time.monotonic() - started
+        self.assertLess(elapsed, .2)
+        print(json.dumps({"stop_control": "delayed_identity", "budget": .05, "elapsed": round(elapsed, 3), "signals": 0}))
+
+    def test_stop_trickled_identity_is_cancelled_before_any_kill(self):
+        self.trickle_bodies.add("/identity")
+        started = time.monotonic()
+        with self.assertRaisesRegex(TimeoutError, "deadline"):
+            self.call_stop()
+        self.assertFalse(self.stop_kill.called)
+        elapsed = time.monotonic() - started
+        self.assertLess(elapsed, .2)
+        self.assertTrue(self.cancelled["/identity"].wait(.2))
+        print(json.dumps({"stop_control": "trickled_identity", "budget": .05, "elapsed": round(elapsed, 3), "signals": 0}))
+
+    def test_stop_process_probe_is_bounded_by_remaining_budget(self):
+        timeouts = []
+
+        def slow_probe(*args, **kwargs):
+            timeouts.append(kwargs.get("timeout"))
+            time.sleep(.25)
+            return subprocess.CompletedProcess(args[0], 0, stdout="", stderr="")
+
+        started = time.monotonic()
+        with self.assertRaisesRegex(TimeoutError, "deadline"):
+            self.call_stop(probe=slow_probe)
+        elapsed = time.monotonic() - started
+        self.assertLess(elapsed, .2)
+        self.assertGreater(timeouts[0], 0)
+        self.assertLessEqual(timeouts[0], .05)
+        print(json.dumps({"stop_control": "slow_ps", "budget": .05, "elapsed": round(elapsed, 3), "ps_timeout": round(timeouts[0], 3)}))
+
+    def test_stop_fast_identity_probe_control(self):
+        result, kill, probe = self.call_stop(deadline=.3)
+        self.assertEqual(result, 0)
+        kill.assert_called_once_with(self.identity["pid"], signal.SIGTERM)
+        self.assertGreater(probe.call_args.kwargs["timeout"], 0)
+
+    def test_launch_identity_observation_cannot_outlive_discovery_budget(self):
+        self.check_owned_launch_timeout("delay")
+
+    def test_launch_trickled_identity_cannot_return_late_success(self):
+        self.check_owned_launch_timeout("trickle")
+
+    def check_owned_launch_timeout(self, mode):
+        # A dedicated subprocess provides a genuine PID/identity; no real/irrelevant PID is used.
+        code = '''import argparse,json,os,time
+from pathlib import Path
+from http.server import BaseHTTPRequestHandler,HTTPServer
+parser=argparse.ArgumentParser()
+parser.add_argument("--data-dir"); parser.add_argument("--identity-file"); parser.add_argument("--run-id")
+parser.add_argument("--ready-delay"); parser.add_argument("--never-ready",action="store_true")
+args=parser.parse_args()
+class Handler(BaseHTTPRequestHandler):
+ def log_message(self,*args): pass
+ def do_GET(self):
+  if MODE=="delay": time.sleep(.4)
+  data=json.dumps(identity).encode()
+  self.send_response(200);self.send_header("Content-Length",str(len(data)));self.end_headers()
+  if MODE=="trickle":
+   for offset in range(0,len(data),max(1,len(data)//12)):
+    self.wfile.write(data[offset:offset+max(1,len(data)//12)]);self.wfile.flush();time.sleep(.03)
+  else: self.wfile.write(data)
+server=HTTPServer(("127.0.0.1",0),Handler)
+identity={"run_id":args.run_id,"instance_id":"owned-launch-control","pid":os.getpid(),
+ "database":str(Path(args.data_dir)/"state.sqlite3"),"data_dir":args.data_dir,"started_at":"control-start",
+ "endpoint":"http://127.0.0.1:"+str(server.server_port)}
+Path(args.data_dir,"owned-evidence.txt").write_text("must survive failed launch")
+Path(args.identity_file).write_text(json.dumps(identity))
+server.serve_forever()
+'''
+        children = []
+        real_popen = subprocess.Popen
+
+        def owned_popen(*args, **kwargs):
+            process = real_popen(*args, **kwargs)
+            children.append(process)
+            return process
+
+        with tempfile.TemporaryDirectory(prefix="bt-owned-launch-deadline-") as directory:
+            root = Path(directory)
+            (root / "server.py").write_text("MODE=" + repr(mode) + "\n" + code)
+            data = root / "data"
+            argv = ["lifecycle.py", "launch", "--data-dir", str(data), "--identity", str(data / "identity.json"),
+                "--run-id", "owned-launch", "--deadline", ".15"]
+            started = time.monotonic()
+            try:
+                with patch.object(sys, "argv", argv), patch.object(self.lifecycle, "ROOT", root), \
+                        patch.object(self.lifecycle.subprocess, "Popen", side_effect=owned_popen):
+                    with self.assertRaisesRegex(TimeoutError, "deadline|launch failed"):
+                        self.lifecycle.main()
+                elapsed = time.monotonic() - started
+                self.assertLess(elapsed, .35)
+                self.assertEqual(len(children), 1)
+                self.assertIsNotNone(children[0].poll(), "failed-launch cleanup must stop its exact child")
+                self.assertEqual((data / "owned-evidence.txt").read_text(), "must survive failed launch")
+                self.assertTrue((data / "launch.log").is_file())
+                print(json.dumps({"launch_control": mode, "budget": .15, "elapsed": round(elapsed, 3),
+                    "exact_owned_child_stopped": True, "evidence_survived": True}))
+            finally:
+                for process in children:
+                    if process.poll() is None:
+                        process.terminate()
+                    process.wait(timeout=3)
 
     def tearDown(self):
         self.server.shutdown()
