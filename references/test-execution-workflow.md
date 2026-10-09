@@ -66,6 +66,14 @@
 
 ### Stage 0：产品与工具操作预检
 
+执行前读取 `references/team-role-presets.md` 的 Coordinator Dispatch Protocol，按既有
+Dispatch Card 在当前 strategy-plan / tester registry 记录原 case/entry/environment 分片和
+planned overlap 理由，冻结 source/case/map/recipe revisions，绑定原 identity、资源 owner、
+副作用范围及端口/数据/profile/namespace/device/account 的实际隔离。共享 GUI/OS 输入只给
+单一 driver；交接写使用时段、有界等待和实际释放观察。超时/crash 后先核对现场 identity 与
+释放证据，不能因预约到点换 driver。启动 owner 负责失败尝试的 owned cleanup；完整资源
+方法以 team-role-presets 为准，不另建 scheduler/lock/lease。
+
 操作产品/工具前加载 `references/procedures/product-operation.md`，从 resolved TEST_ROOT 的
 env-config 选具名 recipe；旧自由文本 case 同样可引用。先确认 capability、原 run/subject
 identity、owner、副作用范围、实际入口和 observer 正控制。首次或 recipe/tool/build/环境变化后，

@@ -70,6 +70,12 @@ current-within-proof-scope。旧 proof 保留，新 revision 必须重新评估�
 
 ## Launch / Doctor / Drive / Observe / Cleanup
 
+执行前采用 `references/team-role-presets.md` 的既有 Dispatch Card / 资源分片规则，
+按 execution workflow 的派单检查绑定原 case/entry/environment shard、重叠理由、冻结版本、
+identity/owner/资源/副作用及真实隔离、单 GUI driver、有界交接与释放观察。
+启动 owner 清理自己的失败尝试；timeout/crash 不构成资源已释放。卡片仍在 strategy-plan /
+既有 registry，不复制 M4 模板或新增调度/互斥服务。
+
 1. **观察与绑定**：从现有 intake/session 绑定 subject，核对 origin/app marker/profile、
    窗口/device、endpoint，或 binary/PID/PTY。doctor 与 drive 必须指同一原 identity。
    发现同名进程不能依名字猜目标；目标不明停止 drive。worktree 隔离不等于 GUI/profile/device
@@ -113,6 +119,10 @@ current-within-proof-scope。旧 proof 保留，新 revision 必须重新评估�
 timeout/observer 失效均不说明“无副作用”。
 
 ## Execution stage 0
+
+消费 M2 已选的 surface-manifest / strategy-plan 入口与前态，保留未执行入口及 UNKNOWN；
+其他 source 的权限/快捷键义务不自动移入当前 case。变更复核按 `references/update-workflow.md`
+的范围与历史保留规则处理，不能通过重新 pilot 改写旧 run 或沿用旧版本 proof。
 
 首次或工具/recipe/build/环境变化后，在正式 execution 用一条受控低风险代表路径
 完成 Launch → Doctor → Drive/Wait → Observe/Evidence → Cleanup。失败同样做 owned cleanup。
