@@ -3,6 +3,8 @@ import concurrent.futures
 from contextlib import closing
 import hashlib
 import http.client
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -11,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import unittest
 import urllib.error
@@ -292,6 +295,91 @@ class Fixture(unittest.TestCase):
             process.wait(timeout=5)
             resource["stream"].close()
         self.temp.cleanup()  # selftest scratch only, never Agent evidence
+
+
+class DoctorDeadline(unittest.TestCase):
+    """Actual loopback observers, including a stalled response body."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("fixture_lifecycle", ROOT / "lifecycle.py")
+        self.lifecycle = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.lifecycle)
+        self.delays = {}
+        self.body_delays = {}
+        self.ready_status = 200
+        self.disconnect_paths = set()
+        self.identity = {"run_id": "deadline-control", "instance_id": "local-observer",
+            "pid": 42, "database": "synthetic.sqlite3", "data_dir": "synthetic",
+            "started_at": "fixed-control"}
+        fixture = self
+
+        class Observer(BaseHTTPRequestHandler):
+            def log_message(self, *args):
+                pass
+
+            def do_GET(self):
+                if self.path in fixture.disconnect_paths:
+                    self.connection.close()
+                    return
+                time.sleep(fixture.delays.get(self.path, 0))
+                value = dict(fixture.identity)
+                if self.path == "/ready":
+                    value["ready"] = fixture.ready_status == 200
+                data = json.dumps(value).encode()
+                self.send_response(fixture.ready_status if self.path == "/ready" else 200)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                time.sleep(fixture.body_delays.get(self.path, 0))
+                try:
+                    self.wfile.write(data)
+                except (BrokenPipeError, ConnectionResetError):
+                    pass  # expected after the caller's budget expires
+
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), Observer)
+        self.server.daemon_threads = True
+        self.identity["endpoint"] = f"http://127.0.0.1:{self.server.server_address[1]}"
+        self.thread = threading.Thread(target=self.server.serve_forever, kwargs={"poll_interval": .01})
+        self.thread.start()
+
+    def assert_budget_expires(self, phase):
+        started = time.monotonic()
+        with self.assertRaisesRegex(TimeoutError, "deadline exhausted") as context:
+            self.lifecycle.doctor(self.identity, .05)
+        elapsed = time.monotonic() - started
+        self.assertLess(elapsed, .2, "a .25s observer must not consume a .05s doctor budget")
+        self.assertIn("phase=" + phase, str(context.exception))
+        self.assertIn("last=", str(context.exception))
+        self.assertIsNotNone(context.exception.__cause__, "retain original network/read timeout diagnostic")
+        print(json.dumps({"doctor_control": phase, "budget": .05,
+            "elapsed": round(elapsed, 3), "result": "deadline_exhausted"}), flush=True)
+
+    def test_delayed_identity_uses_doctor_entry_budget(self):
+        self.delays["/identity"] = .25
+        self.assert_budget_expires("identity")
+
+    def test_delayed_ready_cannot_return_success_after_budget(self):
+        self.delays["/ready"] = .25
+        self.assert_budget_expires("ready")
+
+    def test_delayed_503_body_keeps_timeout_diagnostic(self):
+        self.ready_status = 503
+        self.body_delays["/ready"] = .25
+        self.assert_budget_expires("ready")
+
+    def test_fast_positive_control_within_shared_budget(self):
+        result = self.lifecycle.doctor(self.identity, .3)
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["identity"], self.identity)
+
+    def test_early_network_failure_preserves_original_classification(self):
+        self.disconnect_paths.add("/identity")
+        with self.assertRaises(http.client.RemoteDisconnected):
+            self.lifecycle.doctor(self.identity, .3)
+
+    def tearDown(self):
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=2)
 
 
 if __name__ == "__main__":

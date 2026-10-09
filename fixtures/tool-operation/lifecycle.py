@@ -1,5 +1,6 @@
 """Owned synthetic fixture lifecycle only; never a generic product runner."""
 import argparse
+import http.client
 import json
 import math
 import os
@@ -26,8 +27,8 @@ def read_identity(path):
     return identity
 
 
-def live(identity, route="/identity"):
-    with OPENER.open(identity["endpoint"] + route, timeout=1) as response:
+def live(identity, route="/identity", timeout=1):
+    with OPENER.open(identity["endpoint"] + route, timeout=timeout) as response:
         observed = json.load(response)
     for key in ("run_id", "instance_id", "pid", "database", "data_dir", "started_at", "endpoint"):
         if observed.get(key) != identity[key]:
@@ -36,26 +37,47 @@ def live(identity, route="/identity"):
 
 
 def doctor(identity, deadline):
-    live(identity)
     expires = time.monotonic() + deadline
     last = None
-    while True:
+    phase = "identity"
+
+    def deadline_error(error=None):
+        diagnostic = "" if error is None else f"; diagnostic={type(error).__name__}: {error}"
+        return TimeoutError(f"readiness deadline exhausted; phase={phase}; last={json.dumps(last)}{diagnostic}")
+
+    def remaining():
+        budget = expires - time.monotonic()
+        if budget <= 0:
+            raise deadline_error()
+        return budget
+
+    def observe(route):
         try:
-            last = live(identity, "/ready")
-            if last["ready"]:
-                return {"ready": True, "identity": identity}
-        except urllib.error.HTTPError as error:
-            if error.code != 503:
-                raise
-            observed = json.load(error)
-            for key in ("run_id", "instance_id", "pid"):
-                if observed.get(key) != identity[key]:
-                    raise ValueError("readiness identity mismatch")
-            last = observed
-        remaining = expires - time.monotonic()
-        if remaining <= 0:
-            raise TimeoutError("readiness deadline exhausted; last=" + json.dumps(last))
-        time.sleep(min(.05, remaining))
+            try:
+                return live(identity, route, timeout=remaining())
+            except urllib.error.HTTPError as error:
+                if route != "/ready" or error.code != 503:
+                    raise
+                with error:
+                    observed = json.load(error)
+                for key in ("run_id", "instance_id", "pid"):
+                    if observed.get(key) != identity[key]:
+                        raise ValueError("readiness identity mismatch")
+                return observed
+        except (TimeoutError, urllib.error.URLError, http.client.HTTPException) as error:
+            if time.monotonic() >= expires:
+                raise deadline_error(error) from error
+            raise  # early network/read failure keeps its original classification/diagnostic
+
+    last = observe("/identity")
+    remaining()
+    phase = "ready"
+    while True:
+        last = observe("/ready")
+        budget = remaining()  # never report ready after the shared budget expires
+        if last["ready"]:
+            return {"ready": True, "identity": identity}
+        time.sleep(min(.05, budget))
 
 
 def main():

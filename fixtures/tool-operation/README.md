@@ -38,7 +38,11 @@ python3 "$BT_FIXTURE_ROOT/jobctl.py" snapshot --db "$BT_DATABASE"
 `launch` emits an actual identity receipt and retains `launch.log`,
 `trace.jsonl`, `state.sqlite3`, and `identity.json`. `doctor` compares endpoint,
 instance marker, PID, independently supplied original owner/run ID, database/data directory and start marker; it then
-waits for readiness with a deadline. `--ready-delay 0.5` and `--never-ready`
+waits for readiness. One monotonic deadline starts at doctor entry, includes
+identity/ready observations and is checked before success; socket observations
+use remaining budget. Deadline errors retain phase, last observation and original
+network/read diagnostic; an earlier network error keeps its classification.
+`--ready-delay 0.5` and `--never-ready`
 are launch controls. Run doctor separately: process launched is not ready.
 HTTP helpers explicitly bypass system proxies for the validated loopback origin.
 
