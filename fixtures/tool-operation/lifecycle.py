@@ -42,7 +42,7 @@ def live(identity, route="/identity", timeout=1):
 def observation_deadline(expires):
     """Fixture CLI owns a POSIX main-thread alarm; no surviving observer worker."""
     if os.name != "posix" or threading.current_thread() is not threading.main_thread():
-        raise ValueError("absolute doctor deadline requires main-thread POSIX execution")
+        raise ValueError("absolute lifecycle deadline requires main-thread POSIX execution")
     if any(signal.getitimer(signal.ITIMER_REAL)):
         raise ValueError("absolute observation timer already owned; refuse to replace it")
     budget = expires - time.monotonic()
@@ -140,21 +140,77 @@ def main():
             process = subprocess.Popen(argv, stdout=stream, stderr=stream, start_new_session=True)
         expires = time.monotonic() + args.deadline
         try:
-            while time.monotonic() < expires and process.poll() is None:
-                if identity_file.exists():
-                    identity = read_identity(identity_file)
-                    if identity["pid"] != process.pid or identity["run_id"] != args.run_id:
-                        raise ValueError("launched child identity mismatch")
-                    live(identity)
-                    print(json.dumps(identity))
-                    return 0
-                time.sleep(.02)
-            raise TimeoutError("launch failed; retained launch.log")
-        except BaseException:
-            # We own the exact child even if binding/identity inspection failed.
-            if process.poll() is None:
-                process.terminate()
-            process.wait(timeout=3)
+            # Discovery and all identity bytes share one budget after we own the exact child.
+            with observation_deadline(expires):
+                while time.monotonic() < expires and process.poll() is None:
+                    if identity_file.exists():
+                        identity = read_identity(identity_file)
+                        if identity["pid"] != process.pid or identity["run_id"] != args.run_id:
+                            raise ValueError("launched child identity mismatch")
+                        budget = expires - time.monotonic()
+                        if budget <= 0:
+                            raise TimeoutError("launch deadline exhausted; retained launch.log")
+                        live(identity, timeout=budget)
+                        if time.monotonic() >= expires:
+                            raise TimeoutError("launch deadline exhausted; retained launch.log")
+                        print(json.dumps(identity))
+                        return 0
+                    time.sleep(min(.02, max(0, expires - time.monotonic())))
+                raise TimeoutError("launch failed within discovery deadline; retained launch.log")
+        except BaseException as error:
+            failure = error
+            if isinstance(error, TimeoutError) or (isinstance(error, (urllib.error.URLError, http.client.HTTPException))
+                    and time.monotonic() >= expires):
+                failure = TimeoutError(f"launch discovery deadline exhausted; diagnostic={type(error).__name__}: "
+                    f"{error}; evidence retained")
+            # Separate bounded recovery budget; never signal an unrelated PID or remove evidence.
+            try:
+                if process.poll() is None:
+                    process.terminate()
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                raise TimeoutError(f"launch failed: {failure}; owned child cleanup deadline exhausted; "
+                    f"pid={process.pid}; evidence retained; no SIGKILL escalation") from error
+            if failure is not error:
+                raise failure from error
+            raise
+    if args.command == "stop":
+        expires = time.monotonic() + args.deadline
+        phase, last = "identity", None
+
+        def remaining():
+            budget = expires - time.monotonic()
+            if budget <= 0:
+                raise TimeoutError(f"cleanup deadline exhausted; phase={phase}; evidence retained")
+            return budget
+
+        try:
+            # Includes local identity, HTTP headers/body, pre-signal check, ps and bounded sleeps.
+            with observation_deadline(expires):
+                identity = read_identity(args.identity)
+                if identity["run_id"] != args.owner:
+                    raise ValueError("original actor owner mismatch")
+                last = live(identity, timeout=remaining())
+                phase = "pre_signal"
+                remaining()  # a late/mismatched identity must never authorize SIGTERM
+                os.kill(identity["pid"], signal.SIGTERM)
+                phase = "process_state"
+                while True:
+                    process = subprocess.run(["ps", "-p", str(identity["pid"]), "-o", "stat="],
+                        capture_output=True, text=True, check=False, timeout=remaining())
+                    remaining()  # never turn a late process probe into cleanup success
+                    last = {"pid": identity["pid"], "stat": process.stdout, "returncode": process.returncode,
+                        "stderr": process.stderr}
+                    if process.returncode not in (0, 1) or (process.returncode == 1 and process.stderr.strip()):
+                        raise OSError("process-state observer failed: " + process.stderr)
+                    if not process.stdout.strip() or process.stdout.lstrip().startswith("Z"):
+                        print(json.dumps({"stopped_pid": identity["pid"], "evidence_removed": False}))
+                        return 0
+                    time.sleep(min(.05, remaining()))
+        except (TimeoutError, urllib.error.URLError, http.client.HTTPException, subprocess.TimeoutExpired) as error:
+            if time.monotonic() >= expires:
+                raise TimeoutError(f"cleanup deadline exhausted; phase={phase}; last={json.dumps(last)}; "
+                    f"diagnostic={type(error).__name__}: {error}; evidence retained; no SIGKILL escalation") from error
             raise
     identity = read_identity(args.identity)
     if identity["run_id"] != args.owner:
@@ -162,17 +218,6 @@ def main():
     if args.command == "doctor":
         print(json.dumps(doctor(identity, args.deadline)))
         return 0
-    live(identity)  # Stop fails closed for dead/unreachable/ambiguous targets; no name-based kill.
-    os.kill(identity["pid"], signal.SIGTERM)
-    expires = time.monotonic() + args.deadline
-    while time.monotonic() < expires:
-        process = subprocess.run(["ps", "-p", str(identity["pid"]), "-o", "stat="],
-            capture_output=True, text=True, check=False)
-        if not process.stdout.strip() or process.stdout.lstrip().startswith("Z"):
-            print(json.dumps({"stopped_pid": identity["pid"], "evidence_removed": False}))
-            return 0
-        time.sleep(.05)
-    raise TimeoutError("cleanup deadline exhausted; evidence retained; no SIGKILL escalation")
 
 
 if __name__ == "__main__":
