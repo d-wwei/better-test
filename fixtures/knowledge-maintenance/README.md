@@ -1,7 +1,6 @@
 # M5 maintenance fixtures
 
-Status: AUTHORED. Agent update semantic exercise, actual product execution,
-M1 checker integration and long-term maintenance effect: **NOT_RUN**.
+Status: AUTHORED. M1 I0 structure checker: **RUN**, six valid outputs with warnings in `checks/I0-design-checks.json`. Agent update semantic exercise, actual product execution and long-term maintenance effect: **NOT_RUN**.
 Every source and historical artifact here is synthetic input, never real proof.
 There is no runnable product, native test or installed tool in these fixtures.
 
@@ -27,8 +26,7 @@ historical preservation and temporary mutations: rewriting before, deleting
 source, rewriting case after refactor, rewriting oracle for a tool-only change,
 rewriting history and adding a registry. They do not parse case contracts,
 validate natural-language expectations, run an Agent or prove drift attribution.
-Use the actual M1 checker only after I0 integrates it; runner/cleanup are honestly
-unresolved rather than fake runnable paths.
+The actual M1 checker was run at I0 on all six snapshots; runner/cleanup remain honestly unresolved rather than fake runnable paths. The result artifact includes exact commands, full errors/warnings, checker/schema hashes and unchanged snapshot hashes. The frozen snapshots retain their authored NOT_CHECKED labels; this later evidence supplies the actual structural fact without rewriting them.
 
 For M6's semantic exercise, copy `before/` to an isolated scratch TEST_ROOT.
 Provide frozen sources/diff to a new Agent using the worktree Skill update flow;

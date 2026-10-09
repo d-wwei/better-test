@@ -141,7 +141,7 @@ Current review: required: 变化来源与受影响引用
 
 原 run 继续说明当时结果，原始失败证据保留；旧 proof 不原地变成新版本通过。`current-within-proof-scope` 只有真实 proof 且版本、平台/环境、入口与 case/recipe revisions 相符才可写。历史 proof 可与 `required` 并列；recipe pilot 只证明该路径可操作，不证明 case 检测能力。删除/合并重复 case 前保存旧 ID → 保留 ID/废弃理由/来源/历史 run 去向，不删除历史失败或全套重编号。
 
-recipe/selector/工具能力、平台 build 或环境身份范围改变后，安排明确 execution 阶段的代表路径 pilot（launch/doctor/drive/observe/cleanup），确认原始证据清理后仍存活；相关入口分别留下执行缺口。update 与 init 不启动产品、不跑测试，也不通过 helper 安装依赖。依赖尚未合入时只留待执行项，不调用不存在的 checker/procedure，不造 stub。
+recipe/selector/工具能力、平台 build 或环境身份范围改变后，安排明确 execution 阶段的代表路径 pilot。进入 execution 后加载 `references/procedures/product-operation.md`，按 `references/test-execution-workflow.md` 的 stage 0 完成 launch/doctor/drive-and-wait/observe/cleanup；确认目标身份、observer 正控制、相关入口范围和清理后证据存活。pilot 结果保留实际 build/环境/入口/case/recipe revisions，未执行入口继续保留缺口。update 与 init 不启动产品、不跑产品测试，也不通过 helper 安装依赖；只读设计结构 checker 不属于产品执行。依赖尚未合入时只留待执行项，不调用不存在的 checker/procedure，不造 stub。
 
 修复知识不关闭 Bug/escape。沿用 test-execution 的修复完整性门：原症状、保持项、相邻不变量、替代缺陷反例和回归均需实际复测；新失败另记 finding，不能靠改 expected 或 recipe 把 release gate 转绿。
 
@@ -192,6 +192,23 @@ recipe/selector/工具能力、平台 build 或环境身份范围改变后，安
 □ 当前复核 ↔ 历史 proof 范围（四个完成度分开，历史 artifacts 不改写）
 □ feedback 候选 ↔ 抑制规则（未归因、无依据的“误报”不得进入 suppress）
 ```
+
+对新增/变更的 `test-groups.md`，加载 `references/test-design-contract.md`，使用本次实际加载的 Skill 根与已解析的 TEST_ROOT 运行只读结构检查：
+
+```sh
+python3 <skill-root>/scripts/validate-test-design.py --test-root <resolved-root> --format json
+```
+
+只调用现有 M1 checker，不另写 parser，不执行命令块、不 import 被测项目代码、不联网。由有权限角色将完整 JSON stdout、stderr、实际命令、退出码和输入 revisions/digests 留在已有 update/strategy 记录中；活跃 Tester 可存到自己 run 的 `artifacts/design-structure-check.json`，并在自己的 progress/strategy 中引用这个真实输出路径。非活跃维护使用现有 update 记录的附件位置，不新增常驻状态库。
+
+从实际 JSON 的 `scope/status/errors/warnings/case_ids` 记录检查结果：
+
+- 退出 0 且 `scope=design_structure/status=valid`：合同结构有效；`warnings` 中的 unresolved、引用内容/anchor/revision 未验证等缺口仍逐项保留 owner/下一步，不是语义通过或环境可执行。
+- 退出 0 且 `status=not_adopted`：旧自由文本未采用可选合同；不说结构已验证，也不因缺新字段阻断历史结果。
+- 退出 1 / `status=invalid`：`errors` 指定的设计结构错误待修，不能改写产品 verdict 或放宽既有 hard gate。
+- 退出 2：文件/参数/schema 等操作错误，保留输出/命令并修调用条件；不是产品 Fail，也不得用空输出替代有效检查。
+
+输出本身及错误/警告 locator 必须可追溯；缺输出/读失败保持 `Structure: NOT_CHECKED` 和原因。将实际输出引用写入对应 case/recipe 的 Structure 说明，仅限本次输入版本；冻结 before/after 或历史 run 原件保持不变，在当前维护记录附新检查事实。结构检查不运行产品，也不授予 oracle 正确、pilot、实际执行或故障检测证明。
 
 ---
 

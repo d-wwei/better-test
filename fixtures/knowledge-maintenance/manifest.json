@@ -2,7 +2,7 @@
   "schema_version": 1,
   "scope": "fixture_integrity_only",
   "agent_semantic_exercise": "NOT_RUN",
-  "m1_design_checker": "NOT_RUN",
+  "m1_design_checker": "I0_RUN: six valid structural outputs with warnings; checks/I0-design-checks.json",
   "scenarios": {
     "semantic-change": {
       "frozen_sha256": {
