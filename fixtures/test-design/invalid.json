@@ -1,0 +1,17 @@
+{
+  "case_id": "J-03",
+  "revision": 0,
+  "requirements": [],
+  "features": ["F-JOB-SUBMIT"],
+  "entries": ["API-POST-JOBS"],
+  "risk": {"failure": "同 key 不同 payload 静默覆盖", "priority": "urgent"},
+  "preconditions": ["隔离任务已有 K/P1"],
+  "input_fixture": {"status": "unresolved", "reason": "P2 fixture 尚未生成"},
+  "actions": ["提交 K/P2"],
+  "expected": [{"observe": "original_job"}],
+  "oracle_ref": {"status": "unresolved", "reason": "AC-3 版本待确认"},
+  "runner_ref": "native/test_jobs.py::conflict",
+  "environment_ref": "env-config.md#OP-JOBS",
+  "cleanup_ref": {"status": "not_applicable", "reason": "纯内存 fixture"},
+  "evidence_required": ["前后持久状态"]
+}
