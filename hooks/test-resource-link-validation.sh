@@ -68,6 +68,47 @@ new_fixture url_parenthesized_query
 printf '%s\n' '[external](https://example.invalid/docs?next=(references/procedures/external.md))' >> "$FIXTURE/references/workflow.md"
 check 'parenthesized URL query remains one external locator' 0
 
+for suffix in query fragment; do
+  if [[ "$suffix" == query ]]; then
+    url_prefix='https://example.invalid/docs?next='
+  else
+    url_prefix='https://example.invalid/docs#'
+  fi
+  new_fixture "square_${suffix}_missing"
+  printf '[external](%s[references/procedures/missing.md])\n' "$url_prefix" >> "$FIXTURE/SKILL.md"
+  check "square-bracket URL $suffix is not a missing local resource" 0
+
+  new_fixture "square_${suffix}_orphan"
+  printf '%s\n' '# Orphan' > "$FIXTURE/references/procedures/orphan.md"
+  printf '[external](%s[references/procedures/orphan.md])\n' "$url_prefix" >> "$FIXTURE/SKILL.md"
+  check "square-bracket URL $suffix cannot connect a local orphan" 1 'unreferenced Tier-2 procedure'
+done
+
+new_fixture bare_uri_punctuation
+printf '%s\n' "https://example.invalid/docs?next=[('references/procedures/missing.md')]" >> "$FIXTURE/SKILL.md"
+check 'bare URI punctuation remains inside the external region' 0
+
+new_fixture bare_uri_orphan
+printf '%s\n' '# Orphan' > "$FIXTURE/references/procedures/orphan.md"
+printf '%s\n' "https://example.invalid/docs#[('references/procedures/orphan.md')]" >> "$FIXTURE/SKILL.md"
+check 'bare URI punctuation cannot connect a local orphan' 1 'unreferenced Tier-2 procedure'
+
+new_fixture adjacent_markdown
+printf '%s\n' '[external](https://example.invalid/docs?next=[references/procedures/external.md]),[local](references/procedures/adjacent.md)' >> "$FIXTURE/SKILL.md"
+printf '%s\n' '# Adjacent local procedure' > "$FIXTURE/references/procedures/adjacent.md"
+check 'excluding external destination preserves adjacent local link' 0
+
+new_fixture adjacent_local_anchors
+printf '%s\n' '[first](references/procedures/first.md#purpose),[second](references/procedures/second.md?view=source)' >> "$FIXTURE/SKILL.md"
+printf '%s\n' '# First procedure' > "$FIXTURE/references/procedures/first.md"
+printf '%s\n' '# Second procedure' > "$FIXTURE/references/procedures/second.md"
+check 'local suffix exclusion preserves adjacent local targets' 0
+
+new_fixture external_label
+printf '%s\n' '# Orphan' > "$FIXTURE/references/procedures/orphan.md"
+printf '%s\n' '[references/procedures/orphan.md](https://example.invalid/docs)' >> "$FIXTURE/SKILL.md"
+check 'external Markdown label cannot connect a local orphan' 1 'unreferenced Tier-2 procedure'
+
 new_fixture url_query_orphan
 printf '%s\n' '# Orphan' > "$FIXTURE/references/procedures/orphan.md"
 printf '%s\n' '[external](https://example.invalid/docs?next=references/procedures/orphan.md)' >> "$FIXTURE/SKILL.md"

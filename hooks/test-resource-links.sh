@@ -30,26 +30,68 @@ documents = entries | {
     if path.is_file()
 }
 reference_pattern = re.compile(r"(?<![A-Za-z0-9_./-])references/[A-Za-z0-9._/-]+\.md\b")
-# Classify complete locator tokens before looking for local paths. A URL's
-# query/fragment may contain a local-looking path but cannot create a graph edge.
-# Markdown delimiters keep plain paths in links, code spans and tables intact.
-token_pattern = re.compile(r"[^\s`<>\"'\[\]|]+")
-uri_pattern = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
+# Mask complete external regions BEFORE extracting local paths. Punctuation
+# inside a URI is never a token boundary that can expose a local-looking suffix.
+external_prefix = r"(?:[A-Za-z][A-Za-z0-9+.-]*:|~/|/|\.{1,2}/|(?!(?:references/))[A-Za-z0-9._-]+/)"
+external_start = re.compile(external_prefix)
+external_locator = re.compile(r"(?<![A-Za-z0-9_./-])" + external_prefix + r"[^\s`<>\"]+")
+local_suffix = re.compile(r"(references/[A-Za-z0-9._/-]+\.md)[?#][^\s`<>\"']+")
+markdown_destination = re.compile(r"\]\(\s*")
+
+
+def local_reference_text(text):
+    masked = list(text)
+    for match in markdown_destination.finditer(text):
+        destination = text[match.end():].lstrip("<")
+        is_external = external_start.match(destination)
+        local_target = reference_pattern.match(destination)
+        if not is_external and not local_target:
+            continue
+        # Find the complete balanced destination, retaining URI-internal []/().
+        cursor, depth = match.start() + 2, 1
+        while cursor < len(text) and depth:
+            if text[cursor] == "\\":
+                cursor += 2
+                continue
+            if text[cursor] == "(":
+                depth += 1
+            elif text[cursor] == ")":
+                depth -= 1
+            cursor += 1
+        if depth:
+            continue
+        if not is_external:
+            # Keep the actual local target, excluding only the rest of this
+            # destination. Never consume a subsequent adjacent local link.
+            target_start = match.end() + len(text[match.end():]) - len(destination)
+            suffix_start = target_start + local_target.end()
+            masked[suffix_start:cursor - 1] = " " * (cursor - 1 - suffix_start)
+            continue
+        # Its display label is not a local load edge either. Find its opening
+        # bracket without swallowing an adjacent, legitimate local link.
+        label_start, bracket_depth = match.start() - 1, 1
+        while label_start >= 0:
+            if text[label_start] == "]":
+                bracket_depth += 1
+            elif text[label_start] == "[":
+                bracket_depth -= 1
+                if not bracket_depth:
+                    break
+            label_start -= 1
+        if label_start < 0:
+            label_start = match.start()
+        masked[label_start:cursor] = " " * (cursor - label_start)
+    # Bare URI regions end at whitespace/markup wrappers; URI punctuation
+    # (including apostrophes) stays inside. Local suffixes are not load edges.
+    local_text = external_locator.sub(" ", "".join(masked))
+    return local_suffix.sub(r"\1", local_text)
+
+
 graph = {}
 try:
     for document in sorted(documents):
-        tokens = token_pattern.findall((root / document).read_text(encoding="utf-8"))
-        local_locators = []
-        for token in tokens:
-            # Keep URL-internal parentheses together; ignore only the Markdown
-            # link destination's opening parenthesis when classifying it.
-            token = token.lstrip("(")
-            if uri_pattern.match(token) or token.startswith(("/", "~/", "./", "../")) or "/references/" in token:
-                continue
-            # A local locator can have an anchor/query, but its suffix is not
-            # another loading reference. Its actual file still must exist.
-            local_locators.append(token.split("#", 1)[0].split("?", 1)[0])
-        graph[document] = set(reference_pattern.findall(" ".join(local_locators)))
+        content = (root / document).read_text(encoding="utf-8")
+        graph[document] = set(reference_pattern.findall(local_reference_text(content)))
 except (OSError, UnicodeError) as exc:
     fail(f"cannot read resource document: {exc}")
 
