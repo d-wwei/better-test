@@ -1,0 +1,334 @@
+{
+  "scope": "design_structure_evidence_only",
+  "integration_base": "a61339167653dbbe4a0054c1f7286a48c1eb01a9",
+  "checker_sha256": "76544b709d903ef80feb328a57c7a080604efd2edd9ac65f0a341aa4d6aad8fa",
+  "schema_sha256": "3150eacac3103de3bcd66f74f526ec5124c89f59631293db57637da2f031f4b4",
+  "product_execution": "NOT_RUN",
+  "agent_semantic_exercise": "NOT_RUN",
+  "invocations": [
+    {
+      "scenario": "semantic-change",
+      "snapshot": "before",
+      "command": [
+        "python3",
+        "/Users/eli/.codex/worktrees/bt-knowledge-maintenance/better-test/scripts/validate-test-design.py",
+        "--test-root",
+        "/Users/eli/.codex/worktrees/bt-knowledge-maintenance/better-test/fixtures/knowledge-maintenance/semantic-change/before",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "stdout": {
+        "schema_version": 1,
+        "scope": "design_structure",
+        "status": "valid",
+        "errors": [],
+        "warnings": [
+          "block 1 line 3.requirements[0]: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.requirements[0]: source_revision_not_fixed: use a fixed revision/digest or explicit unresolved reason",
+          "block 1 line 3.input_fixture: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.oracle_ref: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.runner_ref: unresolved: synthetic exercise has no runnable product test; bind a native runner before execution",
+          "block 1 line 3.environment_ref: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.cleanup_ref: unresolved: no live product or fixture store exists; define cleanup in execution phase",
+          "semantic_review_required: structure does not prove source/oracle authority, expected correctness, map IDs, executability or detection capability"
+        ],
+        "case_ids": [
+          "U-01"
+        ]
+      },
+      "stderr": "",
+      "sha256_before": {
+        "env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d",
+        "reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "strategy-plan.md": "956600fa30391e4a9442da6fcce84fcae3e3b6ceadf91cf0c12afd2a4d7490d9",
+        "surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "test-groups.md": "564fb439c66bc07ecf670ae2c8916566517bc7c8d9c64ad6f7aeae95cb8bde78"
+      },
+      "sha256_after": {
+        "env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d",
+        "reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "strategy-plan.md": "956600fa30391e4a9442da6fcce84fcae3e3b6ceadf91cf0c12afd2a4d7490d9",
+        "surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "test-groups.md": "564fb439c66bc07ecf670ae2c8916566517bc7c8d9c64ad6f7aeae95cb8bde78"
+      },
+      "snapshot_unchanged": true
+    },
+    {
+      "scenario": "semantic-change",
+      "snapshot": "after",
+      "command": [
+        "python3",
+        "/Users/eli/.codex/worktrees/bt-knowledge-maintenance/better-test/scripts/validate-test-design.py",
+        "--test-root",
+        "/Users/eli/.codex/worktrees/bt-knowledge-maintenance/better-test/fixtures/knowledge-maintenance/semantic-change/after",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "stdout": {
+        "schema_version": 1,
+        "scope": "design_structure",
+        "status": "valid",
+        "errors": [],
+        "warnings": [
+          "block 1 line 3.requirements[0]: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.requirements[0]: source_revision_not_fixed: use a fixed revision/digest or explicit unresolved reason",
+          "block 1 line 3.input_fixture: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.oracle_ref: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.runner_ref: unresolved: synthetic exercise has no runnable product test; bind a native runner before execution",
+          "block 1 line 3.environment_ref: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.cleanup_ref: unresolved: no live product or fixture store exists; define cleanup in execution phase",
+          "semantic_review_required: structure does not prove source/oracle authority, expected correctness, map IDs, executability or detection capability"
+        ],
+        "case_ids": [
+          "U-01"
+        ]
+      },
+      "stderr": "",
+      "sha256_before": {
+        "env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d",
+        "reference/requirements.md": "b839cd17a2506ddb85770e57a130f8c2a0b3419442d92896bd4d8855d1cb93d3",
+        "strategy-plan.md": "80cab38eca24df70f5f73beafd36717b8ad4e528200f7e46c11980926d28d039",
+        "surface-manifest.md": "95a5700c19666d7eae5f7ef82d1b9f5065ade694089593814e959f05f8a6c3ec",
+        "test-groups.md": "dabe39ace2fd794cf4af9529b2b3578f7b437b0af0d7465b47999c4dcf81d7aa"
+      },
+      "sha256_after": {
+        "env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d",
+        "reference/requirements.md": "b839cd17a2506ddb85770e57a130f8c2a0b3419442d92896bd4d8855d1cb93d3",
+        "strategy-plan.md": "80cab38eca24df70f5f73beafd36717b8ad4e528200f7e46c11980926d28d039",
+        "surface-manifest.md": "95a5700c19666d7eae5f7ef82d1b9f5065ade694089593814e959f05f8a6c3ec",
+        "test-groups.md": "dabe39ace2fd794cf4af9529b2b3578f7b437b0af0d7465b47999c4dcf81d7aa"
+      },
+      "snapshot_unchanged": true
+    },
+    {
+      "scenario": "pure-refactor",
+      "snapshot": "before",
+      "command": [
+        "python3",
+        "/Users/eli/.codex/worktrees/bt-knowledge-maintenance/better-test/scripts/validate-test-design.py",
+        "--test-root",
+        "/Users/eli/.codex/worktrees/bt-knowledge-maintenance/better-test/fixtures/knowledge-maintenance/pure-refactor/before",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "stdout": {
+        "schema_version": 1,
+        "scope": "design_structure",
+        "status": "valid",
+        "errors": [],
+        "warnings": [
+          "block 1 line 3.requirements[0]: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.requirements[0]: source_revision_not_fixed: use a fixed revision/digest or explicit unresolved reason",
+          "block 1 line 3.input_fixture: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.oracle_ref: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.runner_ref: unresolved: synthetic exercise has no runnable product test; bind a native runner before execution",
+          "block 1 line 3.environment_ref: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.cleanup_ref: unresolved: no live product or fixture store exists; define cleanup in execution phase",
+          "semantic_review_required: structure does not prove source/oracle authority, expected correctness, map IDs, executability or detection capability"
+        ],
+        "case_ids": [
+          "U-01"
+        ]
+      },
+      "stderr": "",
+      "sha256_before": {
+        "env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d",
+        "reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "strategy-plan.md": "956600fa30391e4a9442da6fcce84fcae3e3b6ceadf91cf0c12afd2a4d7490d9",
+        "surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "test-groups.md": "564fb439c66bc07ecf670ae2c8916566517bc7c8d9c64ad6f7aeae95cb8bde78"
+      },
+      "sha256_after": {
+        "env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d",
+        "reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "strategy-plan.md": "956600fa30391e4a9442da6fcce84fcae3e3b6ceadf91cf0c12afd2a4d7490d9",
+        "surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "test-groups.md": "564fb439c66bc07ecf670ae2c8916566517bc7c8d9c64ad6f7aeae95cb8bde78"
+      },
+      "snapshot_unchanged": true
+    },
+    {
+      "scenario": "pure-refactor",
+      "snapshot": "after",
+      "command": [
+        "python3",
+        "/Users/eli/.codex/worktrees/bt-knowledge-maintenance/better-test/scripts/validate-test-design.py",
+        "--test-root",
+        "/Users/eli/.codex/worktrees/bt-knowledge-maintenance/better-test/fixtures/knowledge-maintenance/pure-refactor/after",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "stdout": {
+        "schema_version": 1,
+        "scope": "design_structure",
+        "status": "valid",
+        "errors": [],
+        "warnings": [
+          "block 1 line 3.requirements[0]: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.requirements[0]: source_revision_not_fixed: use a fixed revision/digest or explicit unresolved reason",
+          "block 1 line 3.input_fixture: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.oracle_ref: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.runner_ref: unresolved: synthetic exercise has no runnable product test; bind a native runner before execution",
+          "block 1 line 3.environment_ref: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.cleanup_ref: unresolved: no live product or fixture store exists; define cleanup in execution phase",
+          "semantic_review_required: structure does not prove source/oracle authority, expected correctness, map IDs, executability or detection capability"
+        ],
+        "case_ids": [
+          "U-01"
+        ]
+      },
+      "stderr": "",
+      "sha256_before": {
+        "env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "impact-map.md": "53a9c758cbe158f729d3165902e28b8bced7575816c9a2b5ee050800537c97e6",
+        "reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d",
+        "reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "strategy-plan.md": "2c494f4ecfcfbe45c79ac929bf5820af2a23eb19990561d8ef9ec116aeae0a49",
+        "surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "test-groups.md": "564fb439c66bc07ecf670ae2c8916566517bc7c8d9c64ad6f7aeae95cb8bde78"
+      },
+      "sha256_after": {
+        "env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "impact-map.md": "53a9c758cbe158f729d3165902e28b8bced7575816c9a2b5ee050800537c97e6",
+        "reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d",
+        "reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "strategy-plan.md": "2c494f4ecfcfbe45c79ac929bf5820af2a23eb19990561d8ef9ec116aeae0a49",
+        "surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "test-groups.md": "564fb439c66bc07ecf670ae2c8916566517bc7c8d9c64ad6f7aeae95cb8bde78"
+      },
+      "snapshot_unchanged": true
+    },
+    {
+      "scenario": "tool-change",
+      "snapshot": "before",
+      "command": [
+        "python3",
+        "/Users/eli/.codex/worktrees/bt-knowledge-maintenance/better-test/scripts/validate-test-design.py",
+        "--test-root",
+        "/Users/eli/.codex/worktrees/bt-knowledge-maintenance/better-test/fixtures/knowledge-maintenance/tool-change/before",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "stdout": {
+        "schema_version": 1,
+        "scope": "design_structure",
+        "status": "valid",
+        "errors": [],
+        "warnings": [
+          "block 1 line 3.requirements[0]: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.requirements[0]: source_revision_not_fixed: use a fixed revision/digest or explicit unresolved reason",
+          "block 1 line 3.input_fixture: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.oracle_ref: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.runner_ref: unresolved: synthetic exercise has no runnable product test; bind a native runner before execution",
+          "block 1 line 3.environment_ref: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.cleanup_ref: unresolved: no live product or fixture store exists; define cleanup in execution phase",
+          "semantic_review_required: structure does not prove source/oracle authority, expected correctness, map IDs, executability or detection capability"
+        ],
+        "case_ids": [
+          "U-01"
+        ]
+      },
+      "stderr": "",
+      "sha256_before": {
+        "env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d",
+        "reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "strategy-plan.md": "956600fa30391e4a9442da6fcce84fcae3e3b6ceadf91cf0c12afd2a4d7490d9",
+        "surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "test-groups.md": "564fb439c66bc07ecf670ae2c8916566517bc7c8d9c64ad6f7aeae95cb8bde78"
+      },
+      "sha256_after": {
+        "env-config.md": "07ab7f0e159644de9c229dd17793869d4d1fd98a435e048f824f799aece5908f",
+        "history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d",
+        "reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "strategy-plan.md": "956600fa30391e4a9442da6fcce84fcae3e3b6ceadf91cf0c12afd2a4d7490d9",
+        "surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "test-groups.md": "564fb439c66bc07ecf670ae2c8916566517bc7c8d9c64ad6f7aeae95cb8bde78"
+      },
+      "snapshot_unchanged": true
+    },
+    {
+      "scenario": "tool-change",
+      "snapshot": "after",
+      "command": [
+        "python3",
+        "/Users/eli/.codex/worktrees/bt-knowledge-maintenance/better-test/scripts/validate-test-design.py",
+        "--test-root",
+        "/Users/eli/.codex/worktrees/bt-knowledge-maintenance/better-test/fixtures/knowledge-maintenance/tool-change/after",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "stdout": {
+        "schema_version": 1,
+        "scope": "design_structure",
+        "status": "valid",
+        "errors": [],
+        "warnings": [
+          "block 1 line 3.requirements[0]: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.requirements[0]: source_revision_not_fixed: use a fixed revision/digest or explicit unresolved reason",
+          "block 1 line 3.input_fixture: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.oracle_ref: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.runner_ref: unresolved: synthetic exercise has no runnable product test; bind a native runner before execution",
+          "block 1 line 3.environment_ref: local_reference_unverified: file exists; content/selector/anchor/revision not verified",
+          "block 1 line 3.cleanup_ref: unresolved: no live product or fixture store exists; define cleanup in execution phase",
+          "semantic_review_required: structure does not prove source/oracle authority, expected correctness, map IDs, executability or detection capability"
+        ],
+        "case_ids": [
+          "U-01"
+        ]
+      },
+      "stderr": "",
+      "sha256_before": {
+        "env-config.md": "9bba85630d4b84041545431ef6d4fb5dd204d5bcd932801f9f2b7e8471550da5",
+        "history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d",
+        "reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "strategy-plan.md": "9e1d973978561b3b62f0d973f45b866efc72bfcc04c02e4dbe95c84749f72b5b",
+        "surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "test-groups.md": "7cd0a170e100e60e7eb6cf09ff5916361315d9db67aba0bd8c09a2c65b2da90a"
+      },
+      "sha256_after": {
+        "env-config.md": "9bba85630d4b84041545431ef6d4fb5dd204d5bcd932801f9f2b7e8471550da5",
+        "history/synthetic-proof.md": "516cbc0bb0de7d3734110f07483c7db7c8f5441e668e29c95008a4aa1497ee83",
+        "impact-map.md": "a3b6d0b157bbd08d82f6dd13b46cb8aefb4813ca6d59b5845c2d23a19b4dfd3d",
+        "reference/input.json": "c0a8b3996a8a4d81733d7294ff487b4c3007dfae53307b9b8871aecf6980b64d",
+        "reference/requirements.md": "0f4001042faa6c20147a7215e62e93c9f169d78fd76972cd605fa91ef6af9367",
+        "strategy-plan.md": "9e1d973978561b3b62f0d973f45b866efc72bfcc04c02e4dbe95c84749f72b5b",
+        "surface-manifest.md": "280194bdcb17d697a8c74610c11718b7ee93f5927ef8af0df549521c8a5b0cf2",
+        "test-groups.md": "7cd0a170e100e60e7eb6cf09ff5916361315d9db67aba0bd8c09a2c65b2da90a"
+      },
+      "snapshot_unchanged": true
+    }
+  ]
+}
