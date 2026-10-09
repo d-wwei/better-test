@@ -1,6 +1,7 @@
 # L2 Independent Verification — Sub-Agent Prompts
 
 Agent 在测试完成后（full/targeted 模式）读取本文件，spawn 子 Agent 执行独立审查。
+设计审查先用下方 A/B 两阶段；执行审计继续用原 Audit 1–4 与既有 run/merge gates。
 
 ## 触发条件
 
@@ -17,6 +18,69 @@ Smoke 模式通常不触发（覆盖率审计对 smoke 无意义）；但 result
 
 主 Agent 使用 Agent tool spawn 子 Agent，prompt 从下方模板填充。子 Agent 的输出写入 `l2-findings.md`。
 
+## 两阶段独立审查：先义务，后对账
+
+设计审查在冻结 case/strategy 前进行；不能等全部执行完才第一次发现设计缺口。
+执行后首次启动 L2 时也先完成阶段 A，再提供作者 case 与结果，沿用 Audit 1–4。
+提前完成过 A 的 reviewer 保留当时输入版本；来源变化时补做受影响义务，不能倒填成事前独立判断。
+M2/M3/M6 的 workflow 触发点见本模块 handoff；未集成时不能声称已经自动调用。
+
+阶段 A 只给来源、需求/契约、变更、入口/状态地图及权限/资源约束。若地图由作者生成，
+披露生成者与来源，只作导航，追溯原来源；地图不代替 oracle。暂不提供作者 cases、策略、
+expected/golden、results、结论或评审判定依据。原需求里的验收数值仍可提供，不能为盲审删掉真实合同。
+已接触作者方案则披露污染并限缩独立性；高风险义务交新 reviewer 或独立来源复核。
+阶段 A 结果在本 run 既有 `l2-findings.md` 先写入，再由 reviewer 追加 B；不另建结论账本。
+
+### 阶段 A Prompt（单独发出，不与 B 模板一起发）
+
+```text
+你负责独立形成测试义务，不要求一定找到 Bug。只读下列已授权来源；不要搜索作者
+cases/expected/results/结论。若输入意外包含这些内容，记录污染范围，不声称盲审。
+
+来源与版本：{requirement_contract_change_locators_and_revisions}
+入口/状态地图：{map_locator_revision_author_and_source_refs}
+权限、环境和副作用边界：{constraints}
+范围与已知缺口：{selected_scope_and_unresolved_sources}
+输出：{this_run_l2_findings_path}
+
+先列出带来源 locator/revision 的行为义务：入口、状态、权限、边界、失败影响、
+所需观察和 oracle 独立来源。没有独立 oracle 写 unresolved，不从当前输出猜 expected。
+标明每条义务适用范围与不确定性；不操作共享产品，不擅改知识或 expected。
+写明读了哪些材料、角色兼任/同源判断、未知与零发现范围。完成 A 后停止，等待 B 输入。
+```
+
+### 阶段 B Prompt（确认 A 已留存后发出）
+
+```text
+继续使用你已记录的阶段 A 义务，不把作者 case 反填成独立发现。
+作者 case/策略与冻结版本：{case_and_strategy_locators_revisions}
+oracle/fixture 与生成者：{oracle_locators_revisions_origins}
+资源分片/recipe 与副作用：{resource_assignment_and_recipe_refs}
+执行证据：{actual_run_artifacts_or_NOT_RUN}
+
+逐项对账 A 义务与 case/entry/environment：缺失、重复、弱断言、循环 oracle、
+操作不可行、错误的覆盖外推。指出对应来源、case ID 与 artifact；未执行入口保留缺口。
+两 reviewer 复制同一 golden/cache/log 不算两份独立证据；人数和共识不能升级强度。
+重要分歧要求独立来源或可复现反例。只有疑点时写待调查，交 owner 验证；不要 drive 共享
+产品或自行改 expected。零 findings 合法，记录实际检索范围与剩余不确定性。
+区分设计问题、证据不足、工具/环境问题、已确认产品缺陷；后者仍需原有证据/gate。
+把 B 发现追加至同一 l2-findings.md，保留 A 记录、反例与反驳；执行后继续 Audit 1–4。
+```
+
+A/B 是输入发送边界，不是文件权限隔离。coordinator 不在 A 的同一消息附 B、作者材料或
+assessor 答案；实跑需用新 session 的输入与调用轨迹检查提前读取、同源抄袭和资源冲突。
+本模块 fixture 的方法与静态包装状态不证明 reviewer 准确率或实际协作语义。
+
+## 分歧与发现处置
+
+- 一人有独立反例时保留原始观察、subject/environment/版本，交资源 owner 有界复现，
+  不投票裁决。不完整反例可标未验证，但不能删除它或用多数人无发现覆盖。
+- 每条 finding 写类型、来源/独立性、观察与解释、反驳、最终处置及待验证项。reviewer
+  输出保留原样；owner 的回应写在既有 audit 面板，merge challenge 的处置写在原 merge 位置。
+- 零发现写 `✓ 未发现问题` 加 scope/来源/限制。输入缺失写未检查，不能把未检查算零问题。
+- 原有 results.status、evidence grades、intake/validate-run 与 merge challenge 仍是权威 gates；
+  reviewer 怀疑不能直接并入 confirmed Bug 数，结论一致不代替原始证据。
+
 ---
 
 ## Audit 1: 执行审计（Execution Audit）
@@ -26,7 +90,7 @@ Smoke 模式通常不触发（覆盖率审计对 smoke 无意义）；但 result
 **Prompt 模板**：
 
 ```
-你是独立审计员。你的唯一职责是找出主测试 Agent 的执行中的问题。不要帮它辩护。
+你是独立审计员。你的职责是核对执行声明与证据，记录真实缺口；允许零发现，不为满足配额制造问题。
 
 任务：对比执行日志（execution-log.md）和测试结果声明（results.json），检查主 Agent 是否真的执行了它声称的测试。
 
@@ -35,7 +99,7 @@ Smoke 模式通常不触发（覆盖率审计对 smoke 无意义）；但 result
 2. {path_to_results_json} — 主 Agent 声称的测试结果
 3. {path_to_test_groups} — 测试组定义（每组应该跑什么命令）
 
-检查以下 8 项：
+检查以下 5 项：
 
 1. **命令覆盖**：results.json 中每个标 ✅ 的测试项，execution-log 中有没有对应的命令记录？
    - 声称测了但 log 中没有对应命令 → ⚠ 标记
@@ -200,6 +264,23 @@ confidence 扩围且 hard gate 未减少；七条 coverage lane 分母可复算�
 > Generated: <YYYY-MM-DDTHH:MM:SS±HH:MM>
 > Audited: results.json from run-<tester-id>-NNN
 > Execution-log available: yes/no
+> Review inputs: <A/B 发送时点 + 来源/地图/作者材料 revisions；缺失写未检查>
+> Independence: <reviewer/作者/兼任角色；同源资料与提前接触>
+
+## 阶段 A：独立义务
+
+| 义务 | 来源 / revision | entry / state / permission | 所需观察 / oracle | 不确定性 |
+|------|-----------------|----------------------------|-------------------|------------|
+| <义务> | <原始 locator> | <范围> | <独立依据或 unresolved> | <缺口> |
+
+## 阶段 B：设计对账与分歧
+
+| 义务 / case | 类型 | 发现 / 原始来源 / 同源限制 | 反例或反驳 | 处置 / 待验证 |
+|-------------|------|---------------------------|-----------|---------------|
+| <引用> | <设计 / 证据 / 工具环境 / 已确认产品缺陷> | <具体依据> | <有界复现或未验证> | <owner 回应引用 / pending> |
+
+无发现：`✓ 未发现问题`，附检索范围；未检查项单列，不计作 confirmed Bug。
+reviewer 保留自己的观察与反驳；owner 的处置引用既有 audit/merge challenge，不能改写原发现。
 
 ## 执行审计
 
@@ -249,35 +330,32 @@ confidence 扩围且 hard gate 未减少；七条 coverage lane 分母可复算�
 
 ## 主 Agent 的执行流程
 
-```
-1. 测试完成，results.json 已写入
-2. 读本文件（references/l2-audit-prompts.md）
-3. 准备输入文件路径（全部在当前 run 目录内）：
-   - execution-log: run-<tester-id>-NNN-<ts>/execution-log.md
-   - results: run-<tester-id>-NNN-<ts>/results.json
-   - test-groups: test/test-groups.md
-   - surface-manifest: test/surface-manifest.md（如有）
-   - known-issues: test/known-issues.md
-   - bugs: run-<tester-id>-NNN-<ts>/bugs/
-4. 填充 4 个 prompt 模板的文件路径（非 hybrid run 的 Audit 4 写 not applicable）
-5. Spawn 子 Agent（用 Agent tool），传入合并后的 prompt
-   建议合并为一次 spawn（4 个审计一起做），减少开销
-6. 子 Agent 输出写入 run-<tester-id>-NNN-<ts>/l2-findings.md
-7. 主 Agent 读 l2-findings.md，嵌入审计面板（run 目录内 audit-report.md）
+```text
+1. 读本文件；设计冻结前先派阶段 A，或在执行后 L2 先派 A
+2. 准备 resolved TEST_ROOT 的知识/来源引用，与当前 run 的证据路径
+   - test-groups / surface-manifest / known-issues 位于 TEST_ROOT，不冒充 run-local 文件
+   - execution-log / results / bugs / l2-findings 位于当前 run；不改其他 tester run
+3. 仅发送阶段 A；reviewer 在当前 run 的 l2-findings.md 留存独立义务后暂停
+4. 发送阶段 B 的作者 case/策略/recipe；记录输入与版本、同源限制
+5. results.json 已写入时，在同一 reviewer session 执行合并 Audit 1–4
+   - 非 hybrid 的 Audit 4 写 N/A 及理由；缺输入写未检查，不能隐去 audit
+6. reviewer 追加 B 与执行审计至同一 l2-findings.md，保留 A 原文
+7. 主 Agent 将原始发现嵌入当前 run 的 audit-report.md，另写回应与待验证项
+8. 多 tester merge 继续原 Tentative Verdict Challenge 与逐条 disposition
 ```
 
 ### 合并 Prompt（推荐：一次 spawn 做 4 个审计）
 
 ```
-你是独立审计员。你的唯一职责是找出主测试 Agent 的问题。不要帮它辩护。
+你是独立审计员。你的职责是核对主测试 Agent 的声明与来源，保留反例与反驳，允许零发现。
 
-请阅读以下文件，然后执行 4 项审计。将所有发现写入一个文件。
+先确认阶段 A 已留存，再读取以下阶段 B/执行输入；执行 4 项审计并追加至同一文件。
 
 文件列表：
 - execution-log: {path}
 - results.json: {path}
 - test-groups.md: {path}
-- surface-manifest.md: {path}（如不存在则跳过 Audit 2）
+- surface-manifest.md: {path}（如不存在则 Audit 2 写未检查、原因与覆盖限制）
 - known-issues.md: {path}
 - bugs/: {path}（如不存在则跳过 bug severity 检查）
 - project-profile/capabilities/source-map/source-impact/v4 shadow: {paths}（非 hybrid 则 Audit 4 写 N/A）
@@ -298,6 +376,6 @@ confidence 扩围且 hard gate 未减少；七条 coverage lane 分母可复算�
 ## 不要做的事
 
 - ❌ 主 Agent 不能编辑 l2-findings.md（子 Agent 的原始输出不过滤）
-- ❌ 子 Agent 不要"帮主 Agent 找借口"——发现问题就标记，不要合理化
+- ❌ 不因共识压下反例，不为凑 findings 造问题；检查证据、保留反驳并说明限制
 - ❌ 不要跳过任何一项审计（即使看起来"明显没问题"）
-- ❌ 不要在 smoke 模式下触发（覆盖率审计对 smoke 无意义）
+- ❌ 不将普通 smoke 当全覆盖审计；触发条件中的 hybrid identity 例外仍必须执行
