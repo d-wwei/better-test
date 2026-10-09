@@ -1,0 +1,5 @@
+--- source-before
++++ source-after
+@@ -1 +1 @@
+-<button data-testid="save-note">Save</button>
++<button data-testid="commit-note">Save</button>

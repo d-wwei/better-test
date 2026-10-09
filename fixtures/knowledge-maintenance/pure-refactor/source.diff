@@ -1,0 +1,9 @@
+--- source-before
++++ source-after
+@@ -1,2 +1,5 @@
++def persist_note(note):
++    return store.save(note)
++
+ def save_note(note):
+-    return store.save(note)
++    return persist_note(note)
