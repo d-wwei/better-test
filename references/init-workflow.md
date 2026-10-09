@@ -144,6 +144,10 @@ help 快照、schema、脚本文本、工具声明和 CI 配置；缺信息标 `
 工具发现只读已有 capability 声明、CLI 文档、驱动配置和脚本文本；记录目标 identity、
 owner、副作用范围与缺失能力到 `env-config.md`。可写操作 recipe 草稿，但 init 的
 Execution proof / Detection proof 均为 `NOT_RUN`；不能伪造 runner 或 fixture。
+加载 `references/procedures/product-operation.md` 的 Capability and tool choice / Recipe interface，
+以及 `references/tool-operation-platforms.md` 的适用平台能力边界，只用于材料调查和 recipe
+草稿。其中正控制、Launch、Doctor、Drive、pilot 与 Cleanup 的真正操作属于 execution，
+init 不为补齐能力表调用这些操作，不因工具文件存在而写 available/ready。
 具名 recipe、四类完成度与引用方式遵循 `docs/adr/0002-test-design-and-tool-operation.md`。
 精确命令只在 env-config/tools 保存，地图引用其锚点，不复制命令。
 

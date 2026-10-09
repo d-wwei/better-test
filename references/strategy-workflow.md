@@ -305,8 +305,18 @@ git diff <prev_version_tag>..HEAD → 读实际变更内容（不只是文件名
 在读取旧用例明细/peer 结论之前，固定批准需求/AC、公开接口、用户路径、diff、历史 Bug
 原触发条件和 surface 的版本，独立列本轮义务。此处读 surface 时暂不读其 case 映射列。
 Step 0 已读过历史摘要时注明输入限制；新义务不能依赖旧例失败或现有测试名称才出现。
-有 reviewer 时给不同来源切片（例如需求+入口+权限、契约+状态+事故），先各自提取，再对账；
-不同角色名字不自动构成独立证据。没有 reviewer 仍执行两遍，诚实说明同一作者。
+此处加载 `references/team-role-presets.md` 的五类职责与风险配置，以及
+`references/l2-audit-prompts.md` 的设计审查 A/B 输入边界。按风险将 Designer / Independent
+reviewer / Explorer / Executor / Aggregator 映射到既有 slot；低风险可用 single-plus-l2，
+高风险按权限/入口/状态/时序/oracle 拆 axis，记录兼任、共享来源和资源，不固定 Agent 数。
+
+有 reviewer 时，在作者生成候选 case 或向 reviewer 暴露作者义务/expected/策略/结论前，
+单独发送 Phase A：只给原始需求/契约/diff、入口/状态导航、权限/资源约束及版本。作者生成
+地图须披露 provenance，case 映射列暂不提供；不附 Phase B 模板或 assessor 答案。
+可用不同来源切片（需求+入口+权限、契约+状态+事故），但不同角色名字不构成独立证据。
+确认 A 义务与实际输入范围已先留存在当前 run 的 `l2-findings.md` 后，才开放 B 作者材料。
+已提前接触作者方案则披露污染，高风险义务安排新 reviewer/独立来源；不能倒填成事前盲审。
+没有独立 reviewer 时仍做两遍并注明 self-review，不能声称独立 L2、替代原有审查/merge gates。
 
 义务格式：在 `<角色/状态/输入>` 下，经 `<entry_id>` 做 `<动作>`，必须/不得出现
 `<可观察结果/副作用>`；附 requirement/source locator + revision/digest、feature/entry/state
@@ -375,11 +385,32 @@ blocked 是可行性缺口，不能算低风险，也不能静默降低 release 
 
 复用先看“行为义务 + 前置等价类 + 入口/层级 + 预期关系 + 风险”。真正等价的用例可合并，
 不同角色/平台/观察路径不能仅因同路由而合并。高风险候选回答“哪个具体错误实现会失败”。
-按 `docs/adr/0002-test-design-and-tool-operation.md` 的可选合同记录前置、fixture、动作、
+加载 `references/test-design-contract.md` 与 `references/procedures/bdd-scenarios.md`，从选定
+来源义务复用/生成可判定候选；高风险新项按可选合同记录前置、fixture、动作、
 可观察 expected/relation、oracle、runner、environment/cleanup 与证据；不用另写 case parser。
 缺 runner/fixture/recipe/有效 oracle 保留 unresolved，结构完整仍不是 runnable。
 旧自由文本 case 仍能参与对账，不强制迁移 block；未采用合同不是产品失败或全设计有效。
 case 设计留在 test-groups/native tests；本轮选择与版本引用写 strategy-plan，运行证据留原 run。
+
+候选写入 test-groups 后，对实际已解析 TEST_ROOT 使用本次加载的 Skill/工作树 checker：
+
+```text
+python3 <this-worktree>/scripts/validate-test-design.py --test-root <resolved-root> --format json
+```
+
+保留完整输出 locator、scope、status、errors、warnings 与退出码。`scope=design_structure`：
+valid/exit 0 只是结构，包括 unresolved/missing warnings；not_adopted/exit 0 是旧文件未采用
+新 block，仍按自由文本义务对账，不能宣布已升级或产品失败。invalid/exit 1 要修 adopted
+结构，不能静默退回自由文本；exit 2 的 status 也可能 invalid，但 errors 的 operation_error
+表示文件/参数等操作错误，不是产品或 case 语义失败。checker 不验证 map ID、selector/anchor、
+oracle 语义/独立性、运行或检测能力；缺绑定照常 unresolved，不授予 PASS，不接管 run verdict。
+
+独立设计审查 Phase B 在 A 留存后才收到候选 case/原 ID 与 revision、策略草稿、
+oracle/fixture 来源、recipe/资源及结构检查输出；实际执行证据尚无则写 NOT_RUN。
+对账 A 义务的缺失、重复、弱/循环断言、不可行和范围外推，追加到同一 l2-findings，
+保留原 A/反例/反驳，分派 owner 与 unresolved 处置后再冻结。reviewer 不改 expected、不驱动
+共享产品；多数票、共同 golden 或同源 log 不升级证据。已有执行后 Audit 1–4 与独立
+Tentative Verdict Challenge 保留，设计 A/B 不能替代它们。
 
 ### 按主张选择 oracle（适用于各阶段和 compare）
 
@@ -395,7 +426,8 @@ case 设计留在 test-groups/native tests；本轮选择与版本引用写 stra
   无充分 oracle 标 unresolved，保留安全探索，不能写语义 PASS。
 - 无副作用/拒绝类断言先用正控制证明观察器有效，再检查零变化；失败时区分探针失效与产品缺陷。
 
-具体 case 引用与四类完成度按 ADR-0002；文档状态不写入 results.status 或 provider_metadata。
+具体 oracle 规则、case 引用与四类完成度按 `references/test-design-contract.md` 与 ADR-0002；
+文档状态不写入 results.status 或 provider_metadata。
 
 ## Step 3: 读历史（read_history）
 
@@ -762,6 +794,7 @@ Step 4 + 5 完成后，将完整计划（含假设）写入当前 run 目录的 
    - Source Obligations ← Step 1.75 来源/边界/风险/oracle（先于旧例）
    - Obligation Reconciliation ← Step 2.5 原 ID/revision + 设计处置 + 本轮选择/未选或受阻理由
    - Frozen Design Scope ← source/surface/case/recipe 的实际 revision/digest、未解决引用、剩余风险及接受主体
+   - Design Review Inputs ← Phase A 来源版本/实际范围与 l2-findings 留存引用 → Phase B 作者输入版本、污染限制、owner 处置
    - Team Contract ← 多 tester 时记录 preset / slot / role boundary
    - Phased Plan ← Step 4 分阶段计划
    - Hypotheses 嵌入 Stage 2 ← Step 5 假设
@@ -811,6 +844,7 @@ IF 同时有 2+ 个活跃 tester，或用户明确要求 team/parallel/multi-age
       release-4way / api-3way / single-plus-l2
 
 组装规则：
+  0. 沿用 Step 1.75 已选风险配置与 A/B 审查责任，不因到这里才写 Team Contract 而重置输入边界
   1. 先选 preset，再把 tester-id 映射到 slot
   2. 角色名不是权威，coverage axis 才是权威
   3. tester 少于 preset 槽位数：
