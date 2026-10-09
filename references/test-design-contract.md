@@ -130,6 +130,11 @@ hybrid_core.validate_json_schema；import 禁写 bytecode。test-groups 本身�
 python3 <this-worktree>/scripts/validate-test-design.py --test-root <resolved-root> --format json
 ```
 
+checker 检查已接纳的 canonical test-groups，不授予共享写权限。活跃 Tester 新增/修改的
+候选先保存在自己 run 的 strategy-plan；在有权限的 Coordinator 或完成后的单 Tester
+按既有 update/merge 流程接纳前，候选 Structure: NOT_CHECKED。原 canonical 的 valid
+不能外推到这些候选；接纳后记录新 digest 并检查。不要复制候选到另造 TEST_ROOT 来伪装接纳。
+
 JSON 固定基础字段：
 
 ```json

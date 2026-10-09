@@ -390,9 +390,20 @@ blocked 是可行性缺口，不能算低风险，也不能静默降低 release 
 可观察 expected/relation、oracle、runner、environment/cleanup 与证据；不用另写 case parser。
 缺 runner/fixture/recipe/有效 oracle 保留 unresolved，结构完整仍不是 runnable。
 旧自由文本 case 仍能参与对账，不强制迁移 block；未采用合同不是产品失败或全设计有效。
-case 设计留在 test-groups/native tests；本轮选择与版本引用写 strategy-plan，运行证据留原 run。
+已接纳的 case 定义仍以 test-groups/native tests 为准；本轮选择与版本引用写 strategy-plan，
+运行证据留原 run。**注册后的活跃 Tester 不写共享 case、native tests 或其他知识文件**：
+新增/修改候选及完整来源、旧 ID/revision、差异与 oracle 先放自己 run 的 strategy-plan 候选段，
+引用未变的 canonical 定义。这是待接纳提案，不是第二套已生效用例库。
 
-候选写入 test-groups 后，对实际已解析 TEST_ROOT 使用本次加载的 Skill/工作树 checker：
+本轮需要执行新定义时，交给既有 Coordinator 按 `references/update-workflow.md` 的角色规则
+核实来源、ID 冲突、独立设计审查和受影响消费者，再通过既有维护/合并步骤接纳；已有 run
+的冻结定义、结果与证据不回写。接纳后记录真实 canonical revision/digest 并重新冻结本轮
+选择。没有有权限的知识 owner 时，候选保持 draft、Structure: NOT_CHECKED 和待接纳原因，
+本轮新项标 blocked；已有充分用例仍可选。单 Tester 完成后可按原维护职责接纳到下一轮。
+不得自授写权限、取消 session 或把待接纳候选当作已发布定义来绕过隔离。
+
+只对已接纳的 canonical test-groups 使用本次加载的 Skill/工作树 checker；活跃 Tester
+可只读检查它，并将输出写自己 run，不能为调用 checker 而先覆盖共享文件或另造 TEST_ROOT：
 
 ```text
 python3 <this-worktree>/scripts/validate-test-design.py --test-root <resolved-root> --format json
@@ -404,6 +415,8 @@ valid/exit 0 只是结构，包括 unresolved/missing warnings；not_adopted/exi
 结构，不能静默退回自由文本；exit 2 的 status 也可能 invalid，但 errors 的 operation_error
 表示文件/参数等操作错误，不是产品或 case 语义失败。checker 不验证 map ID、selector/anchor、
 oracle 语义/独立性、运行或检测能力；缺绑定照常 unresolved，不授予 PASS，不接管 run verdict。
+记录被检查的 canonical 文件 digest；该输出不能覆盖尚未接纳的 run-local 候选，后者保持
+NOT_CHECKED。Coordinator 接纳后再检查实际 canonical 文件，不另写 candidate parser。
 
 独立设计审查 Phase B 在 A 留存后才收到候选 case/原 ID 与 revision、策略草稿、
 oracle/fixture 来源、recipe/资源及结构检查输出；实际执行证据尚无则写 NOT_RUN。
@@ -438,7 +451,13 @@ Tentative Verdict Challenge 保留，设计 A/B 不能替代它们。
 提取 fail 项的 id 列表
 
 读 ${TEST_ROOT}/history/feedback-rules.json
-- suppress[].test_id → 这些 id 即使 fail 也不算 active
+- suppress[] 只是待核对候选，不能仅凭 test_id 排除 active failure
+- 加载 references/feedback-workflow.md 的来源与适用范围规则，追溯原正式 feedback 决定
+- 核对可信来源/独立依据、verdict、产品/环境/角色/entry/case/oracle/recipe revisions
+- 只有有依据且明确匹配本轮 scope 的 not-a-bug/wontfix 才进入 applicable_suppress
+- 旧规则缺来源/范围、范围不符、需求变化、反证、旧 deferred/fixed/fixed-differently
+  suppress 映射都保留 failure；在自己 strategy 记录 required review/retest 及具体理由
+- 规则格式不足以证明匹配时不推断全局适用，不手改共享规则或历史 results
 - known_behaviors[] → 展示给用户但不影响推荐
 - lessons[] → 用于人类参考
 
@@ -447,7 +466,10 @@ Tentative Verdict Challenge 保留，设计 A/B 不能替代它们。
 - OPEN 的 bug → 提取其 related_tests 作为已知活跃 bug（展示但不自动推荐 retest）
 ```
 
-`active_failures = recent_fails - suppress`
+`active_failures = recent_fails - applicable_suppress`，按本轮匹配的具体 occurrence/scope 处理，
+不能将同 ID 的其他入口/版本/环境一起减掉。wontfix 仅影响该范围 active 提报，缺陷及接受
+风险仍可见；任何抑制都不把 fail 改为产品 pass。无法匹配的项保留待复核，不因旧规则跳过
+mandatory/hard gate，也不自动撤销原决定；规则修改另走已有授权的 feedback/update 流程。
 `bug_retest_candidates` = bugs-index 中 FIXED 但未 VERIFIED 的 bug 的 related_tests
 
 ## Step 4: 生成分阶段执行计划（generate_plan）

@@ -379,6 +379,9 @@ estimated_time: <分钟>
 从本次加载的 Skill 根执行 `python3 <skill-root>/scripts/validate-test-design.py --test-root <resolved-root> --format json`，
 保留并显示 warnings，不能只看 exit 0：valid 仅结构，not_adopted 仅未采用；1 为结构错误，
 2 为文件/参数操作错误。map ID、anchor/selector/revision、oracle 语义和执行/检测不由 checker 证明。
+活跃 Tester 只读 canonical test-groups；新增/修改提案先存自己 run 的 strategy-plan 候选段，
+按 strategy/update 角色规则交知识 owner 接纳。未接纳候选 Structure: NOT_CHECKED，
+不能把 canonical checker 输出算到候选上，也不能为检查而写共享文件或另造 TEST_ROOT。
 文档证明行不是 results 字段；current-within-proof-scope 要有实际匹配 proof。变化可令当前
 review required，同时保留旧 run/proof 原字节；recipe pilot 不等于 case 缺陷检测。
 
@@ -1033,7 +1036,8 @@ total_items: <N>
 
 - Affected groups: <组号 + 名称>
 - Affected items: <具体测试 ID（如有函数级分析）>
-- Active failures: <N>（suppress 后）
+- Active failures: <N>（仅减去有依据且匹配本轮 scope 的 applicable_suppress）
+- Feedback scope review: <原决定/依据/匹配范围；未匹配或旧映射保留 fail + required review/retest>
 - Bug retest candidates: <BUG-xxx-NNN 列表>
 
 ## Source Obligations
@@ -1050,6 +1054,8 @@ total_items: <N>
 
 ## Frozen Design Scope
 
+- Candidate disposition: <自己 run 内的新/修改候选、来源/旧 ID/revision/delta；知识 owner、待接纳原因；未接纳不当作已生效 case，不写共享文件>
+- Canonical acceptance: <已接纳定义 locator/revision/digest；未接纳候选 Structure: NOT_CHECKED，需本轮执行的新项 blocked；不改其他 run 冻结版本>
 - Sources / surface / case / recipe: <实际 locators/revisions/digests，未知不伪造>
 - Input-slice / unresolved / unexecuted entry/platform: <独立审查已接触材料与当前缺口>
 - Scope: <subject/environment/entry + case/recipe revisions>
@@ -1183,7 +1189,7 @@ strategy-plan.md 直接在 run 目录内创建，无需归档复制。
 | Stages | 编号 1-5（简化路径可少于 5）；每阶段有 groups + items |
 | Hypotheses | Stage 2 每个受影响组至少 1 条；IF-THEN-BECAUSE 格式 |
 | User Adjustments | 有修改必填；无修改写"Accepted as-is" |
-| 组/测试引用 | 组号和测试 ID 必须存在于 test-groups.md |
+| 组/测试引用 | 可执行选择引用 test-groups.md 已接纳的原 ID/revision；自己 run 的未接纳提案单列 candidate/blocked，不冒充 canonical，不改共享或 peer 文件 |
 | 不含凭证 | 与 progress.md 同规则 — 不写密码/token/API key |
 
 ---
