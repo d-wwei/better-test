@@ -56,6 +56,50 @@ new_fixture external
 printf '%s\n' '~/.claude/skills/better-work/references/gitignore-template.md' >> "$FIXTURE/references/workflow.md"
 check 'external skill reference is outside this graph' 0
 
+new_fixture url_query_missing
+printf '%s\n' 'https://example.invalid/docs?next=references/procedures/external.md' >> "$FIXTURE/references/workflow.md"
+check 'external URL query is not a missing local resource' 0
+
+new_fixture url_fragment_missing
+printf '%s\n' '[external](https://example.invalid/docs#references/procedures/external.md)' >> "$FIXTURE/references/workflow.md"
+check 'external URL fragment is not a missing local resource' 0
+
+new_fixture url_parenthesized_query
+printf '%s\n' '[external](https://example.invalid/docs?next=(references/procedures/external.md))' >> "$FIXTURE/references/workflow.md"
+check 'parenthesized URL query remains one external locator' 0
+
+new_fixture url_query_orphan
+printf '%s\n' '# Orphan' > "$FIXTURE/references/procedures/orphan.md"
+printf '%s\n' '[external](https://example.invalid/docs?next=references/procedures/orphan.md)' >> "$FIXTURE/SKILL.md"
+check 'external URL query cannot connect a local orphan' 1 'unreferenced Tier-2 procedure'
+
+new_fixture url_fragment_orphan
+printf '%s\n' '# Orphan' > "$FIXTURE/references/procedures/orphan.md"
+printf '%s\n' '[external](https://example.invalid/docs#references/procedures/orphan.md)' >> "$FIXTURE/SKILL.md"
+check 'external URL fragment cannot connect a local orphan' 1 'unreferenced Tier-2 procedure'
+
+new_fixture url_path
+printf '%s\n' 'https://example.invalid/references/procedures/external.md' >> "$FIXTURE/references/workflow.md"
+check 'external URL path is outside the local graph' 0
+
+new_fixture qualified_path
+printf '%s\n' '~/.claude/skills/better-work/README.md#references/procedures/external.md' >> "$FIXTURE/references/workflow.md"
+check 'external qualified path fragment is outside the local graph' 0
+
+new_fixture local_markdown
+printf '%s\n' '[local](references/procedures/link.md#purpose)' '| guide | `references/procedures/table.md` |' >> "$FIXTURE/references/workflow.md"
+printf '%s\n' '# Linked procedure' > "$FIXTURE/references/procedures/link.md"
+printf '%s\n' '# Table procedure' > "$FIXTURE/references/procedures/table.md"
+check 'local Markdown and table code-span targets remain load edges' 0
+
+new_fixture local_fragment_missing
+printf '%s\n' '[local](references/procedures/missing.md#purpose)' >> "$FIXTURE/references/workflow.md"
+check 'local fragment target must exist' 1 'referenced resource does not exist'
+
+new_fixture local_query_missing
+printf '%s\n' '`references/procedures/missing.md?view=source`' >> "$FIXTURE/references/workflow.md"
+check 'local query target must exist' 1 'referenced resource does not exist'
+
 new_fixture missing
 rm "$FIXTURE/references/procedures/base.md"
 check 'missing referenced procedure' 1 'referenced resource does not exist'

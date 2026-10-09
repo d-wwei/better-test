@@ -139,7 +139,7 @@ Whole-file owners prevent simultaneous workflow edits:
 |---|---|
 | M6 | `SKILL.md`, `references/templates.md`, README (both languages), CHANGELOG, CI, `scripts/test-all.sh`, `hooks/test-resource-links.sh`; ADR and integration handoff |
 | M1 | Case contract/schema/checker, BDD procedure, design fixtures/tests/handoff |
-| M2 | `references/init-workflow.md`, `references/strategy-workflow.md`; coverage fixtures/handoff |
+| M2 | `references/init-workflow.md`, `references/strategy-workflow.md`, `references/procedures/exploratory-charter.md`; coverage fixtures/handoff |
 | M3 | `references/test-execution-workflow.md`; operation procedure, platform guide, isolated fixtures/tests/handoff |
 | M4 | `references/team-role-presets.md`, `references/l2-audit-prompts.md`; review fixtures/handoff |
 | M5 | `references/update-workflow.md`, `references/reflect-workflow.md`, `references/feedback-workflow.md`; maintenance fixtures/handoff |
@@ -157,8 +157,10 @@ material, not another runtime configuration.
 `hooks/test-resource-links.sh` checks canonical skill-root `references/*.md`
 locators found in SKILL, README (both languages) and reference Markdown files,
 including nested directories. A qualified path inside another skill or a URL
-is outside this graph. Referenced local documents must exist; actual procedure
-files must be referenced and reachable from SKILL/README through document edges.
+is outside this graph, including its query/fragment contents. Complete locator
+tokens are classified before extracting local paths; local anchors/queries do
+not create additional edges. Referenced local documents must exist; actual
+procedure files must be referenced and reachable from SKILL/README through document edges.
 Self links, isolated cycles and links only from disconnected workflows fail.
 The old fixed count of 17 is removed; split top-level `procedures/` stays invalid.
 Tables and code spans can carry static locators. Relative Markdown links without

@@ -30,10 +30,26 @@ documents = entries | {
     if path.is_file()
 }
 reference_pattern = re.compile(r"(?<![A-Za-z0-9_./-])references/[A-Za-z0-9._/-]+\.md\b")
+# Classify complete locator tokens before looking for local paths. A URL's
+# query/fragment may contain a local-looking path but cannot create a graph edge.
+# Markdown delimiters keep plain paths in links, code spans and tables intact.
+token_pattern = re.compile(r"[^\s`<>\"'\[\]|]+")
+uri_pattern = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 graph = {}
 try:
     for document in sorted(documents):
-        graph[document] = set(reference_pattern.findall((root / document).read_text(encoding="utf-8")))
+        tokens = token_pattern.findall((root / document).read_text(encoding="utf-8"))
+        local_locators = []
+        for token in tokens:
+            # Keep URL-internal parentheses together; ignore only the Markdown
+            # link destination's opening parenthesis when classifying it.
+            token = token.lstrip("(")
+            if uri_pattern.match(token) or token.startswith(("/", "~/", "./", "../")) or "/references/" in token:
+                continue
+            # A local locator can have an anchor/query, but its suffix is not
+            # another loading reference. Its actual file still must exist.
+            local_locators.append(token.split("#", 1)[0].split("?", 1)[0])
+        graph[document] = set(reference_pattern.findall(" ".join(local_locators)))
 except (OSError, UnicodeError) as exc:
     fail(f"cannot read resource document: {exc}")
 
