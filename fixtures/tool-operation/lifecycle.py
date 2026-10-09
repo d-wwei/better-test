@@ -1,5 +1,6 @@
 """Owned synthetic fixture lifecycle only; never a generic product runner."""
 import argparse
+from contextlib import contextmanager
 import http.client
 import json
 import math
@@ -8,6 +9,7 @@ from pathlib import Path
 import signal
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -36,6 +38,30 @@ def live(identity, route="/identity", timeout=1):
     return observed
 
 
+@contextmanager
+def observation_deadline(expires):
+    """Fixture CLI owns a POSIX main-thread alarm; no surviving observer worker."""
+    if os.name != "posix" or threading.current_thread() is not threading.main_thread():
+        raise ValueError("absolute doctor deadline requires main-thread POSIX execution")
+    if any(signal.getitimer(signal.ITIMER_REAL)):
+        raise ValueError("absolute observation timer already owned; refuse to replace it")
+    budget = expires - time.monotonic()
+    if budget <= 0:
+        raise TimeoutError("absolute HTTP observation deadline expired")
+    previous_handler = signal.getsignal(signal.SIGALRM)
+
+    def expire(*_):
+        raise TimeoutError("absolute HTTP observation deadline expired")
+
+    signal.signal(signal.SIGALRM, expire)
+    try:
+        signal.setitimer(signal.ITIMER_REAL, budget)
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+
+
 def doctor(identity, deadline):
     expires = time.monotonic() + deadline
     last = None
@@ -53,17 +79,18 @@ def doctor(identity, deadline):
 
     def observe(route):
         try:
-            try:
-                return live(identity, route, timeout=remaining())
-            except urllib.error.HTTPError as error:
-                if route != "/ready" or error.code != 503:
-                    raise
-                with error:
-                    observed = json.load(error)
-                for key in ("run_id", "instance_id", "pid"):
-                    if observed.get(key) != identity[key]:
-                        raise ValueError("readiness identity mismatch")
-                return observed
+            with observation_deadline(expires):
+                try:
+                    return live(identity, route, timeout=remaining())
+                except urllib.error.HTTPError as error:
+                    if route != "/ready" or error.code != 503:
+                        raise
+                    with error:
+                        observed = json.load(error)
+                    for key in ("run_id", "instance_id", "pid"):
+                        if observed.get(key) != identity[key]:
+                            raise ValueError("readiness identity mismatch")
+                    return observed
         except (TimeoutError, urllib.error.URLError, http.client.HTTPException) as error:
             if time.monotonic() >= expires:
                 raise deadline_error(error) from error

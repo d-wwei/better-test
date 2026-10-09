@@ -10,6 +10,7 @@ import os
 from pathlib import Path
 import sqlite3
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -306,6 +307,9 @@ class DoctorDeadline(unittest.TestCase):
         spec.loader.exec_module(self.lifecycle)
         self.delays = {}
         self.body_delays = {}
+        self.trickle_bodies = set()
+        self.trickle_headers = set()
+        self.cancelled = {route: threading.Event() for route in ("/identity", "/ready")}
         self.ready_status = 200
         self.disconnect_paths = set()
         self.identity = {"run_id": "deadline-control", "instance_id": "local-observer",
@@ -326,14 +330,29 @@ class DoctorDeadline(unittest.TestCase):
                 if self.path == "/ready":
                     value["ready"] = fixture.ready_status == 200
                 data = json.dumps(value).encode()
-                self.send_response(fixture.ready_status if self.path == "/ready" else 200)
-                self.send_header("Content-Length", str(len(data)))
-                self.end_headers()
-                time.sleep(fixture.body_delays.get(self.path, 0))
                 try:
-                    self.wfile.write(data)
+                    status = fixture.ready_status if self.path == "/ready" else 200
+                    if self.path in fixture.trickle_headers:
+                        header = f"HTTP/1.0 {status} Observer\r\nContent-Length: {len(data)}\r\n\r\n".encode()
+                        step = max(1, len(header) // 12)
+                        for offset in range(0, len(header), step):
+                            self.connection.sendall(header[offset:offset + step])
+                            time.sleep(.03)
+                    else:
+                        self.send_response(status)
+                        self.send_header("Content-Length", str(len(data)))
+                        self.end_headers()
+                    time.sleep(fixture.body_delays.get(self.path, 0))
+                    if self.path in fixture.trickle_bodies:
+                        step = max(1, len(data) // 12)
+                        for offset in range(0, len(data), step):
+                            self.wfile.write(data[offset:offset + step])
+                            self.wfile.flush()
+                            time.sleep(.03)
+                    else:
+                        self.wfile.write(data)
                 except (BrokenPipeError, ConnectionResetError):
-                    pass  # expected after the caller's budget expires
+                    fixture.cancelled[self.path].set()  # confirms exact client socket was closed
 
         self.server = ThreadingHTTPServer(("127.0.0.1", 0), Observer)
         self.server.daemon_threads = True
@@ -367,14 +386,65 @@ class DoctorDeadline(unittest.TestCase):
         self.assert_budget_expires("ready")
 
     def test_fast_positive_control_within_shared_budget(self):
+        previous_handler = signal.getsignal(signal.SIGALRM)
         result = self.lifecycle.doctor(self.identity, .3)
         self.assertTrue(result["ready"])
         self.assertEqual(result["identity"], self.identity)
+        self.assertEqual(signal.getsignal(signal.SIGALRM), previous_handler)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
 
     def test_early_network_failure_preserves_original_classification(self):
         self.disconnect_paths.add("/identity")
+        previous_handler = signal.getsignal(signal.SIGALRM)
         with self.assertRaises(http.client.RemoteDisconnected):
             self.lifecycle.doctor(self.identity, .3)
+        self.assertEqual(signal.getsignal(signal.SIGALRM), previous_handler)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+
+    def assert_trickled_observation_cancelled(self, route):
+        previous_handler = signal.getsignal(signal.SIGALRM)
+        self.assert_budget_expires(route.removeprefix("/"))
+        self.assertTrue(self.cancelled[route].wait(.2), "observer socket must be closed, not left reading in the background")
+        self.assertEqual(signal.getsignal(signal.SIGALRM), previous_handler)
+        self.assertEqual(signal.getitimer(signal.ITIMER_REAL), (0.0, 0.0))
+
+    def test_trickled_ready_body_cancelled_at_absolute_deadline(self):
+        self.trickle_bodies.add("/ready")
+        self.assert_trickled_observation_cancelled("/ready")
+
+    def test_trickled_identity_body_cancelled_at_absolute_deadline(self):
+        self.trickle_bodies.add("/identity")
+        self.assert_trickled_observation_cancelled("/identity")
+
+    def test_trickled_503_body_cancelled_at_absolute_deadline(self):
+        self.ready_status = 503
+        self.trickle_bodies.add("/ready")
+        self.assert_trickled_observation_cancelled("/ready")
+
+    def test_trickled_identity_headers_cancelled_at_absolute_deadline(self):
+        self.trickle_headers.add("/identity")
+        self.assert_trickled_observation_cancelled("/identity")
+
+    def test_trickled_ready_headers_cancelled_at_absolute_deadline(self):
+        self.trickle_headers.add("/ready")
+        self.assert_trickled_observation_cancelled("/ready")
+
+    def test_doctor_refuses_another_owners_active_alarm(self):
+        previous_handler = signal.getsignal(signal.SIGALRM)
+        signal.setitimer(signal.ITIMER_REAL, 5)
+        try:
+            with self.assertRaisesRegex(ValueError, "timer already owned"):
+                self.lifecycle.doctor(self.identity, .3)
+            self.assertGreater(signal.getitimer(signal.ITIMER_REAL)[0], 4)
+            self.assertEqual(signal.getsignal(signal.SIGALRM), previous_handler)
+        finally:
+            signal.setitimer(signal.ITIMER_REAL, 0)
+
+    def test_doctor_refuses_unowned_non_main_thread_timer(self):
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(self.lifecycle.doctor, self.identity, .3)
+            with self.assertRaisesRegex(ValueError, "main-thread POSIX"):
+                future.result(timeout=1)
 
     def tearDown(self):
         self.server.shutdown()
